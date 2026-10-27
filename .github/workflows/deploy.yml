@@ -4,14 +4,20 @@ on:
   push:
     branches:
       - main
+      - dev-raj
+
+concurrency:
+  group: cpanel-ftp-deploy
+  cancel-in-progress: false
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -29,37 +35,57 @@ jobs:
       - name: Clean unwanted folders from build_output
         run: |
           rm -rf ./build_output/vendor
-          rm -rf ./build_output/writable
+          rm -rf ./build_output/vendor_old
+          rm -rf ./build_output/system
+          rm -rf ./build_output/node_modules
           rm -rf ./build_output/storage
+          rm -rf ./build_output/writable
           rm -rf ./build_output/brain
+          rm -rf ./build_output/tests
+          rm -rf ./build_output/docs
           rm -rf ./build_output/.github
+          rm -rf ./build_output/public/upload
+          rm -rf ./build_output/public/uploads
+          rm -rf ./build_output/public/storage
+          rm -rf ./build_output/public/assets/img/
           rm -rf ./build_output/.git
           rm -f ./build_output/.gitignore
           rm -f ./build_output/.gitattributes
+          rm -f ./build_output/.editorconfig
+          rm -f ./build_output/Dockerfile
           rm -f ./build_output/.env*
 
-      - name: Prepare Zip Package
-        run: |
-          mkdir ./deploy_pkg
-          # Copy extraction script
-          cp deploy_unzip.php ./deploy_pkg/
-          # Zip the build_output directory into deploy.zip
-          cd ./build_output
-          zip -r ../deploy_pkg/deploy.zip .
-          cd ..
-
-      - name: Deploy to cPanel via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: Deploy to cPanel via FTPS
+        uses: Wandalen/wretry.action@v3.8.0
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          server-dir: /
-          local-dir: ./deploy_pkg/
-          protocol: ftp
-          port: 21
-
-      - name: Trigger Remote Unzip
-        run: |
-          # Replace with your actual domain or IP address where public/deploy_unzip.php is accessible
-          curl -sS "https://riskoninsurance.com/deploy_unzip.php?token=riskon_deploy_secret_2026" || curl -sS "http://72.60.216.54/deploy_unzip.php?token=riskon_deploy_secret_2026"
+          action: SamKirkland/FTP-Deploy-Action@v4.3.6
+          attempt_limit: 3
+          attempt_delay: 30000
+          with: |
+            server: ${{ secrets.FTP_SERVER || secrets.FTP_HOST }}
+            username: ${{ secrets.FTP_USERNAME }}
+            password: ${{ secrets.FTP_PASSWORD }}
+            server-dir: /
+            local-dir: ./build_output/
+            protocol: ftp
+            port: 21
+            timeout: 60000
+            security: loose
+            log-level: verbose
+            exclude: |
+              **/.git*
+              **/.git*/**
+              **/.github/**
+              **/brain/**
+              **/.env*
+              **/vendor/**
+              **/vendor_old/**
+              **/system/**
+              **/node_modules/**
+              **/storage/**
+              **/writable/**
+              **/tests/**
+              **/docs/**
+              **/public/upload/**
+              **/public/uploads/**
+              **/public/storage/**
