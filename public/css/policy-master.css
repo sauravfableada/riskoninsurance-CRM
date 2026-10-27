@@ -1,0 +1,18 @@
+.policy-master-table thead th {
+    background-color: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    padding: 1rem 0.75rem;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.policy-master-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.policy-master-table tbody tr:hover {
+    background-color: rgba(59, 130, 246, 0.04);
+}

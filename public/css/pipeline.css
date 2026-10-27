@@ -1,0 +1,87 @@
+/* Pipeline module styles */
+.pipeline-stage-inline .form-select {
+    border-color: #cfd6e4;
+    min-height: 38px;
+}
+
+.pipeline-stage-inline .form-select:focus,
+#stageModal .form-control:focus {
+    border-color: #1c2750;
+    box-shadow: 0 0 0 0.2rem rgba(18, 26, 51, 0.14);
+}
+
+.stage-plus-btn {
+    width: 56px;
+    min-width: 56px;
+    height: 38px;
+    padding: 0;
+    font-weight: 700;
+    font-size: 1.1rem;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #ced4da;
+    color: #0f172a;
+    background: #ffffff;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stage-plus-btn:hover,
+.stage-plus-btn:focus {
+    transform: translateY(-1px) scale(1.03);
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+    background: #ffffff;
+    color: #0f172a;
+}
+
+#stageModal .modal-content {
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 1.25rem 2.5rem rgba(15, 23, 42, 0.18);
+}
+
+#stageModal .modal-dialog {
+    max-width: 500px;
+}
+
+.pipeline-stage-modal-header {
+    background-color: #121a33;
+    border-bottom: 0;
+}
+
+.pipeline-stage-submit-btn {
+    background: #121a33;
+    border-color: #121a33;
+}
+
+.pipeline-stage-submit-btn:hover,
+.pipeline-stage-submit-btn:focus {
+    background: #1c2750;
+    border-color: #1c2750;
+}
+
+[data-theme="dark"] .pipeline-stage-inline .form-select,
+[data-theme="dark"] #stageModal .form-control {
+    background: #0F172A;
+    color: #E2E8F0;
+    border-color: rgba(255,255,255,.08);
+}
+
+[data-theme="dark"] .stage-plus-btn {
+    border-color: rgba(255,255,255,.12);
+    color: #E2E8F0;
+    background: #1E293B;
+}
+
+[data-theme="dark"] .stage-plus-btn:hover,
+[data-theme="dark"] .stage-plus-btn:focus {
+    background: #334155;
+    color: #FFFFFF;
+    box-shadow: 0 6px 14px rgba(0,0,0,.24);
+}
+
+[data-theme="dark"] #stageModal .modal-content {
+    background: #1E293B;
+    border: 1px solid rgba(255,255,255,.08);
+}

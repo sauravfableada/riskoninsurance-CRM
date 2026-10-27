@@ -1,0 +1,144 @@
+================================================================================
+                    API LOGIN - QUICK START GUIDE
+================================================================================
+
+✅ FIXED: API Login Page Created
+
+================================================================================
+                         HOW TO USE
+================================================================================
+
+1. OPEN LOGIN PAGE:
+   → http://127.0.0.1:8000/api-login.html
+
+2. ENTER CREDENTIALS:
+   Email: admin@crm.com
+   Password: admin@123
+
+3. CLICK LOGIN:
+   → Token will be generated
+   → Token saved to localStorage
+   → User info displayed
+
+4. USE TOKEN IN API CALLS:
+   Header: Authorization: Bearer {token}
+
+================================================================================
+                      API ENDPOINTS
+================================================================================
+
+LOGIN (Public):
+  POST /api/v1/login
+  Body: {
+    "email": "admin@crm.com",
+    "password": "admin@123",
+    "device_name": "web-app"
+  }
+  Response: {
+    "success": true,
+    "data": {
+      "token": "...",
+      "user": {...}
+    }
+  }
+
+GET CURRENT USER (Protected):
+  GET /api/v1/me
+  Header: Authorization: Bearer {token}
+
+LOGOUT (Protected):
+  POST /api/v1/logout
+  Header: Authorization: Bearer {token}
+
+GET TASKS (Protected):
+  GET /api/v1/tasks
+  Header: Authorization: Bearer {token}
+
+================================================================================
+                      JAVASCRIPT EXAMPLE
+================================================================================
+
+// 1. LOGIN
+const response = await fetch('/api/v1/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'admin@crm.com',
+    password: 'admin@123',
+    device_name: 'web-app'
+  })
+});
+
+const data = await response.json();
+const token = data.data.token;
+
+// 2. SAVE TOKEN
+localStorage.setItem('auth_token', token);
+
+// 3. USE TOKEN IN REQUESTS
+const tasksResponse = await fetch('/api/v1/tasks', {
+  headers: { 'Authorization': `Bearer ${token}` }
+});
+
+const tasks = await tasksResponse.json();
+console.log(tasks);
+
+================================================================================
+                      CURL EXAMPLE
+================================================================================
+
+# 1. LOGIN
+curl -X POST http://127.0.0.1:8000/api/v1/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "admin@crm.com",
+    "password": "admin@123",
+    "device_name": "web-app"
+  }'
+
+# 2. GET TASKS (replace TOKEN with actual token)
+curl -X GET http://127.0.0.1:8000/api/v1/tasks \
+  -H "Authorization: Bearer TOKEN"
+
+================================================================================
+                      POSTMAN SETUP
+================================================================================
+
+1. Create new request
+2. Method: POST
+3. URL: http://127.0.0.1:8000/api/v1/login
+4. Headers:
+   - Content-Type: application/json
+5. Body (raw JSON):
+   {
+     "email": "admin@crm.com",
+     "password": "admin@123",
+     "device_name": "web-app"
+   }
+6. Send
+7. Copy token from response
+8. Use in Authorization header for other requests
+
+================================================================================
+                      FLOW SUMMARY
+================================================================================
+
+✅ Login → Token Generated
+✅ Token → localStorage
+✅ Frontend → Send token in header
+✅ Backend → auth()->user() works
+✅ Backend → where('user_id', user_id) filters data
+
+================================================================================
+                      STATUS
+================================================================================
+
+✅ API Login Endpoint: Working
+✅ Token Generation: Working
+✅ API Login Page: Created
+✅ localStorage Integration: Ready
+✅ Role-Based Filtering: Applied
+
+Ready for production! 🚀
+
+================================================================================

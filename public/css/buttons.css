@@ -1,0 +1,64 @@
+.btn-dark-blue {
+    background-color: #0a2540;
+    border-color: #0a2540;
+    color: #fff;
+    font-weight: 700;
+    transition: all 0.3s ease;
+}
+
+.btn-dark-blue:hover,
+.btn-dark-blue:focus {
+    background-color: #051c33;
+    border-color: #051c33;
+    color: #fff;
+}
+
+.btn-dark-blue:focus {
+    box-shadow: 0 0 0 0.25rem rgba(10, 37, 64, 0.5);
+}
+
+.btn-outline-dark-blue {
+    background-color: transparent;
+    border-color: var(--crm-border, #0a2540);
+    color: var(--crm-text-body, #0a2540);
+    font-weight: 700;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-dark-blue:hover,
+.btn-outline-dark-blue:focus {
+    background-color: var(--crm-bg-soft, #0a2540);
+    border-color: var(--crm-border, #0a2540);
+    color: var(--crm-text-dark, #fff);
+}
+
+.btn-outline-dark-blue:focus {
+    box-shadow: 0 0 0 0.25rem rgba(10, 37, 64, 0.5);
+    outline: none;
+}
+
+.crm-status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 112px;
+    padding: 0.38rem 0.9rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+}
+
+[data-theme="dark"] .btn-outline-dark-blue {
+    color: #cbd5e1 !important;
+    border-color: rgba(255, 255, 255, 0.14) !important;
+    background: transparent !important;
+}
+
+[data-theme="dark"] .btn-outline-dark-blue:hover,
+[data-theme="dark"] .btn-outline-dark-blue:focus {
+    color: #fff !important;
+    background: rgba(59, 91, 219, 0.2) !important;
+    border-color: rgba(96, 165, 250, 0.35) !important;
+}

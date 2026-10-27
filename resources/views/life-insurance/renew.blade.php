@@ -1,0 +1,358 @@
+@extends('layouts.app')
+
+@section('page_title', 'Life Insurance Renewals')
+
+@push('styles')
+    <link rel="stylesheet" href="{{ (env('PUBLIC_PATH') ? '/' . trim(env('PUBLIC_PATH'), '/') . '/css/main.css' : '/css/main.css') }}?v={{ filemtime(public_path('css/main.css')) }}">
+    <link rel="stylesheet" href="{{ (env('PUBLIC_PATH') ? '/' . trim(env('PUBLIC_PATH'), '/') . '/css/leads.css' : '/css/leads.css') }}?v={{ filemtime(public_path('css/leads.css')) }}">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+@endpush
+
+@section('content')
+<div class="container-fluid p-0">
+    <div class="card border-0 shadow-sm overflow-hidden">
+        <div class="card-header border-bottom-0 py-3 px-4">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+                <div>
+                    <h4 class="fw-bold mb-0">Policy Renewals</h4>
+                    <p class="text-muted small mb-0">Policies expiring within the next 30 days.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ route('life-insurance.index') }}" class="btn btn-outline-dark-blue">
+                        <i class="fa-solid fa-angle-left me-1"></i>Back
+                    </a>
+                </div>
+            </div>
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="input-group input-group-sm" style="width: 250px;">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" id="renewSearch" class="form-control border-start-0" placeholder="Search renewal policies...">
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1 bg-white" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="true" aria-controls="filterCollapse">
+                        <i class="bi bi-funnel"></i> Filters
+                    </button>
+                </div>
+                <div class="d-flex align-items-center gap-2 small">
+                    <span class="text-muted">Show per page:</span>
+                    <select id="perPageSelect" class="form-select form-select-sm" style="width: 70px;">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="collapse show mt-3" id="filterCollapse">
+                <div class="card card-body bg-light border-0 rounded-3">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">Start Date</label>
+                            <input type="date" id="filterFromDate" class="form-control form-control-sm" name="from_date">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">End Date</label>
+                            <input type="date" id="filterToDate" class="form-control form-control-sm" name="to_date">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">Date Range</label>
+                            <select id="filterDateRange" class="form-select form-select-sm">
+                                <option value="">Custom</option>
+                                <option value="today">Today</option>
+                                <option value="this_week">This Week</option>
+                                <option value="this_month">This Month</option>
+                                <option value="this_year">This Year</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted mb-1">Status</label>
+                            <select id="filterStatus" class="form-select form-select-sm">
+                                <option value="">All Statuses</option>
+                                <option value="Inforce">Inforce</option>
+                                <option value="Lapsed">Lapsed</option>
+                                <option value="Matured">Matured</option>
+                                <option value="Surrendered">Surrendered</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+<button type="button" id="clearFiltersBtn" class="btn btn-sm btn-dark text-white px-3" style="background-color: #0f172a; border-color: #0f172a;">Clear</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-body p-0">
+            <table id="RenewTable" class="table table-hover align-middle mb-0" style="width:100%">
+                <thead>
+                    <tr>
+                        <th class="ps-4" style="width: 80px;">Sr.No</th>
+                        <th class="d-none d-md-table-cell">Policy Number</th>
+                        <th>Policy Holder</th>
+                        <th class="d-none d-xxl-table-cell">Policy Type</th>
+                        <th class="d-none d-xxl-table-cell">Policy Mode</th>
+                        <th class="d-none d-md-table-cell">Company</th>
+                        <th class="d-none d-xxl-table-cell">Branch</th>
+                        <th class="d-none d-md-table-cell">Sum Assured</th>
+                        <th class="d-none d-md-table-cell">Premium</th>
+                        <th class="text-center d-none d-md-table-cell">Status</th>
+                        <th class="d-none d-xxl-table-cell">Start Date</th>
+                        <th class="d-none d-xxl-table-cell">End Date</th>
+                        <th class="d-none d-md-table-cell">Days Remaining</th>
+                        <th class="text-end pe-4 d-none d-md-table-cell" style="min-width: 120px;">Actions</th>
+                        <th class="text-center d-md-none" style="width: 80px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            {{-- <div class="card-footer border-top-0 py-4 px-4"></div> --}}
+        </div>
+    </div>
+</div>
+@endsection
+
+@push('scripts')
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+<script>
+$(document).ready(function() {
+    const renewListUrl = "{{ url('renew/list') }}";
+    const renewBase = "{{ url('/life-insurance/edit-page') }}/";
+    const viewBase = "{{ url('/life-insurance/view') }}/";
+
+    const table = $('#RenewTable').DataTable({
+        processing: true,
+        serverSide: false,
+        paging: true,
+        searching: true,
+        info: true,
+        pageLength: 10,
+        lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+        orderMulti: false,
+        deferRender: true,
+        dom: 'rt<"d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 mt-3 px-3 pb-3"ip>',
+        language: {
+            emptyTable: "No policies found for renewal",
+            zeroRecords: "No matching policies found",
+            info: "Showing _START_ to _END_ of _TOTAL_ entries",
+            infoEmpty: "Showing 0 to 0 of 0 entries",
+            paginate: { previous: "Prev", next: "Next" }
+        },
+        ajax: { 
+            url: renewListUrl, 
+            dataSrc: 'data',
+            data: function(d) {
+                d.from_date = $('#filterFromDate').val();
+                d.to_date = $('#filterToDate').val();
+                d.status = $('#filterStatus').val();
+            }
+        },
+        columns: [
+            { data: 'sr_no', className: 'ps-4' },
+            { data: 'policy_number', className: 'd-none d-md-table-cell', render: (d, t, r) => d || r.policy_number_no || '--' },
+            { data: 'holder_name' },
+            { data: 'policy_type_name', className: 'd-none d-xxl-table-cell' },
+            { data: 'policy_mode', className: 'd-none d-xxl-table-cell', render: d => d || '--' },
+            { data: 'company_name', className: 'd-none d-md-table-cell' },
+            { data: 'branch_name', className: 'd-none d-xxl-table-cell' },
+            { data: 'sum_assured', className: 'd-none d-md-table-cell', render: d => d ? '&#8377;' + parseFloat(d).toLocaleString('en-IN') : '--' },
+            { data: 'premium', className: 'd-none d-md-table-cell', render: d => d ? '&#8377;' + parseFloat(d).toLocaleString('en-IN') : '--' },
+            {
+                data: 'policy_status',
+                className: 'text-center d-none d-md-table-cell',
+                render: function(data) {
+                    const statusClass = data === 'Inforce' ? 'success' : data === 'Lapsed' ? 'danger' : data === 'Matured' ? 'info' : 'warning';
+                    return `<span class="badge rounded-pill px-3 bg-${statusClass}">${data || 'Inforce'}</span>`;
+                }
+            },
+            { data: 'start_date', className: 'd-none d-xxl-table-cell' },
+            { data: 'end_date', className: 'd-none d-xxl-table-cell' },
+            {
+                data: 'days_remaining',
+                className: 'd-none d-md-table-cell',
+                render: function(data) {
+                    let badgeClass = 'bg-info text-dark';
+                    let badgeText = data + ' Days';
+                    if (data <= 1) { badgeClass = 'bg-danger'; badgeText = '1 Day'; }
+                    else if (data <= 7) { badgeClass = 'bg-warning text-dark'; }
+                    return `<span class="badge ${badgeClass}">${badgeText}</span>`;
+                }
+            },
+            {
+                data: 'id', orderable: false, searchable: false,
+                className: 'text-end pe-4 d-none d-md-table-cell',
+                render: function(id) {
+                    return `
+                        <div class="d-inline-flex align-items-center gap-2">
+                            <a href="${renewBase}${id}" class="btn btn-sm crm-action-btn" title="Renew"><i class="fas fa-redo text-warning"></i></a>
+                            <a href="${viewBase}${id}" class="btn btn-sm crm-action-btn" title="View"><i class="bi bi-eye"></i></a>
+                        </div>
+                    `;
+                }
+            },
+            {
+                data: null,
+                orderable: false,
+                searchable: false,
+                className: 'text-center d-md-none',
+                render: function(data, type, row) {
+                    return `
+                        <button type="button" class="btn-user-expand" data-policy-id="${row.id}">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    `;
+                }
+            }
+        ],
+        order: [[1, 'desc']],
+        ordering: false,
+        dom: '<"table-responsive"t><"d-flex flex-column flex-md-row justify-content-between align-items-center gap-2 mt-3 px-3 pb-3"ip>',
+        drawCallback: function(settings) {
+            $('.dataTables_paginate ul.pagination').addClass('crm-pagination mb-0');
+            $('#RenewTable_wrapper .dataTables_info').addClass('text-muted small');
+            
+            $('.btn-user-expand').off('click').on('click', function() {
+                const tr = $(this).closest('tr');
+                const row = table.row(tr);
+                const icon = $(this).find('i');
+                const data = row.data();
+
+                if (row.child.isShown()) {
+                    row.child.hide();
+                    tr.removeClass('shown border-0');
+                    icon.removeClass('fa-minus').addClass('fa-plus');
+                    $(this).removeClass('active');
+                } else {
+                    const statusVal = data.policy_status || 'Inforce';
+                    const statusClass = statusVal === 'Inforce' ? 'success' :
+                        statusVal === 'Lapsed' ? 'danger' :
+                        statusVal === 'Matured' ? 'info' : 'warning';
+                    const statusHtml = `<span class="badge rounded-pill px-3 bg-${statusClass}">${statusVal}</span>`;
+
+                    const childHtml = `
+                        <div class="details-content">
+                            <div class="row g-3">
+                                <div class="col-12 d-flex justify-content-between align-items-center">
+                                    <div class="expand-label"><i class="fa-solid fa-file-invoice"></i> Policy No :</div>
+                                    <div class="expand-value">${data.policy_number || '--'}</div>
+                                </div>
+                                <div class="col-12 d-flex justify-content-between align-items-center">
+                                    <div class="expand-label"><i class="fa-solid fa-circle-info"></i> Status :</div>
+                                    <div class="expand-value">${statusHtml}</div>
+                                </div>
+                                <div class="col-12 d-flex justify-content-between align-items-center">
+                                    <div class="expand-label"><i class="fa-solid fa-umbrella"></i> Policy Type :</div>
+                                    <div class="expand-value">${data.policy_type_name || '--'}</div>
+                                </div>
+                                <div class="col-12 d-flex justify-content-between align-items-center">
+                                    <div class="expand-label"><i class="fa-solid fa-arrows-rotate"></i> Policy Mode :</div>
+                                    <div class="expand-value">${data.policy_mode || '--'}</div>
+                                </div>
+                                <div class="col-12 d-flex justify-content-between align-items-center">
+                                    <div class="expand-label"><i class="fa-solid fa-building"></i> Company :</div>
+                                    <div class="expand-value">${data.company_name || '--'}</div>
+                                </div>
+                                <div class="col-12 d-flex justify-content-between align-items-center">
+                                    <div class="expand-label"><i class="fa-solid fa-code-branch"></i> Branch :</div>
+                                    <div class="expand-value">${data.branch_name || '--'}</div>
+                                </div>
+                                <div class="col-12 d-flex justify-content-between align-items-center">
+                                    <div class="expand-label"><i class="fa-solid fa-shield-halved"></i> Sum Assured :</div>
+                                    <div class="expand-value">${data.sum_assured ? '&#8377;' + parseFloat(data.sum_assured).toLocaleString('en-IN') : '--'}</div>
+                                </div>
+                                <div class="col-12 d-flex justify-content-between align-items-center">
+                                    <div class="expand-label"><i class="fa-solid fa-money-bill"></i> Premium :</div>
+                                    <div class="expand-value">${data.premium ? '&#8377;' + parseFloat(data.premium).toLocaleString('en-IN') : '--'}</div>
+                                </div>
+                                <div class="col-12 d-flex justify-content-between align-items-center">
+                                    <div class="expand-label"><i class="fa-solid fa-calendar-check"></i> Start Date :</div>
+                                    <div class="expand-value">${data.start_date || '--'}</div>
+                                </div>
+                                <div class="col-12 d-flex justify-content-between align-items-center">
+                                    <div class="expand-label"><i class="fa-solid fa-calendar-xmark"></i> End Date :</div>
+                                    <div class="expand-value">${data.end_date || '--'}</div>
+                                </div>
+                                <div class="col-12 d-flex justify-content-between align-items-center">
+                                    <div class="expand-label"><i class="fa-regular fa-clock"></i> Days Remaining :</div>
+                                    <div class="expand-value">
+                                        <span class="badge ${(() => {
+                                            if(data.days_remaining <= 1) return 'bg-danger';
+                                            if(data.days_remaining <= 7) return 'bg-warning text-dark';
+                                            return 'bg-info text-dark';
+                                        })()}">${data.days_remaining <= 1 ? '1 Day' : data.days_remaining + ' Days'}</span>
+                                    </div>
+                                </div>
+                                <div class="col-12 d-flex justify-content-between align-items-center pt-3 mt-3 border-top">
+                                    <div class="expand-label"><i class="fa-solid fa-gear"></i> Actions :</div>
+                                    <div class="d-flex gap-2">
+                                        <a href="${renewBase}${data.id}" class="btn btn-sm crm-action-btn" title="Renew">
+                                            <i class="fas fa-redo text-warning"></i>
+                                        </a>
+                                        <a href="${viewBase}${data.id}" class="btn btn-sm crm-action-btn" title="View">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    row.child(childHtml).show();
+                    row.child().find('td').addClass('p-0 border');
+                    row.child().addClass('details-row d-md-none border-0');
+                    tr.addClass('shown border-0');
+                    icon.removeClass('fa-plus').addClass('fa-minus');
+                    $(this).addClass('active');
+                }
+            });
+        }
+    });
+
+    $('#renewSearch').on('keyup', function() {
+        table.search(this.value).draw();
+    });
+
+    $('#perPageSelect').on('change', function() {
+        table.page.len($(this).val()).draw();
+    });
+
+    $('#filterFromDate, #filterToDate, #filterDateRange, #filterStatus').on('change', function() {
+        window.setTimeout(function() { table.ajax.reload(); }, 0);
+    });
+
+    $('#clearFiltersBtn').on('click', function() {
+        $('#filterFromDate').val('');
+        $('#filterToDate').val('');
+        $('#filterDateRange').val('');
+        $('#filterStatus').val('');
+        $('#renewSearch').val('');
+        table.search('').draw();
+        table.ajax.reload();
+    });
+
+    $('#filterDateRange').on('change', function() {
+        const today = new Date();
+        let from = "";
+        let to = "";
+        
+        if (this.value === "today") {
+            from = to = today.toISOString().split("T")[0];
+        } else if (this.value === "this_week") {
+            const first = today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1);
+            const last = first + 6;
+            from = new Date(new Date(today).setDate(first)).toISOString().split("T")[0];
+            to = new Date(new Date(today).setDate(last)).toISOString().split("T")[0];
+        } else if (this.value === "this_month") {
+            from = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split("T")[0];
+            to = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split("T")[0];
+        } else if (this.value === "this_year") {
+            from = new Date(today.getFullYear(), 0, 1).toISOString().split("T")[0];
+            to = new Date(today.getFullYear(), 11, 31).toISOString().split("T")[0];
+        }
+        
+        $('#filterFromDate').val(from);
+        $('#filterToDate').val(to);
+    });
+});
+</script>
+@endpush

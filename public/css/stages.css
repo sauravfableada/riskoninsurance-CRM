@@ -1,0 +1,99 @@
+.status-switch .form-check-input {
+    width: 2.25rem;
+    height: 1.15rem;
+    border: 1px solid #D0D5DD;
+    background-color: #F2F4F7;
+    border-radius: 999px;
+}
+
+.status-switch .form-check-input:checked {
+    background-color: #2563EB;
+    border-color: #2563EB;
+}
+
+.status-switch .form-check-input:focus {
+    box-shadow: 0 0 0 0.15rem rgba(37, 99, 235, 0.25);
+}
+
+#stageModal .modal-dialog {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#stageModal .modal-dialog-centered {
+    min-height: calc(100% - 3.5rem);
+}
+
+.stages-card .card-header {
+    padding-top: 1.1rem !important;
+    padding-bottom: 1rem !important;
+}
+
+.stages-toolbar {
+    gap: 1rem;
+}
+
+#stagesTable thead th {
+    background-color: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+#stagesTable tbody td {
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+    vertical-align: middle;
+}
+
+#stagesTable tbody tr:hover {
+    background-color: rgba(59, 130, 246, 0.04);
+}
+
+#stagesTable tbody td:nth-child(2),
+#stagesTable thead th:nth-child(2) {
+    width: 160px !important;
+}
+
+#stagesTable tbody td:nth-child(3),
+#stagesTable thead th:nth-child(3) {
+    width: 210px !important;
+    white-space: nowrap;
+}
+
+#stagesTable tbody td:nth-child(4),
+#stagesTable thead th:nth-child(4) {
+    width: 120px !important;
+}
+
+#stagesTable .badge {
+    min-width: 92px;
+    padding: 0.45rem 0.9rem !important;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+#stagesTable .btn.btn-light.btn-sm {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (max-width: 767.98px) {
+    #stagesTable td {
+        padding: 1rem 0.75rem;
+    }
+
+    .stages-card .card-header {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+    }
+}

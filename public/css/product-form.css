@@ -1,0 +1,96 @@
+:root {
+    --products-accent: #121a33;
+    --products-accent-soft: #1c2750;
+    --products-accent-ring: rgba(18, 26, 51, 0.14);
+}
+
+.product-category-inline .form-select {
+    border-color: #cfd6e4;
+    min-height: 38px;
+    flex: 1 1 auto;
+}
+
+.product-category-inline .form-select:focus {
+    border-color: var(--products-accent-soft);
+    box-shadow: 0 0 0 0.2rem var(--products-accent-ring);
+}
+
+.product-category-inline .stage-plus-btn {
+    width: 56px;
+    min-width: 56px;
+    height: 38px;
+    padding: 0;
+    font-weight: 700;
+    font-size: 1.1rem;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #cfd6e4;
+    color: var(--products-accent);
+    background: #ffffff;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.product-category-inline .stage-plus-btn:hover,
+.product-category-inline .stage-plus-btn:focus {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.12);
+    background: #ffffff;
+    color: var(--products-accent-soft);
+}
+
+#addCategoryModal .modal-content {
+    border: 0;
+    border-radius: 1rem;
+    overflow: hidden;
+    box-shadow: 0 1.25rem 2.5rem rgba(15, 23, 42, 0.18);
+}
+
+#addCategoryModal .modal-dialog {
+    max-width: 500px;
+}
+
+#addCategoryModal .form-control {
+    min-height: 2.75rem;
+}
+
+#addCategoryModal .form-control:focus {
+    border-color: var(--products-accent-soft);
+    box-shadow: 0 0 0 0.2rem var(--products-accent-ring);
+}
+
+#addCategoryModal .modal-header {
+    background-color: var(--products-accent) !important;
+}
+
+#save-category-btn {
+    background: var(--products-accent);
+    border-color: var(--products-accent);
+}
+
+#save-category-btn:hover,
+#save-category-btn:focus {
+    background: var(--products-accent-soft);
+    border-color: var(--products-accent-soft);
+}
+
+[data-theme="dark"] .product-category-inline .form-select,
+[data-theme="dark"] #addCategoryModal .form-control {
+    background: #0F172A;
+    color: #E2E8F0;
+    border-color: rgba(255,255,255,.08);
+}
+
+[data-theme="dark"] .product-category-inline .stage-plus-btn {
+    border-color: rgba(255,255,255,.12);
+    color: #E2E8F0;
+    background: #1E293B;
+}
+
+[data-theme="dark"] .product-category-inline .stage-plus-btn:hover,
+[data-theme="dark"] .product-category-inline .stage-plus-btn:focus {
+    background: #334155;
+    color: #FFFFFF;
+    box-shadow: 0 6px 14px rgba(0,0,0,.24);
+}

@@ -1,0 +1,63 @@
+@media (max-width: 767.98px) {
+    .sms-marketing-header {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 1rem;
+    }
+
+    .sms-marketing-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .sms-marketing-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .sms-credentials-actions {
+        display: grid;
+    }
+
+    .sms-credentials-actions .btn {
+        width: 100%;
+    }
+
+    .sms-logs-header {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 1rem;
+    }
+
+    .sms-logs-actions {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .sms-logs-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    #sendSmsModal .modal-dialog {
+        margin: 0.75rem;
+    }
+
+    .sms-template-header {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 1rem;
+    }
+
+    .sms-template-header .btn,
+    .sms-template-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .sms-template-actions {
+        flex-direction: column;
+    }
+}

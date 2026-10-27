@@ -1,0 +1,34 @@
+// Google Fonts
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+// Colors
+$primary: #4F46E5; // Indigo 600
+$primary-dark: #4338CA; // Indigo 700
+$secondary: #64748B; // Slate 500
+$success: #10B981; // Emerald 500
+$info: #3B82F6; // Blue 500
+$warning: #F59E0B; // Amber 500
+$danger: #EF4444; // Red 500
+$light: #F8FAFC; // Slate 50
+$dark: #0F172A; // Slate 900
+
+$body-bg: #F1F5F9;
+$card-bg: #FFFFFF;
+$sidebar-bg: #0F172A;
+$sidebar-color: #94A3B8;
+$sidebar-active-bg: #1E293B;
+$sidebar-active-color: #FFFFFF;
+
+// Typography
+$font-family-sans-serif: 'Outfit', sans-serif;
+$font-size-base: 0.9375rem;
+$line-height-base: 1.6;
+
+// Components
+$border-radius: 0.75rem;
+$border-radius-lg: 1rem;
+$box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+$box-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+// Transitions
+$transition-base: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);

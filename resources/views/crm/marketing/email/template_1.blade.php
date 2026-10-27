@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Festival Invitation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #e0f2f7;
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        .header {
+            background-color: #ffb0b0;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header-logo {
+            width: 150px;
+            height: 50px;
+            background-color: #f1f5f9;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #2d3748;
+            font-size: 24px;
+            margin-top: 20px;
+            margin-bottom: 0;
+            font-weight: 700;
+        }
+
+        .body-content {
+            padding: 40px 50px;
+            color: #4a5568;
+            line-height: 1.6;
+        }
+
+        .body-content h2 {
+            color: #ff7676;
+            font-size: 22px;
+            margin-top: 0;
+            margin-bottom: 25px;
+        }
+
+        .body-content p {
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+
+        .main-image {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            display: block;
+        }
+
+        .footer-message {
+            font-weight: 700;
+            color: #4a5568;
+            margin-top: 30px;
+        }
+
+        .footer-bar {
+            background-color: #ffb0b0;
+            padding: 20px;
+            text-align: center;
+            color: #ffffff;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container p-0">
+        <div class="header">
+            <div class="header-logo">
+                <img src="https://ui-avatars.com/api/?name={{ urlencode($company_name) }}&background=0b4a8f&color=fff&size=200" style="width: inherit;" alt="{{ $company_name }}">
+            </div>
+            <h1>Celebrate the Festival with {{ $company_name }}</h1>
+        </div>
+
+        <div class="body-content">
+            <h2>Hello {{ $user_name }},</h2>
+            <p>As the festival spirit fills the air, we at {{ $company_name }} wish you an abundance of joy, health, and prosperity.</p>
+            <p>Here's to celebrating with laughter, love, and cherished memories. Enjoy this vibrant time to the fullest!</p>
+
+            @if ($image_1)
+                <img src="{{ $image_1 }}" class="main-image">
+            @endif
+
+            @if ($image_2)
+                <img src="{{ $image_2 }}" class="main-image">
+            @endif
+
+            @if ($image_3)
+                <img src="{{ $image_3 }}" class="main-image">
+            @endif
+
+            <div class="footer-message">
+                Happy Festival from all of us at {{ $company_name }}!
+            </div>
+        </div>
+
+        <div class="footer-bar">
+            &copy; {{ $company_name }}. All rights reserved.
+        </div>
+    </div>
+</body>
+
+</html>
