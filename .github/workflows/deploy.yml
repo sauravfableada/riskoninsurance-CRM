@@ -38,30 +38,28 @@ jobs:
           rm -f ./build_output/.gitattributes
           rm -f ./build_output/.env*
 
-      - name: Debug secrets
+      - name: Prepare Zip Package
         run: |
-          echo "Host: ${{ secrets.FTP_SERVER }}"
-          echo "Username: ${{ secrets.FTP_USERNAME }}"
-          echo "Password is set: ${{ secrets.FTP_PASSWORD != '' }}"
+          mkdir ./deploy_pkg
+          # Copy extraction script
+          cp deploy_unzip.php ./deploy_pkg/
+          # Zip the build_output directory into deploy.zip
+          cd ./build_output
+          zip -r ../deploy_pkg/deploy.zip .
+          cd ..
 
-      - name: Deploy to cPanel via FTPS
+      - name: Deploy to cPanel via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           server-dir: /
-          local-dir: ./build_output/
-          protocol: ftps
+          local-dir: ./deploy_pkg/
+          protocol: ftp
           port: 21
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/.github/**
-            **/brain/**
-            **/.env*
-            **/vendor/**
-            **/storage/**
-            **/writable/**
-            **/public/uploads/**
-            **/node_modules/**
+
+      - name: Trigger Remote Unzip
+        run: |
+          # Replace with your actual domain or IP address where public/deploy_unzip.php is accessible
+          curl -sS "https://riskoninsurance.com/deploy_unzip.php?token=riskon_deploy_secret_2026" || curl -sS "http://72.60.216.54/deploy_unzip.php?token=riskon_deploy_secret_2026"
