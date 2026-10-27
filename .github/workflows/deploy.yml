@@ -30,11 +30,13 @@ jobs:
         run: |
           rm -rf ./build_output/vendor
           rm -rf ./build_output/writable
-        
+          rm -rf ./build_output/storage
+          rm -rf ./build_output/brain
+          rm -rf ./build_output/.github
           rm -rf ./build_output/.git
           rm -f ./build_output/.gitignore
           rm -f ./build_output/.gitattributes
-
+          rm -f ./build_output/.env*
 
       - name: Debug secrets
         run: |
@@ -43,19 +45,23 @@ jobs:
           echo "Password is set: ${{ secrets.FTP_PASSWORD != '' }}"
 
       - name: Deploy to cPanel via FTPS
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           server-dir: /
           local-dir: ./build_output/
-          protocol: ftp
+          protocol: ftps
           port: 21
           exclude: |
             **/.git*
-            **/.env
+            **/.git*/**
+            **/.github/**
+            **/brain/**
+            **/.env*
             **/vendor/**
             **/storage/**
             **/writable/**
             **/public/uploads/**
+            **/node_modules/**
