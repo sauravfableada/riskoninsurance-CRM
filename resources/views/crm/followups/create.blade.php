@@ -73,9 +73,8 @@
                         <div class="col-12 col-md-6">
                             <label class="form-label fw-medium">Priority <span class="text-danger">*</span></label>
                             <select name="priority" id="priority" class="form-select" required>
-                                <option value="" @selected(old('priority') === null)>Select Priority</option>
                                 <option value="low" @selected(old('priority') == 'low')>Low</option>
-                                <option value="medium" @selected(old('priority') == 'medium')>Medium</option>
+                                <option value="medium" @selected(old('priority', 'medium') == 'medium')>Medium</option>
                                 <option value="high" @selected(old('priority') == 'high')>High</option>
                             </select>
                             <div class="invalid-feedback d-block" id="priority-error"></div>
@@ -85,8 +84,7 @@
                         <div class="col-12 col-md-6">
                             <label class="form-label fw-medium">Status <span class="text-danger">*</span></label>
                             <select name="status" id="status" class="form-select" required>
-                                <option value="" @selected(old('status') === null)>Select Status</option>
-                                <option value="pending" @selected(old('status') == 'pending')>Pending</option>
+                                <option value="pending" @selected(old('status', 'pending') == 'pending')>Pending</option>
                                 <option value="resheduled" @selected(old('status') == 'resheduled')>Rescheduled</option>
                                 <option value="completed" @selected(old('status') == 'completed')>Completed</option>
                                 <option value="cancelled" @selected(old('status') == 'cancelled')>Cancelled</option>

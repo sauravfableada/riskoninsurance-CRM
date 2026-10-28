@@ -108,15 +108,50 @@
 
         function convertLead(id, button) {
             Swal.fire({
-                title: "Are you sure?",
-                text: "This lead will be converted to customer!",
-                icon: "question",
+                title: "Convert to Customer",
+                html: `
+                    <p class="text-muted small mb-3">Set an optional customer portal password, or click <strong>Skip</strong> to continue without setting a password now.</p>
+                    <div class="text-start mb-2">
+                        <label class="form-label fw-semibold small mb-1">Customer Password (Optional)</label>
+                        <div class="position-relative">
+                            <input type="password" id="swalCustomerPassword" class="form-control rounded-3" placeholder="Enter password (optional)">
+                            <button type="button" class="btn btn-sm position-absolute end-0 top-50 translate-middle-y text-muted border-0 bg-transparent pe-3" id="swalTogglePassword" tabindex="-1">
+                                <i class="bi bi-eye" id="swalEyeIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+                `,
                 showCancelButton: true,
-                confirmButtonColor: "#3085d6",
-                cancelButtonColor: "#6c757d",
-                confirmButtonText: "Yes, convert it!",
+                showDenyButton: true,
+                confirmButtonColor: "#0f172a",
+                denyButtonColor: "#64748b",
+                cancelButtonColor: "#e2e8f0",
+                confirmButtonText: '<i class="bi bi-check-lg me-1"></i> Save & Convert',
+                denyButtonText: 'Skip & Convert',
+                cancelButtonText: 'Cancel',
+                customClass: {
+                    popup: "rounded-4 shadow",
+                    cancelButton: "text-dark border",
+                },
+                didOpen: () => {
+                    const toggleBtn = document.getElementById("swalTogglePassword");
+                    const passInput = document.getElementById("swalCustomerPassword");
+                    const eyeIcon = document.getElementById("swalEyeIcon");
+                    if (toggleBtn && passInput) {
+                        toggleBtn.addEventListener("click", () => {
+                            if (passInput.type === "password") {
+                                passInput.type = "text";
+                                eyeIcon.className = "bi bi-eye-slash";
+                            } else {
+                                passInput.type = "password";
+                                eyeIcon.className = "bi bi-eye";
+                            }
+                        });
+                    }
+                },
             }).then((result) => {
-                if (result.isConfirmed) {
+                if (result.isConfirmed || result.isDenied) {
+                    const passwordVal = result.isConfirmed ? document.getElementById("swalCustomerPassword")?.value || "" : "";
                     const originalHtml = button.innerHTML;
                     button.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
                     button.disabled = true;
@@ -124,19 +159,22 @@
                     $.ajax({
                         url: `/leads/${id}/convert`,
                         type: "POST",
+                        data: {
+                            password: passwordVal,
+                        },
                         headers: authHeaders({
                             "X-CSRF-TOKEN": csrfToken,
                             Accept: "application/json",
                         }),
-                        success: function () {
+                        success: function (res) {
                             if (typeof window.showAlert === "function") {
-                                window.showAlert("success", "Lead converted successfully.");
+                                window.showAlert("success", res?.message || "Lead converted to customer successfully.");
                             }
                             fetchLeads();
                         },
-                        error: function () {
+                        error: function (xhr) {
                             if (typeof window.showAlert === "function") {
-                                window.showAlert("error", "Unable to convert lead. Please try again.");
+                                window.showAlert("error", xhr?.responseJSON?.message || "Unable to convert lead. Please try again.");
                             }
                             button.innerHTML = originalHtml;
                             button.disabled = false;

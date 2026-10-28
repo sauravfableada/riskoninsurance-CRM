@@ -36,8 +36,9 @@ class LeadController extends Controller
         $sources = LeadSource::orderBy('name')->get();
         $stages = Stage::orderBy('name')->get();
         $users = $this->selectableUsers();
+        $groups = \App\Models\FamilyGroup::orderBy('group_name')->get();
 
-        return view('crm.leads.create', compact('sources', 'stages', 'users'));
+        return view('crm.leads.create', compact('sources', 'stages', 'users', 'groups'));
     }
 
     // public function edit(Lead $lead)
@@ -57,8 +58,9 @@ class LeadController extends Controller
         $sources = LeadSource::orderBy('name')->get();
         $stages = Stage::orderBy('name')->get();
         $users = $this->selectableUsers();
+        $groups = \App\Models\FamilyGroup::orderBy('group_name')->get();
 
-        return view('crm.leads.edit', compact('lead', 'sources', 'stages', 'users'));
+        return view('crm.leads.edit', compact('lead', 'sources', 'stages', 'users', 'groups'));
     }
 
     public function show(Lead $lead)
@@ -78,15 +80,25 @@ class LeadController extends Controller
         return response()->file(Storage::disk('public')->path($lead->image));
     }
 
-    public function convertToCustomer(Lead $lead)
+    public function convertToCustomer(Request $request, Lead $lead)
     {
         if ($lead->is_converted && $lead->converted_customer_id) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Lead already converted.',
+                    'customer_id' => $lead->converted_customer_id,
+                    'redirect' => route('masters.customers.edit', $lead->converted_customer_id),
+                ]);
+            }
             return redirect()
                 ->route('masters.customers.edit', $lead->converted_customer_id)
                 ->with('success', 'Lead already converted.');
         }
 
-        $customer = DB::transaction(function () use ($lead) {
+        $passwordInput = $request->input('password');
+
+        $customer = DB::transaction(function () use ($lead, $passwordInput) {
             $existing = null;
 
             if (!empty($lead->email)) {
@@ -102,13 +114,19 @@ class LeadController extends Controller
                     'name' => $lead->name,
                     'email' => $lead->email,
                     'phone' => $lead->phone,
+                    'country_code' => $lead->country_code,
                     'whatsapp' => $lead->whatsapp,
+                    'whatsapp_country_code' => $lead->whatsapp_country_code,
                     'address' => $lead->address,
                     'company_name' => $lead->company_name,
                     'image' => $lead->image,
                     'type' => 'Individual',
                     'is_active' => true,
                 ];
+
+                if (!empty($passwordInput)) {
+                    $customerData['password'] = \Illuminate\Support\Facades\Hash::make($passwordInput);
+                }
 
                 if (\Illuminate\Support\Facades\Schema::hasColumn('customers', 'created_by')) {
                     $customerData['created_by'] = auth()->id();
@@ -125,6 +143,11 @@ class LeadController extends Controller
                 }
 
                 $existing = Customer::create($customerData);
+            } else {
+                if (!empty($passwordInput)) {
+                    $existing->password = \Illuminate\Support\Facades\Hash::make($passwordInput);
+                    $existing->save();
+                }
             }
 
             $lead->update([
@@ -134,6 +157,15 @@ class LeadController extends Controller
 
             return $existing;
         });
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Lead converted to customer successfully.',
+                'customer_id' => $customer->id,
+                'redirect' => route('masters.customers.edit', $customer->id),
+            ]);
+        }
 
         return redirect()
             ->route('masters.customers.edit', $customer->id)

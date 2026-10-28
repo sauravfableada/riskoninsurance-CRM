@@ -79,6 +79,17 @@
                     </div>
 
                     <div class="col-md-6">
+                        <label class="form-label fw-semibold">Family Group</label>
+                        <select name="group" id="group" class="form-select @error('group') is-invalid @enderror">
+                            <option value="">Select Family Group</option>
+                            @foreach($groups ?? [] as $g)
+                                <option value="{{ $g->group_name }}" @selected(old('group') === $g->group_name)>{{ $g->group_name }}</option>
+                            @endforeach
+                        </select>
+                        <div class="invalid-feedback" id="group-error">@error('group') {{ $message }} @enderror</div>
+                    </div>
+
+                    <div class="col-md-6">
                         <label class="form-label fw-semibold">Lead Source</label>
                         <input type="text" name="source" id="source" value="{{ old('source') }}" class="form-control @error('source') is-invalid @enderror" placeholder="Lead Source">
                         <div class="invalid-feedback" id="source-error">@error('source') {{ $message }} @enderror</div>

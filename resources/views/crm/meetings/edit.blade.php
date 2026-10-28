@@ -82,8 +82,8 @@
 
                         <!-- Meeting Type -->
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Meeting Type <span class="text-danger">*</span></label>
-                            <select name="meeting_type" id="meeting_type" class="form-select" required>
+                            <label class="form-label fw-semibold">Meeting Type</label>
+                            <select name="meeting_type" id="meeting_type" class="form-select">
                                 <option value="">Select Meeting Type</option>
                                 <option value="online" {{ $meeting->meeting_type == 'online' ? 'selected' : '' }}>Online
                                 </option>

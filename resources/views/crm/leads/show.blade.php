@@ -16,10 +16,9 @@
                     <i class="bi bi-person-check me-1"></i>View Customer
                 </a>
             @else
-                <form method="POST" action="{{ route('leads.convert', $lead) }}" class="flex-grow-1 flex-md-grow-0">
-                    @csrf
-                    <button type="submit" class="btn btn-success w-100"><i class="bi bi-person-plus me-1"></i>Convert</button>
-                </form>
+                <button type="button" class="btn btn-success flex-grow-1 flex-md-grow-0" id="showConvertLeadBtn" data-id="{{ $lead->id }}">
+                    <i class="bi bi-person-plus me-1"></i>Convert
+                </button>
             @endif
             @can('leads.edit')
             <a href="{{ route('leads.edit', $lead) }}" class="btn btn-dark-blue flex-grow-1 flex-md-grow-0">
@@ -51,6 +50,10 @@
                                 <span class="detail-view-value fw-bold text-dark">{{ $lead->phone ?? '--' }}</span>
                             </div>
                             <div class="detail-view-row mb-3">
+                                <span class="detail-view-label text-muted small d-block mb-1">Family Group</span> 
+                                <span class="detail-view-value fw-semibold text-dark">{{ $lead->group ?? '--' }}</span>
+                            </div>
+                            <div class="detail-view-row mb-3">
                                 <span class="detail-view-label text-muted small d-block mb-1">Status</span> 
                                 <span class="detail-view-value">
                                     <span class="badge bg-light text-dark border">{{ ucfirst(str_replace('_', ' ', $lead->status)) }}</span>
@@ -60,10 +63,26 @@
                                 <span class="detail-view-label text-muted small d-block mb-1">Source</span> 
                                 <span class="detail-view-value text-muted">{{ $lead->leadSource?->name ?? $lead->source ?? '--' }}</span>
                             </div>
-                            <div class="detail-view-row">
-                                <span class="detail-view-label text-muted small d-block mb-1">Stage</span> 
-                                <span class="detail-view-value text-muted">{{ $lead->leadStage?->name ?? '--' }}</span>
+                            <div class="detail-view-row mb-3">
+                                <span class="detail-view-label text-muted small d-block mb-1">Company</span> 
+                                <span class="detail-view-value text-dark">{{ $lead->company_name ?? '--' }}</span>
                             </div>
+                            <div class="detail-view-row mb-3">
+                                <span class="detail-view-label text-muted small d-block mb-1">Assigned To</span> 
+                                <span class="detail-view-value text-dark">{{ $lead->assignedUser?->name ?? '--' }}</span>
+                            </div>
+                            @if($lead->address)
+                            <div class="detail-view-row mb-3">
+                                <span class="detail-view-label text-muted small d-block mb-1">Address</span> 
+                                <span class="detail-view-value text-dark">{{ $lead->address }}</span>
+                            </div>
+                            @endif
+                            @if($lead->notes)
+                            <div class="detail-view-row mb-3">
+                                <span class="detail-view-label text-muted small d-block mb-1">Comment</span> 
+                                <span class="detail-view-value text-dark">{{ $lead->notes }}</span>
+                            </div>
+                            @endif
                         </div>
                     </div>
 
@@ -318,5 +337,99 @@
             }
         });
     });
+
+    const convertBtn = document.getElementById('showConvertLeadBtn');
+    if (convertBtn) {
+        convertBtn.addEventListener('click', function() {
+            const leadId = this.dataset.id;
+            const button = this;
+
+            Swal.fire({
+                title: "Convert to Customer",
+                html: `
+                    <p class="text-muted small mb-3">Set an optional customer portal password, or click <strong>Skip</strong> to continue without setting a password now.</p>
+                    <div class="text-start mb-2">
+                        <label class="form-label fw-semibold small mb-1">Customer Password (Optional)</label>
+                        <div class="position-relative">
+                            <input type="password" id="swalCustomerPassword" class="form-control rounded-3" placeholder="Enter password (optional)">
+                            <button type="button" class="btn btn-sm position-absolute end-0 top-50 translate-middle-y text-muted border-0 bg-transparent pe-3" id="swalTogglePassword" tabindex="-1">
+                                <i class="bi bi-eye" id="swalEyeIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonColor: "#0f172a",
+                denyButtonColor: "#64748b",
+                cancelButtonColor: "#e2e8f0",
+                confirmButtonText: '<i class="bi bi-check-lg me-1"></i> Save & Convert',
+                denyButtonText: 'Skip & Convert',
+                cancelButtonText: 'Cancel',
+                customClass: {
+                    popup: "rounded-4 shadow",
+                    cancelButton: "text-dark border",
+                },
+                didOpen: () => {
+                    const toggleBtn = document.getElementById("swalTogglePassword");
+                    const passInput = document.getElementById("swalCustomerPassword");
+                    const eyeIcon = document.getElementById("swalEyeIcon");
+                    if (toggleBtn && passInput) {
+                        toggleBtn.addEventListener("click", () => {
+                            if (passInput.type === "password") {
+                                passInput.type = "text";
+                                eyeIcon.className = "bi bi-eye-slash";
+                            } else {
+                                passInput.type = "password";
+                                eyeIcon.className = "bi bi-eye";
+                            }
+                        });
+                    }
+                },
+            }).then((result) => {
+                if (result.isConfirmed || result.isDenied) {
+                    const passwordVal = result.isConfirmed ? document.getElementById("swalCustomerPassword")?.value || "" : "";
+                    const originalHtml = button.innerHTML;
+                    button.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+                    button.disabled = true;
+
+                    fetch(`/leads/${leadId}/convert`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            password: passwordVal
+                        })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            if (typeof window.showAlert === 'function') {
+                                window.showAlert('success', data.message || 'Lead converted successfully.');
+                            }
+                            if (data.redirect) {
+                                window.location.href = data.redirect;
+                            } else {
+                                window.location.reload();
+                            }
+                        } else {
+                            throw new Error(data.message || 'Failed to convert lead.');
+                        }
+                    })
+                    .catch(err => {
+                        button.innerHTML = originalHtml;
+                        button.disabled = false;
+                        if (typeof window.showAlert === 'function') {
+                            window.showAlert('error', err.message || 'Failed to convert lead.');
+                        }
+                    });
+                }
+            });
+        });
+    }
 </script>
 @endpush
