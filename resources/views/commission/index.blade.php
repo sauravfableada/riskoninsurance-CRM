@@ -70,6 +70,36 @@
                 font-weight: 700;
                 font-size: 0.95rem;
             }
+            .commission-role-pills {
+                display: inline-flex;
+                background-color: #f1f5f9;
+                padding: 4px;
+                border-radius: 30px;
+                gap: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            .commission-role-pills .filter-role-btn {
+                border: none;
+                background: transparent;
+                color: #64748b;
+                font-weight: 600;
+                font-size: 0.82rem;
+                padding: 6px 16px;
+                border-radius: 20px;
+                transition: all 0.25s ease;
+                white-space: nowrap;
+                box-shadow: none !important;
+            }
+            .commission-role-pills .filter-role-btn:hover {
+                color: #0f172a;
+                background: rgba(255, 255, 255, 0.6);
+            }
+            .commission-role-pills .filter-role-btn.active {
+                background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+                color: #ffffff !important;
+                box-shadow: 0 2px 8px rgba(13, 110, 253, 0.35) !important;
+            }
+
             .commission-status {
                 display: inline-flex;
                 padding: .32rem .7rem;
@@ -159,17 +189,20 @@
             <!-- TAB 1: SUB-AGENTS & STAFF COMMISSION LIST -->
             <div class="tab-pane fade show active" id="tab-members" role="tabpanel" aria-labelledby="members-tab">
                 <!-- Filter bar -->
-                <div class="p-3 bg-light border-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="small fw-bold text-secondary text-uppercase"><i class="fa-solid fa-filter me-1"></i> Role:</span>
-                        <div class="btn-group btn-group-sm" role="group">
-                            <button type="button" class="btn btn-outline-dark filter-role-btn active" data-role="">All Members</button>
-                            <button type="button" class="btn btn-outline-dark filter-role-btn" data-role="Sub Agent">Sub-Agents</button>
-                            <button type="button" class="btn btn-outline-dark filter-role-btn" data-role="Team Member / Staff">Staff</button>
+                <div class="px-4 py-3 bg-white border-bottom d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="small fw-bold text-dark text-uppercase d-flex align-items-center gap-1" style="font-size: 0.78rem; letter-spacing: 0.5px;">
+                            <i class="fa-solid fa-filter text-primary"></i> Filter by Role:
+                        </span>
+                        <div class="commission-role-pills" role="group">
+                            <button type="button" class="filter-role-btn active" data-role="">All Members</button>
+                            <button type="button" class="filter-role-btn" data-role="Sub Agent">Sub-Agents</button>
+                            <button type="button" class="filter-role-btn" data-role="Team Member / Staff">Staff</button>
                         </div>
                     </div>
-                    <div class="text-muted small">
-                        Click <strong>"Set Commission"</strong> or <strong>"Edit Rate"</strong> on any member row to configure.
+                    <div class="text-muted small d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-circle-info text-info"></i>
+                        <span>Click <strong>"Set Commission"</strong> or <strong>"Edit Rate"</strong> on any member row to configure.</span>
                     </div>
                 </div>
 

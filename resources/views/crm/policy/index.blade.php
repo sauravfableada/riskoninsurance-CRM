@@ -2092,7 +2092,7 @@
                             <!-- PAY-OUT (Agent) -->
                             <div class="col-md-6">
                                 <div class="card h-100 border-warning border-opacity-50 rounded-4 shadow-sm" style="background: #fffbeb;">
-                                    <div class="card-header bg-warning text-dark py-2 px-3 rounded-top-4 d-flex justify-content-between align-items-center">
+                                    <div class="card-header bg-warning text-white py-2 px-3 rounded-top-4 d-flex justify-content-between align-items-center">
                                         <span class="fw-bold"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i> PAY-OUT (Agent)</span>
                                         <span class="badge bg-dark text-white">To Agent</span>
                                     </div>

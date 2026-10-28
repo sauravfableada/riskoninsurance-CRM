@@ -298,7 +298,7 @@
                                     <span id="premium_err" class="text-danger"></span>
                                 </div>
                                 <div class="mb-3 col-lg-3">
-                                    <label class="form-label" for="tax_amount">Tax Amount <span class="text-muted small">(Optional)</span></label>
+                                    <label class="form-label" for="tax_amount">Tax Amount</label>
                                     <input type="number" step="0.01" class="form-control" name="tax_amount" id="tax_amount" value="<?= esc($policy['tax_amount']); ?>">
                                     <span id="tax_amount_err" class="text-danger"></span>
                                 </div>
