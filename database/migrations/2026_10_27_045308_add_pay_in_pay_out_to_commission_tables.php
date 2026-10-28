@@ -49,8 +49,15 @@ return new class extends Migration
         });
 
         Schema::table('policies', function (Blueprint $table) {
+            $afterCol = Schema::hasColumn('policies', 'commission_percentage')
+                ? 'commission_percentage'
+                : (Schema::hasColumn('policies', 'premium_amount') ? 'premium_amount' : null);
+
             if (!Schema::hasColumn('policies', 'pay_in_amount')) {
-                $table->decimal('pay_in_amount', 15, 2)->nullable()->after('commission_percentage');
+                $col = $table->decimal('pay_in_amount', 15, 2)->nullable();
+                if ($afterCol) {
+                    $col->after($afterCol);
+                }
             }
             if (!Schema::hasColumn('policies', 'pay_in_percentage')) {
                 $table->decimal('pay_in_percentage', 8, 2)->nullable()->after('pay_in_amount');

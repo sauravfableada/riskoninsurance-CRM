@@ -1078,13 +1078,6 @@
                                 <i class="fas fa-magic text-white"></i>
                                 <span>Upload via AI</span>
                             </a>
-
-                            <button type="button"
-                                class="btn top-action-btn header-menu-btn d-none d-lg-inline-flex align-items-center gap-2"
-                                data-bs-toggle="modal" data-bs-target="#globalTutorialsModal">
-                                <i class="bi bi-play-circle-fill text-white"></i>
-                                <span>Tutorials</span>
-                            </button>
                             @endif
 
                             <div class="dropdown">

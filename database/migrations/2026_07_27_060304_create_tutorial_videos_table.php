@@ -11,13 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('tutorial_videos', function (Blueprint $table) {
-            $table->id();
-            $table->string('title');
-            $table->text('description')->nullable();
-            $table->string('video_path');
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('tutorial_videos')) {
+            Schema::create('tutorial_videos', function (Blueprint $table) {
+                $table->id();
+                $table->string('title');
+                $table->text('description')->nullable();
+                $table->string('video_path');
+                $table->timestamps();
+            });
+        } else {
+            Schema::table('tutorial_videos', function (Blueprint $table) {
+                $table->text('description')->nullable()->change();
+            });
+        }
     }
 
     /**

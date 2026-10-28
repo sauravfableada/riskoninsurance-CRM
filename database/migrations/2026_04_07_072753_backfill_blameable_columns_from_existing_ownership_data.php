@@ -21,7 +21,7 @@ return new class extends Migration
 
     public function up(): void
     {
-        $validUserIds = User::query()->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $validUserIds = \Illuminate\Support\Facades\DB::table('users')->pluck('id')->map(fn ($id) => (int) $id)->all();
 
         if ($validUserIds === []) {
             return;

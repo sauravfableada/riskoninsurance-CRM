@@ -17,7 +17,7 @@ return new class extends Migration
         ];
 
         foreach ($settings as $setting) {
-            \App\Models\Setting::firstOrCreate(
+            \Illuminate\Support\Facades\DB::table('settings')->updateOrInsert(
                 ['key' => $setting['key']],
                 $setting
             );
@@ -29,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        \App\Models\Setting::whereIn('key', ['stripe_key', 'stripe_secret'])->delete();
+        \Illuminate\Support\Facades\DB::table('settings')->whereIn('key', ['stripe_key', 'stripe_secret'])->delete();
     }
 };

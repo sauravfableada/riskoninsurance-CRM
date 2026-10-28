@@ -62,7 +62,7 @@ return new class extends Migration {
             return;
         }
 
-        $validUserIds = User::query()->pluck('id')->map(fn($id) => (int) $id)->all();
+        $validUserIds = \Illuminate\Support\Facades\DB::table('users')->pluck('id')->map(fn($id) => (int) $id)->all();
 
         foreach ($sourceColumns as $column) {
             if (!Schema::hasColumn($table, $column)) {

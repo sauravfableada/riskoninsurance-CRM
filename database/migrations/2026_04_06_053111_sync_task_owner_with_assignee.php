@@ -12,7 +12,7 @@ return new class extends Migration {
             return;
         }
 
-        $validUserIds = User::query()->pluck('id')->map(fn($id) => (int) $id)->all();
+        $validUserIds = \Illuminate\Support\Facades\DB::table('users')->pluck('id')->map(fn($id) => (int) $id)->all();
 
         DB::table('tasks')
             ->whereIn('assigned_user_id', $validUserIds)

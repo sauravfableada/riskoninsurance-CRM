@@ -13,7 +13,10 @@ return new class extends Migration
             $moduleActions = $meta['actions'] ?? $defaultActions;
 
             foreach ($moduleActions as $action) {
-                Permission::findOrCreate("{$action}_{$module}", 'web');
+                \Illuminate\Support\Facades\DB::table('permissions')->updateOrInsert(
+                    ['name' => "{$action}_{$module}", 'guard_name' => 'web'],
+                    ['created_at' => now(), 'updated_at' => now()]
+                );
             }
         }
     }

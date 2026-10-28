@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        \App\Models\Setting::firstOrCreate(
+        \Illuminate\Support\Facades\DB::table('settings')->updateOrInsert(
             ['key' => 'stripe_mode'],
             ['key' => 'stripe_mode', 'value' => 'test', 'group' => 'integrations', 'type' => 'string']
         );
@@ -22,6 +22,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        \App\Models\Setting::where('key', 'stripe_mode')->delete();
+        \Illuminate\Support\Facades\DB::table('settings')->where('key', 'stripe_mode')->delete();
     }
 };

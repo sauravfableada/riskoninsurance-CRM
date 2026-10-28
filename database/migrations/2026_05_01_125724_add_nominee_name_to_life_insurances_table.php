@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('life_insurances', function (Blueprint $table) {
-            $table->string('nominee_name')->nullable()->after('nominee_id');
-        });
+        if (!Schema::hasColumn('life_insurances', 'nominee_name')) {
+            Schema::table('life_insurances', function (Blueprint $table) {
+                $table->string('nominee_name')->nullable()->after('nominee_id');
+            });
+        }
     }
 
     /**
