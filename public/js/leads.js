@@ -226,7 +226,6 @@
                             </div>
                         </td>
                         <td class="d-none d-md-table-cell">${lead.phone || "--"}</td>
-                        <td class="d-none d-md-table-cell">${lead.group || "--"}</td>
                         <td class="d-none d-md-table-cell">${sourceText}</td>
                         <td class="d-none d-md-table-cell">${createdBy}</td>
                         <td class="d-none d-md-table-cell">${formatDate(lead.created_at)}</td>

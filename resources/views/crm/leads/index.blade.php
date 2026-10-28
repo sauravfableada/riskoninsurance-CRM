@@ -116,7 +116,6 @@
                                 <th class="ps-4" style="width: 80px;">Sr.No</th>
                                 <th>Lead Name</th>
                                 <th class="d-none d-md-table-cell">Phone</th>
-                                <th class="d-none d-md-table-cell">Group</th>
                                 <th class="d-none d-md-table-cell">Lead Source</th>
                                 <th class="d-none d-md-table-cell">Created By</th>
                                 <th class="d-none d-md-table-cell">Created At</th>

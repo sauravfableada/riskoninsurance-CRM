@@ -1994,7 +1994,7 @@
     </div>
 
     <div class="modal fade" id="uploadDownloadModal" tabindex="-1" aria-labelledby="uploadDownloadModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content">
                 <form id="uploadDownloadForm" enctype="multipart/form-data">
                     @csrf
@@ -2003,7 +2003,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
 
-                    <div class="modal-body">
+                    <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                         <input type="hidden" name="policy_id" id="upload_policy_id">
 
                         <!-- Upload Section -->
@@ -2016,7 +2016,7 @@
                         <!-- Download Section -->
                         <div class="mb-3">
                             <label class="form-label">All Policy PDF History:</label>
-                            <ul id="documentList" class="list-group">
+                            <ul id="documentList" class="list-group" style="max-height: 280px; overflow-y: auto; padding-right: 4px;">
                                 <!-- Filled dynamically -->
                             </ul>
                         </div>
