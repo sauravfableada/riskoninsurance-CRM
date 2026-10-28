@@ -450,7 +450,7 @@ a {
     min-width: max-content;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 2px;
 }
 
 .crm-top-actions .premium-btn:hover {
