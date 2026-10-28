@@ -26,9 +26,13 @@
 
             <!-- Card Body -->
             <div class="card-body p-3 p-md-4">
-                <form action="{{ url('/api/users') }}" method="POST" enctype="multipart/form-data" id="staffCreateForm" class="ajax-user-form">
+                <form action="{{ url('/api/users') }}" method="POST" enctype="multipart/form-data" id="staffCreateForm" class="ajax-user-form" autocomplete="off">
 
                     @csrf
+
+                    <!-- Hidden fake inputs to prevent browser autofill -->
+                    <input type="text" name="fake_username_remember" style="position:absolute; top:-9999px; left:-9999px; width:1px; height:1px;" tabindex="-1" autocomplete="username">
+                    <input type="password" name="fake_password_remember" style="position:absolute; top:-9999px; left:-9999px; width:1px; height:1px;" tabindex="-1" autocomplete="current-password">
 
                     <div class="row g-3">
                         <!-- Name -->
@@ -36,7 +40,7 @@
                             <label class="form-label d-flex align-items-center gap-2" for="name">
                                 <i class="bi bi-person-fill"></i> Name <span class="text-danger">*</span>
                             </label>
-                            <input type="text" id="name" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name') }}">
+                            <input type="text" id="name" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name') }}" autocomplete="off">
                             @error('name')
                                 <div class="staff-validation">{{ $message }}</div>
                             @enderror
@@ -47,7 +51,7 @@
                             <label class="form-label d-flex align-items-center gap-2" for="email">
                                 <i class="bi bi-envelope-fill"></i> Email <span class="text-danger">*</span>
                             </label>
-                            <input type="email" id="email" name="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email') }}">
+                            <input type="email" id="email" name="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email') }}" autocomplete="new-password">
                             @error('email')
                                 <div class="staff-validation">{{ $message }}</div>
                             @enderror
@@ -59,7 +63,7 @@
                                 <i class="bi bi-key-fill"></i> Password <span class="text-danger">*</span>
                             </label>
                             <div class="input-group">
-                                <input type="password" id="password" name="password" class="form-control @error('password') is-invalid @enderror" placeholder="Password" required>
+                                <input type="password" id="password" name="password" class="form-control @error('password') is-invalid @enderror" placeholder="Password" autocomplete="new-password" required>
                                 <button class="btn btn-outline-secondary" type="button" id="togglePassword">
                                     <i class="fa fa-eye" id="eyeIcon"></i>
                                 </button>
@@ -257,6 +261,15 @@
                 field.addEventListener('blur', () => validateField(field));
             });
         }
+        // Clear any aggressive browser auto-fill on creation
+        setTimeout(function() {
+            const emailField = document.getElementById('email');
+            const passField = document.getElementById('password');
+            if (emailField && (emailField.value === 'admin@insurance.com' || emailField.value === 'admin@example.com')) {
+                emailField.value = '';
+                if (passField) passField.value = '';
+            }
+        }, 100);
     });
     </script>
 @endpush

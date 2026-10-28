@@ -31,7 +31,13 @@
                         <tr>
                             <td>
                                 <div class="d-flex align-items-center gap-2">
-                                    <span class="module-icon"><i class="bi {{ $meta['icon'] }}"></i></span>
+                                    <span class="module-icon">
+                                        @if(str_starts_with($meta['icon'], 'fa'))
+                                            <i class="{{ $meta['icon'] }}"></i>
+                                        @else
+                                            <i class="bi {{ $meta['icon'] }}"></i>
+                                        @endif
+                                    </span>
                                     <span>{{ $meta['label'] }}</span>
                                 </div>
                             </td>

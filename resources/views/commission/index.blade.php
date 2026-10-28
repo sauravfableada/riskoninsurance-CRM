@@ -677,7 +677,7 @@
                                     <i class="fa-solid fa-user text-secondary me-1"></i> Staff / Sub-Agent <span class="text-danger">*</span>
                                 </label>
                                 <select name="user_id" id="entry_user_id" class="form-select" required>
-                                    <option value="">-- Select Member --</option>
+                                    <option value="">-- Search or Select Staff / Sub-Agent --</option>
                                     @php
                                         $dropdownMembers = ($allMembers ?? collect([]))->isNotEmpty() ? $allMembers : ($agentsList ?? collect([]));
                                     @endphp
@@ -997,7 +997,7 @@
                                     <i class="fa-solid fa-user text-secondary me-1"></i> Staff / Sub-Agent <span class="text-danger">*</span>
                                 </label>
                                 <select name="user_id" id="edit_entry_user_id" class="form-select" required>
-                                    <option value="">-- Select Member --</option>
+                                    <option value="">-- Search or Select Staff / Sub-Agent --</option>
                                     @foreach($dropdownMembers as $ag)
                                         <option value="{{ $ag->id }}">
                                             {{ $ag->name }} ({{ $ag->type === 'sub_agents' ? 'Sub-Agent' : ($ag->type === 'staff' ? 'Staff' : ($ag->name ?? 'User')) }})
@@ -1198,7 +1198,7 @@
             $('#entry_user_id').select2({
                 dropdownParent: $('#createCommissionEntryModal'),
                 width: '100%',
-                placeholder: '-- Search or Select Member --'
+                placeholder: '-- Search or Select Staff / Sub-Agent --'
             });
 
             $('#edit_entry_policy_id').select2({
@@ -1208,6 +1208,9 @@
             });
             $('#edit_entry_user_id').select2({
                 dropdownParent: $('#editCommissionEntryModal'),
+                width: '100%',
+                placeholder: '-- Search or Select Staff / Sub-Agent --'
+            });
                 width: '100%',
                 placeholder: '-- Search or Select Member --'
             });

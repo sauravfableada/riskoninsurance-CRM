@@ -14,9 +14,9 @@ return [
         'family_groups' => ['label' => 'Family Groups', 'icon' => 'bi-house-heart-fill'],
 
         // Policy Center
-        'insurance' => ['label' => 'Life Insurance', 'icon' => 'bi-shield-heart'],
+        'insurance' => ['label' => 'Life Insurance', 'icon' => 'fa-solid fa-shield-heart'],
         'investments' => ['label' => 'Investments', 'icon' => 'bi-graph-up-arrow'],
-        'policies' => ['label' => 'All Policies', 'icon' => 'bi-file-signature'],
+        'policies' => ['label' => 'All Policies', 'icon' => 'fa-solid fa-file-signature'],
 
         // Commissions & Masters
         'commission_rules' => [

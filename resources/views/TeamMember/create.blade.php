@@ -24,10 +24,13 @@
         </div>
 
         <div class="card-body p-3 p-md-4">
-            <form id="teamMemberForm" enctype="multipart/form-data" novalidate>
+            <form id="teamMemberForm" enctype="multipart/form-data" autocomplete="off" novalidate>
                 @csrf
                 <input type="hidden" name="role" id="memberRole" value="5">
 
+                <!-- Hidden fake inputs to prevent browser autofill -->
+                <input type="text" name="fake_username_remember" style="position:absolute; top:-9999px; left:-9999px; width:1px; height:1px;" tabindex="-1" autocomplete="username">
+                <input type="password" name="fake_password_remember" style="position:absolute; top:-9999px; left:-9999px; width:1px; height:1px;" tabindex="-1" autocomplete="current-password">
 
                 {{-- Team Members always use the Staff role.
                 <div class="mb-4">
@@ -53,12 +56,12 @@
                     </div> --}}
                     <div class="col-md-6 col-12">
                         <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
-                        <input type="email" name="email" id="email" class="form-control" placeholder="email@example.com" required>
+                        <input type="email" name="email" id="email" class="form-control" placeholder="email@example.com" autocomplete="new-password" required>
                     </div>
                     <div class="col-md-6 col-12">
                         <label class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
                         <div class="input-group designation-input-group">
-                            <input type="password" name="password" id="password" class="form-control" placeholder="Password" required>
+                            <input type="password" name="password" id="password" class="form-control" placeholder="Password" autocomplete="new-password" required>
                             <button class="btn btn-outline-secondary" type="button" id="togglePassword">
                                 <i class="fa fa-eye" id="eyeIcon"></i>
                             </button>
@@ -260,6 +263,12 @@ $(function() {
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
     }
+    setTimeout(function() {
+        if ($('#email').val() === 'admin@insurance.com' || $('#email').val() === 'admin@example.com') {
+            $('#email').val('');
+            $('#password').val('');
+        }
+    }, 100);
 });
 </script>
 @endpush
