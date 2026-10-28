@@ -479,6 +479,8 @@ Route::middleware('auth.api')->group(function () {
     Route::post('/settings/company-commission', [SettingController::class, 'saveCompanyCommission'])->name('settings.company-commission.save');
     Route::get('/settings/category-commission/{typeId}', [SettingController::class, 'getCategoryCommission'])->name('settings.category-commission.get');
     Route::post('/settings/category-commission', [SettingController::class, 'saveCategoryCommission'])->name('settings.category-commission.save');
+    Route::get('/settings/agent-commission/{userId}', [SettingController::class, 'getAgentCommission'])->name('settings.agent-commission.get');
+    Route::post('/settings/agent-commission', [SettingController::class, 'saveAgentCommission'])->name('settings.agent-commission.save');
 
     Route::post('/tutorial-videos', [\App\Http\Controllers\TutorialVideoController::class, 'store'])->name('tutorial-videos.store');
     Route::put('/tutorial-videos/{id}', [\App\Http\Controllers\TutorialVideoController::class, 'update'])->name('tutorial-videos.update');
@@ -609,9 +611,12 @@ Route::middleware('auth.api')->group(function () {
             ->middleware('matrix_permission:edit_commission_rules')
             ->name('commission-rules.status');
 
-        // Commission Entries (listing)
+        // Commission Entries (listing, store, view, update, delete)
         Route::get('/commission-entries', [CommissionRulesController::class, 'entriesIndex'])->name('commission-rules.entries.index');
         Route::post('/commission-entries', [CommissionRulesController::class, 'entryStore'])->name('commission-rules.entries.store');
+        Route::get('/commission-entries/{id}', [CommissionRulesController::class, 'entryShow'])->name('commission-rules.entries.show');
+        Route::post('/commission-entries/{id}/update', [CommissionRulesController::class, 'entryUpdate'])->name('commission-rules.entries.update');
+        Route::delete('/commission-entries/{id}', [CommissionRulesController::class, 'entryDestroy'])->name('commission-rules.entries.destroy');
         
         // Sub-Agent Withdrawal Requests (embedded in standard CRM flow)
         Route::post('/commission/withdrawals', [\App\Http\Controllers\SubAgentPortalController::class, 'storeWithdrawal'])->name('subagent.withdrawals.store');
@@ -623,6 +628,7 @@ Route::middleware('auth.api')->group(function () {
         Route::get('/commission/get-policies/{typeId}', [CommissionRulesController::class, 'getPoliciesByType'])->name('commission.get-policies');
         Route::get('/commission/get-policy-details/{policyId}', [CommissionRulesController::class, 'getPolicyDetails'])->name('commission.get-policy-details');
         Route::get('/commission/get-policy-commission/{policyId}', [CommissionRulesController::class, 'getPolicyCommissionDetails'])->name('commission.get-policy-commission');
+        Route::post('/commission/calculate-by-method', [CommissionRulesController::class, 'calculateByMethod'])->name('commission.calculate-by-method');
         Route::post('/commission/save-policy-commission', [CommissionRulesController::class, 'savePolicyCommissionOverride'])->name('commission.save-policy-commission');
     });
 

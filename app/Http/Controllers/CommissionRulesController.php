@@ -122,13 +122,120 @@ class CommissionRulesController extends Controller
             ]);
         }
 
-        $subAgents = User::query()->whereIn('type', ['sub_agents', 'staff'])->orderBy('name')->get(['id', 'name', 'email', 'phone']);
-        $policyNumberColumn = Schema::hasColumn('policies', 'policy_number_no') ? 'policy_number_no' : 'policy_number';
-        $policies = Policy::query()->with(['holder:id,name', 'company:id,name'])->orderByDesc('id')->get(['id', 'holder_id', 'company_id', $policyNumberColumn]);
-        $policyTypes = InsurancePolicyType::query()->orderBy('name')->get(['id', 'name']);
-        $companies = \App\Models\CompanyMaster::query()->orderBy('name')->get(['id', 'name']);
+        // Load all Sub-Agents and Staff members
+        $agentsQuery = User::query()
+            ->whereIn('type', ['sub_agents', 'staff'])
+            ->orWhere(function ($q) {
+                $q->whereNull('type')->where('id', '!=', 1);
+            })
+            ->orderBy('name');
 
-        return view('commission.index', compact('commissionRules', 'subAgents', 'policies', 'policyTypes', 'companies'));
+        if ($request->filled('member_type')) {
+            $mType = $request->get('member_type');
+            if ($mType === 'sub_agents') {
+                $agentsQuery->where('type', 'sub_agents');
+            } elseif ($mType === 'staff') {
+                $agentsQuery->where(function ($q) {
+                    $q->where('type', 'staff')->orWhereNull('type');
+                });
+            }
+        }
+
+        $agentsList = $agentsQuery->get();
+
+        $agentsWithCommission = $agentsList->map(function ($ag) {
+            $rule = CommissionRule::where('agent_id', $ag->id)
+                ->whereNull('policy_id')
+                ->whereNull('policy_type_id')
+                ->whereNull('company_id')
+                ->latest('id')
+                ->first();
+
+            $policiesCount = \App\Models\Policy::where(function ($q) use ($ag) {
+                $q->where('user_id', $ag->id)->orWhere('created_by', $ag->id);
+            })->count();
+
+            // Total commission earned
+            $totalEarned = (float) \App\Models\CommissionEntry::where('user_id', $ag->id)
+                ->whereIn('payment_status', ['pending', 'paid'])
+                ->sum('commission_amount');
+
+            // Approved & Pending Withdrawals
+            $withdrawnApproved = (float) \App\Models\WithdrawalRequest::where('user_id', $ag->id)
+                ->where('status', 'approved')
+                ->sum('amount');
+
+            $pendingWithdrawal = (float) \App\Models\WithdrawalRequest::where('user_id', $ag->id)
+                ->where('status', 'pending')
+                ->sum('amount');
+
+            // Net Wallet Balance
+            $walletBalance = max(0, round($totalEarned - $withdrawnApproved - $pendingWithdrawal, 2));
+
+            return [
+                'id' => $ag->id,
+                'name' => $ag->name,
+                'email' => $ag->email,
+                'phone' => $ag->phone ?? '—',
+                'type' => $ag->type ?: 'staff',
+                'type_label' => ($ag->type === 'sub_agents') ? 'Sub Agent' : 'Team Member / Staff',
+                'policies_count' => $policiesCount,
+                'total_earned' => $totalEarned,
+                'withdrawn_approved' => $withdrawnApproved,
+                'pending_withdrawal' => $pendingWithdrawal,
+                'wallet_balance' => $walletBalance,
+                'has_rule' => $rule !== null,
+                'rule_id' => $rule?->id,
+                'pay_in_type' => $rule?->pay_in_type ?? 'percentage',
+                'pay_in_value' => (float) ($rule?->pay_in_value ?? 20),
+                'pay_out_type' => $rule?->pay_out_type ?? 'percentage',
+                'pay_out_value' => (float) ($rule?->pay_out_value ?? 10),
+                'pay_out_based_on' => $rule?->pay_out_based_on ?? 'admin_commission',
+                'is_active' => (bool) ($rule?->is_active ?? true),
+                'updated_at' => $rule?->updated_at?->format('d M Y, h:i A') ?? 'Not configured',
+            ];
+        });
+
+        $subAgentsCount = $agentsWithCommission->where('type', 'sub_agents')->count();
+        $staffCount = $agentsWithCommission->where('type', '!=', 'sub_agents')->count();
+        $configuredCount = $agentsWithCommission->where('has_rule', true)->count();
+
+        // Load Commission Entries (Policy Transaction Pay-Ins & Pay-Outs)
+        $entriesQuery = CommissionEntry::with(['commissionRule.company', 'user', 'policy.holder'])->latest();
+        $commissionEntries = $entriesQuery->get();
+
+        $totalPayIn = (float) $commissionEntries->sum(function ($entry) {
+            return (float) ($entry->pay_in_amount > 0 ? $entry->pay_in_amount : $entry->commission_amount);
+        });
+        $totalPayOut = (float) $commissionEntries->sum(function ($entry) {
+            return (float) ($entry->pay_out_amount > 0 ? $entry->pay_out_amount : $entry->commission_amount);
+        });
+        $totalAdminProfit = (float) $commissionEntries->sum('net_admin_profit');
+        if ($totalAdminProfit == 0 && $totalPayIn > $totalPayOut) {
+            $totalAdminProfit = max(0, $totalPayIn - $totalPayOut);
+        }
+        $pendingCommission = (float) $commissionEntries->where('payment_status', 'pending')->sum('commission_amount');
+        $paidCommission = (float) $commissionEntries->where('payment_status', 'paid')->sum('commission_amount');
+
+        // Load policies for manual transaction entry dropdown
+        $availablePolicies = \App\Models\Policy::with(['holder', 'company', 'user', 'policyType', 'policySubType'])
+            ->latest('id')
+            ->get();
+
+        return view('commission.index', compact(
+            'agentsWithCommission',
+            'subAgentsCount',
+            'staffCount',
+            'configuredCount',
+            'commissionEntries',
+            'totalPayIn',
+            'totalPayOut',
+            'totalAdminProfit',
+            'pendingCommission',
+            'paidCommission',
+            'availablePolicies',
+            'agentsList'
+        ));
     }
 
     /**
@@ -444,8 +551,9 @@ class CommissionRulesController extends Controller
             $totalAdminProfit = max(0, $totalPayIn - $totalPayOut);
         }
 
-        // Sub-agent withdrawal calculations
-        $isSubAgent = (auth()->user()?->type === 'sub_agents');
+        // Sub-agent & Staff commission view check
+        $userType = auth()->user()?->type;
+        $isSubAgent = in_array($userType, ['sub_agents', 'staff'], true) || (!auth()->user()?->isAdmin());
         $userId = auth()->id();
 
         $totalWithdrawnApproved = (float) \App\Models\WithdrawalRequest::where('user_id', $userId)
@@ -480,35 +588,380 @@ class CommissionRulesController extends Controller
     }
 
     /**
+     * Calculate commission based on selected calculation method, policy, and user via AJAX.
+     */
+    public function calculateByMethod(Request $request)
+    {
+        $method = $request->input('calculation_method', 'company_wise');
+        $policyId = $request->input('policy_id');
+        $userId = $request->input('user_id');
+        $premium = (float) $request->input('premium_amount', 0);
+
+        $policy = $policyId ? \App\Models\Policy::with(['policyType', 'policySubType', 'company'])->find($policyId) : null;
+        if ($policy && $premium <= 0) {
+            $premium = (float) ($policy->premium_amount ?? 0);
+        }
+
+        $rule = null;
+
+        if ($method === 'policy_wise') {
+            if ($policy) {
+                $rule = CommissionRule::where('policy_id', $policy->id)->active()->latest('id')->first();
+            }
+        } elseif ($method === 'agent_wise') {
+            if ($userId) {
+                $rule = CommissionRule::where('agent_id', $userId)->active()->latest('id')->first();
+            }
+        } elseif ($method === 'sub_type_wise') {
+            if ($policy && $policy->policy_sub_type_id) {
+                $rule = CommissionRule::where('policy_type_id', $policy->policy_type_id)
+                    ->where('policy_sub_type_id', $policy->policy_sub_type_id)
+                    ->whereNull('policy_id')
+                    ->whereNull('company_id')
+                    ->active()
+                    ->latest('id')
+                    ->first();
+            }
+            // Fallback to Category/Type-wise rule
+            if (!$rule && $policy && $policy->policy_type_id) {
+                $rule = CommissionRule::where('policy_type_id', $policy->policy_type_id)
+                    ->whereNull('policy_sub_type_id')
+                    ->whereNull('policy_id')
+                    ->whereNull('company_id')
+                    ->active()
+                    ->latest('id')
+                    ->first();
+            }
+        } elseif ($method === 'category_wise') {
+            if ($policy && $policy->policy_type_id) {
+                $rule = CommissionRule::where('policy_type_id', $policy->policy_type_id)
+                    ->whereNull('policy_id')
+                    ->whereNull('company_id')
+                    ->active()
+                    ->latest('id')
+                    ->first();
+            }
+        } elseif ($method === 'company_wise') {
+            if ($policy && $policy->company_id) {
+                $rule = CommissionRule::where('company_id', $policy->company_id)
+                    ->whereNull('policy_id')
+                    ->active()
+                    ->latest('id')
+                    ->first();
+            }
+        }
+
+        // Final fallback to any active rule for policy or agent if not found
+        if (!$rule && $policy) {
+            $rule = CommissionRule::where('policy_id', $policy->id)->active()->latest('id')->first();
+        }
+        if (!$rule && $userId) {
+            $rule = CommissionRule::where('agent_id', $userId)->active()->latest('id')->first();
+        }
+
+        if ($rule) {
+            $payInType = $rule->pay_in_type ?: ($rule->commission_type ?: 'percentage');
+            $payInVal = (float) ($rule->pay_in_value > 0 ? $rule->pay_in_value : $rule->commission_value);
+            $payOutType = $rule->pay_out_type ?: ($rule->commission_type ?: 'percentage');
+            $payOutVal = (float) ($rule->pay_out_value > 0 ? $rule->pay_out_value : $rule->commission_value);
+            $payOutBasedOn = $rule->pay_out_based_on ?: 'admin_commission';
+
+            $payInAmt = ($payInType === 'percentage') ? round(($premium * $payInVal) / 100, 2) : $payInVal;
+            $base = ($payOutBasedOn === 'premium') ? $premium : $payInAmt;
+            $payOutAmt = ($payOutType === 'percentage') ? round(($base * $payOutVal) / 100, 2) : $payOutVal;
+            $profit = max(0, round($payInAmt - $payOutAmt, 2));
+
+            return response()->json([
+                'status' => 'success',
+                'has_rule' => true,
+                'rule_id' => $rule->id,
+                'rule_name' => $rule->rule_name ?? 'Commission Rule',
+                'pay_in_type' => $payInType,
+                'pay_in_value' => $payInVal,
+                'pay_in_amount' => $payInAmt,
+                'pay_out_type' => $payOutType,
+                'pay_out_value' => $payOutVal,
+                'pay_out_based_on' => $payOutBasedOn,
+                'pay_out_amount' => $payOutAmt,
+                'net_admin_profit' => $profit,
+            ]);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'has_rule' => false,
+            'message' => 'No specific rate rule configured for this method. Default or manual values apply.',
+        ]);
+    }
+
+    /**
      * Store a new commission entry (AJAX / form POST).
      */
     public function entryStore(Request $request)
     {
         $validated = $request->validate([
-            'commission_rule_id'    => 'required|exists:commission_rules,id',
+            'commission_rule_id'    => 'nullable|exists:commission_rules,id',
             'policy_id'             => 'nullable|exists:policies,id',
-            'agent_id'              => 'nullable|exists:agents,id',
+            'user_id'               => 'nullable|exists:users,id',
+            'agent_id'              => 'nullable',
+            'calculation_method'    => 'nullable|string|in:company_wise,category_wise,sub_type_wise,agent_wise,policy_wise',
             'premium_amount'        => 'required|numeric|min:0',
-            'commission_amount'     => 'required|numeric|min:0',
+            'pay_in_amount'         => 'nullable|numeric|min:0',
+            'pay_in_percentage'     => 'nullable|numeric|min:0|max:100',
+            'pay_out_amount'        => 'nullable|numeric|min:0',
+            'pay_out_percentage'    => 'nullable|numeric|min:0|max:100',
+            'net_admin_profit'      => 'nullable|numeric|min:0',
+            'commission_amount'     => 'nullable|numeric|min:0',
             'commission_percentage' => 'nullable|numeric|min:0|max:100',
             'payment_status'        => 'required|in:pending,paid,cancelled',
             'remarks'               => 'nullable|string|max:1000',
             'entry_date'            => 'required|date',
         ]);
 
+        $userId = $validated['user_id'] ?? $validated['agent_id'] ?? null;
+        if (!$userId && !empty($validated['policy_id'])) {
+            $pol = \App\Models\Policy::find($validated['policy_id']);
+            $userId = $pol?->user_id;
+        }
+        $validated['user_id'] = $userId;
+
+        // Auto-resolve commission_rule_id if not explicitly provided
+        if (empty($validated['commission_rule_id'])) {
+            $rule = null;
+            if (!empty($validated['policy_id'])) {
+                $rule = CommissionRule::where('policy_id', $validated['policy_id'])->latest('id')->first();
+            }
+            if (!$rule && $userId) {
+                $rule = CommissionRule::where('agent_id', $userId)->latest('id')->first();
+            }
+            $validated['commission_rule_id'] = $rule?->id;
+        }
+
+        // Calculate Pay-In & Pay-Out if passed via type/value
+        $premium = (float) $validated['premium_amount'];
+        $payInAmt = isset($validated['pay_in_amount']) ? (float) $validated['pay_in_amount'] : null;
+        $payOutAmt = isset($validated['pay_out_amount']) ? (float) $validated['pay_out_amount'] : null;
+
+        if ($payInAmt === null && $request->filled('pay_in_value')) {
+            $pInVal = (float) $request->input('pay_in_value', 0);
+            $pInType = $request->input('pay_in_type', 'percentage');
+            $payInAmt = ($pInType === 'percentage') ? round(($premium * $pInVal) / 100, 2) : $pInVal;
+            $validated['pay_in_percentage'] = ($pInType === 'percentage') ? $pInVal : null;
+        }
+
+        if ($payOutAmt === null && $request->filled('pay_out_value')) {
+            $pOutVal = (float) $request->input('pay_out_value', 0);
+            $pOutType = $request->input('pay_out_type', 'percentage');
+            $pOutBase = $request->input('pay_out_based_on', 'admin_commission');
+
+            if ($pOutType === 'percentage') {
+                $base = ($pOutBase === 'premium') ? $premium : ($payInAmt ?? 0);
+                $payOutAmt = round(($base * $pOutVal) / 100, 2);
+                $validated['pay_out_percentage'] = $pOutVal;
+            } else {
+                $payOutAmt = $pOutVal;
+            }
+        }
+
+        $validated['pay_in_amount'] = max(0, (float) ($payInAmt ?? 0));
+        $validated['pay_out_amount'] = max(0, (float) ($payOutAmt ?? 0));
+        $validated['commission_amount'] = $validated['pay_out_amount']; // backwards-compatibility
+        if (!isset($validated['commission_percentage']) && isset($validated['pay_out_percentage'])) {
+            $validated['commission_percentage'] = $validated['pay_out_percentage'];
+        }
+
+        if (!isset($validated['net_admin_profit']) || $validated['net_admin_profit'] === null) {
+            $validated['net_admin_profit'] = max(0, round($validated['pay_in_amount'] - $validated['pay_out_amount'], 2));
+        }
+
         $entry = CommissionEntry::create($validated);
+        $entry->load(['commissionRule.company', 'user', 'policy.holder']);
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'status'  => 'success',
-                'message' => 'Commission entry added successfully.',
-                'id'      => $entry->id,
+                'message' => 'Policy commission transaction entry created successfully.',
+                'entry'   => [
+                    'id' => $entry->id,
+                    'rule_name' => $entry->commissionRule->rule_name ?? 'Policy Commission',
+                    'company_name' => $entry->commissionRule?->company?->name ?? 'Direct Insurance',
+                    'member_name' => $entry->user?->name ?? '—',
+                    'member_email' => $entry->user?->email ?? '',
+                    'policy_number' => $entry->policy?->policy_number ?? ('#' . $entry->policy_id),
+                    'holder_name' => $entry->policy?->holder?->name ?? '',
+                    'premium_amount' => number_format((float) $entry->premium_amount, 2),
+                    'pay_in_amount' => number_format((float) $entry->pay_in_amount, 2),
+                    'pay_out_amount' => number_format((float) $entry->pay_out_amount, 2),
+                    'net_admin_profit' => number_format((float) $entry->net_admin_profit, 2),
+                    'payment_status' => $entry->payment_status,
+                    'entry_date' => $entry->entry_date ? $entry->entry_date->format('d M Y') : date('d M Y'),
+                ],
             ]);
         }
 
         return redirect()
-            ->route('commission-rules.entries.index')
-            ->with('success', 'Commission entry added successfully.');
+            ->route('commission-rules.index')
+            ->with('success', 'Policy commission transaction entry created successfully.');
+    }
+
+    /**
+     * Show a commission entry for viewing / editing via AJAX.
+     */
+    public function entryShow($id)
+    {
+        $entry = CommissionEntry::with(['commissionRule.company', 'user', 'policy.holder', 'policy.company'])->findOrFail($id);
+
+        $inAmt = (float) ($entry->pay_in_amount > 0 ? $entry->pay_in_amount : $entry->commission_amount);
+        $outAmt = (float) ($entry->pay_out_amount > 0 ? $entry->pay_out_amount : $entry->commission_amount);
+        $profit = (float) ($entry->net_admin_profit > 0 ? $entry->net_admin_profit : max(0, $inAmt - $outAmt));
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'id' => $entry->id,
+                'commission_rule_id' => $entry->commission_rule_id,
+                'rule_name' => $entry->commissionRule->rule_name ?? 'Policy Commission',
+                'company_name' => $entry->commissionRule?->company?->name ?? $entry->policy?->company?->name ?? 'Direct Insurance',
+                'policy_id' => $entry->policy_id,
+                'policy_number' => $entry->policy?->policy_number ?? ('#' . $entry->policy_id),
+                'holder_name' => $entry->policy?->holder?->name ?? '—',
+                'user_id' => $entry->user_id,
+                'member_name' => $entry->user?->name ?? '—',
+                'member_email' => $entry->user?->email ?? '—',
+                'member_type' => ($entry->user?->type === 'sub_agents') ? 'Sub-Agent' : 'Staff',
+                'calculation_method' => $entry->calculation_method ?? 'company_wise',
+                'premium_amount' => (float) $entry->premium_amount,
+                'pay_in_amount' => $inAmt,
+                'pay_in_percentage' => (float) ($entry->pay_in_percentage ?? 0),
+                'pay_out_amount' => $outAmt,
+                'pay_out_percentage' => (float) ($entry->pay_out_percentage ?? 0),
+                'net_admin_profit' => $profit,
+                'payment_status' => $entry->payment_status,
+                'remarks' => $entry->remarks ?? '',
+                'entry_date' => $entry->entry_date ? $entry->entry_date->format('Y-m-d') : ($entry->created_at ? $entry->created_at->format('Y-m-d') : date('Y-m-d')),
+                'entry_date_formatted' => $entry->entry_date ? $entry->entry_date->format('d M Y') : ($entry->created_at ? $entry->created_at->format('d M Y') : '—'),
+            ]
+        ]);
+    }
+
+    /**
+     * Update an existing commission entry via AJAX.
+     */
+    public function entryUpdate(Request $request, $id)
+    {
+        $entry = CommissionEntry::findOrFail($id);
+
+        $validated = $request->validate([
+            'commission_rule_id'    => 'nullable|exists:commission_rules,id',
+            'calculation_method'    => 'nullable|string|in:company_wise,category_wise,sub_type_wise,agent_wise,policy_wise',
+            'policy_id'             => 'nullable|exists:policies,id',
+            'user_id'               => 'nullable|exists:users,id',
+            'premium_amount'        => 'required|numeric|min:0',
+            'pay_in_amount'         => 'nullable|numeric|min:0',
+            'pay_in_percentage'     => 'nullable|numeric|min:0|max:100',
+            'pay_out_amount'        => 'nullable|numeric|min:0',
+            'pay_out_percentage'    => 'nullable|numeric|min:0|max:100',
+            'net_admin_profit'      => 'nullable|numeric|min:0',
+            'commission_amount'     => 'nullable|numeric|min:0',
+            'commission_percentage' => 'nullable|numeric|min:0|max:100',
+            'payment_status'        => 'required|in:pending,paid,cancelled',
+            'remarks'               => 'nullable|string|max:1000',
+            'entry_date'            => 'required|date',
+        ]);
+
+        $userId = $validated['user_id'] ?? $entry->user_id;
+        if (!$userId && !empty($validated['policy_id'])) {
+            $pol = \App\Models\Policy::find($validated['policy_id']);
+            $userId = $pol?->user_id;
+        }
+        $validated['user_id'] = $userId;
+
+        // Calculate Pay-In & Pay-Out if passed via type/value
+        $premium = (float) $validated['premium_amount'];
+        $payInAmt = isset($validated['pay_in_amount']) ? (float) $validated['pay_in_amount'] : null;
+        $payOutAmt = isset($validated['pay_out_amount']) ? (float) $validated['pay_out_amount'] : null;
+
+        if ($payInAmt === null && $request->filled('pay_in_value')) {
+            $pInVal = (float) $request->input('pay_in_value', 0);
+            $pInType = $request->input('pay_in_type', 'percentage');
+            $payInAmt = ($pInType === 'percentage') ? round(($premium * $pInVal) / 100, 2) : $pInVal;
+            $validated['pay_in_percentage'] = ($pInType === 'percentage') ? $pInVal : null;
+        }
+
+        if ($payOutAmt === null && $request->filled('pay_out_value')) {
+            $pOutVal = (float) $request->input('pay_out_value', 0);
+            $pOutType = $request->input('pay_out_type', 'percentage');
+            $pOutBase = $request->input('pay_out_based_on', 'admin_commission');
+
+            if ($pOutType === 'percentage') {
+                $base = ($pOutBase === 'premium') ? $premium : ($payInAmt ?? 0);
+                $payOutAmt = round(($base * $pOutVal) / 100, 2);
+                $validated['pay_out_percentage'] = $pOutVal;
+            } else {
+                $payOutAmt = $pOutVal;
+            }
+        }
+
+        $validated['pay_in_amount'] = max(0, (float) ($payInAmt ?? $entry->pay_in_amount));
+        $validated['pay_out_amount'] = max(0, (float) ($payOutAmt ?? $entry->pay_out_amount));
+        $validated['commission_amount'] = $validated['pay_out_amount']; // backwards-compatibility
+        if (!isset($validated['commission_percentage']) && isset($validated['pay_out_percentage'])) {
+            $validated['commission_percentage'] = $validated['pay_out_percentage'];
+        }
+
+        if (!isset($validated['net_admin_profit']) || $validated['net_admin_profit'] === null) {
+            $validated['net_admin_profit'] = max(0, round($validated['pay_in_amount'] - $validated['pay_out_amount'], 2));
+        }
+
+        $entry->update($validated);
+        $entry->load(['commissionRule.company', 'user', 'policy.holder']);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Transaction entry updated successfully.',
+                'entry'   => [
+                    'id' => $entry->id,
+                    'rule_name' => $entry->commissionRule->rule_name ?? 'Policy Commission',
+                    'company_name' => $entry->commissionRule?->company?->name ?? 'Direct Insurance',
+                    'member_name' => $entry->user?->name ?? '—',
+                    'member_email' => $entry->user?->email ?? '',
+                    'policy_number' => $entry->policy?->policy_number ?? ('#' . $entry->policy_id),
+                    'holder_name' => $entry->policy?->holder?->name ?? '',
+                    'premium_amount' => number_format((float) $entry->premium_amount, 2),
+                    'pay_in_amount' => number_format((float) $entry->pay_in_amount, 2),
+                    'pay_out_amount' => number_format((float) $entry->pay_out_amount, 2),
+                    'net_admin_profit' => number_format((float) $entry->net_admin_profit, 2),
+                    'payment_status' => $entry->payment_status,
+                    'entry_date' => $entry->entry_date ? $entry->entry_date->format('d M Y') : date('d M Y'),
+                ],
+            ]);
+        }
+
+        return redirect()
+            ->route('commission-rules.index')
+            ->with('success', 'Transaction entry updated successfully.');
+    }
+
+    /**
+     * Delete an existing commission entry via AJAX.
+     */
+    public function entryDestroy(Request $request, $id)
+    {
+        $entry = CommissionEntry::findOrFail($id);
+        $entry->delete();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Transaction entry deleted successfully.',
+                'id' => $id,
+            ]);
+        }
+
+        return redirect()
+            ->route('commission-rules.index')
+            ->with('success', 'Transaction entry deleted successfully.');
     }
 
     /**

@@ -13,6 +13,7 @@ class CommissionEntry extends Model
 
     protected $fillable = [
         'commission_rule_id',
+        'calculation_method',
         'policy_id',
         'user_id',
         'agent_id',

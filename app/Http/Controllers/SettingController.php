@@ -46,7 +46,9 @@ class SettingController extends Controller
         ])->latest('id')->get();
 
         $companies = \App\Models\CompanyMaster::where('status', true)->orderBy('name')->get();
-        $policyTypes = \App\Models\InsurancePolicyType::orderBy('name')->get();
+        $policyTypes = \App\Models\InsurancePolicyType::with(['subTypes' => function ($q) {
+            $q->orderBy('name');
+        }])->orderBy('name')->get();
 
         // Map company rules for quick master lookup
         $companiesWithCommission = $companies->map(function ($comp) {
@@ -78,14 +80,68 @@ class SettingController extends Controller
         // Map category rules for quick lookup
         $categoriesWithCommission = $policyTypes->map(function ($cat) {
             $rule = \App\Models\CommissionRule::where('policy_type_id', $cat->id)
+                ->whereNull('policy_sub_type_id')
+                ->whereNull('company_id')
+                ->whereNull('policy_id')
+                ->latest('id')
+                ->first();
+
+            $subTypesData = $cat->subTypes->map(function ($st) use ($cat) {
+                $stRule = \App\Models\CommissionRule::where('policy_type_id', $cat->id)
+                    ->where('policy_sub_type_id', $st->id)
+                    ->whereNull('company_id')
+                    ->whereNull('policy_id')
+                    ->latest('id')
+                    ->first();
+
+                return [
+                    'id' => $st->id,
+                    'name' => $st->name,
+                    'has_rule' => $stRule !== null,
+                    'rule_id' => $stRule?->id,
+                    'pay_in_type' => $stRule?->pay_in_type ?? 'percentage',
+                    'pay_in_value' => (float) ($stRule?->pay_in_value ?? 0),
+                    'pay_out_type' => $stRule?->pay_out_type ?? 'percentage',
+                    'pay_out_value' => (float) ($stRule?->pay_out_value ?? 0),
+                    'pay_out_based_on' => $stRule?->pay_out_based_on ?? 'admin_commission',
+                    'is_active' => (bool) ($stRule?->is_active ?? true),
+                    'updated_at' => $stRule?->updated_at?->format('d M Y, h:i A') ?? 'Not configured',
+                ];
+            });
+
+            return [
+                'id' => $cat->id,
+                'name' => $cat->name,
+                'sub_types' => $subTypesData,
+                'sub_types_count' => $subTypesData->count(),
+                'has_rule' => $rule !== null,
+                'rule_id' => $rule?->id,
+                'pay_in_type' => $rule?->pay_in_type ?? 'percentage',
+                'pay_in_value' => (float) ($rule?->pay_in_value ?? 0),
+                'pay_out_type' => $rule?->pay_out_type ?? 'percentage',
+                'pay_out_value' => (float) ($rule?->pay_out_value ?? 0),
+                'pay_out_based_on' => $rule?->pay_out_based_on ?? 'admin_commission',
+                'is_active' => (bool) ($rule?->is_active ?? true),
+                'updated_at' => $rule?->updated_at?->format('d M Y, h:i A') ?? 'Not configured',
+            ];
+        });
+
+        // Map policy sub-types with commission rules for standalone Sub Type-wise Commission Master
+        $subTypesList = \App\Models\InsurancePolicySubType::with('policyType')->orderBy('name')->get();
+        $subTypesWithCommission = $subTypesList->map(function ($st) {
+            $cat = $st->policyType;
+            $rule = \App\Models\CommissionRule::where('policy_type_id', $st->insurance_policy_types_id)
+                ->where('policy_sub_type_id', $st->id)
                 ->whereNull('company_id')
                 ->whereNull('policy_id')
                 ->latest('id')
                 ->first();
 
             return [
-                'id' => $cat->id,
-                'name' => $cat->name,
+                'id' => $st->id,
+                'name' => $st->name,
+                'category_id' => $st->insurance_policy_types_id,
+                'category_name' => $cat?->name ?? 'General',
                 'has_rule' => $rule !== null,
                 'rule_id' => $rule?->id,
                 'pay_in_type' => $rule?->pay_in_type ?? 'percentage',
@@ -160,6 +216,40 @@ class SettingController extends Controller
             ];
         });
 
+        // Map agents and team members (sub_agents & staff) with commission rules
+        $agentsList = \App\Models\User::whereIn('type', ['sub_agents', 'staff'])
+            ->orWhere(function ($q) {
+                $q->whereNull('type')->where('id', '!=', 1);
+            })
+            ->orderBy('name')
+            ->get();
+
+        $agentsWithCommission = $agentsList->map(function ($ag) {
+            $rule = \App\Models\CommissionRule::where('agent_id', $ag->id)
+                ->whereNull('policy_id')
+                ->whereNull('policy_type_id')
+                ->whereNull('company_id')
+                ->latest('id')
+                ->first();
+
+            return [
+                'id' => $ag->id,
+                'name' => $ag->name,
+                'email' => $ag->email,
+                'type' => $ag->type ?: 'staff',
+                'type_label' => ($ag->type === 'sub_agents') ? 'Sub Agent' : 'Team Member / Staff',
+                'has_rule' => $rule !== null,
+                'rule_id' => $rule?->id,
+                'pay_in_type' => $rule?->pay_in_type ?? 'percentage',
+                'pay_in_value' => (float) ($rule?->pay_in_value ?? 20),
+                'pay_out_type' => $rule?->pay_out_type ?? 'percentage',
+                'pay_out_value' => (float) ($rule?->pay_out_value ?? 10),
+                'pay_out_based_on' => $rule?->pay_out_based_on ?? 'admin_commission',
+                'is_active' => (bool) ($rule?->is_active ?? true),
+                'updated_at' => $rule?->updated_at?->format('d M Y, h:i A') ?? 'Not configured',
+            ];
+        });
+
         return view('settings.index', compact(
             'settings',
             'whatsappTemplates',
@@ -171,26 +261,40 @@ class SettingController extends Controller
             'companiesWithCommission',
             'policyTypes',
             'categoriesWithCommission',
-            'policiesWithCommission'
+            'subTypesWithCommission',
+            'policiesWithCommission',
+            'agentsWithCommission'
         ));
     }
 
     /**
-     * Get commission configuration for a specific category / policy type (for modal)
+     * Get commission configuration for a specific category / policy type or sub-type (for modal)
      */
-    public function getCategoryCommission($typeId)
+    public function getCategoryCommission(Request $request, $typeId)
     {
-        $cat = \App\Models\InsurancePolicyType::findOrFail($typeId);
-        $rule = \App\Models\CommissionRule::where('policy_type_id', $cat->id)
+        $cat = \App\Models\InsurancePolicyType::with(['subTypes' => fn($q) => $q->orderBy('name')])->findOrFail($typeId);
+        $subTypeId = $request->query('sub_type_id');
+
+        $query = \App\Models\CommissionRule::where('policy_type_id', $cat->id)
             ->whereNull('company_id')
-            ->whereNull('policy_id')
-            ->latest('id')
-            ->first();
+            ->whereNull('policy_id');
+
+        if ($subTypeId) {
+            $query->where('policy_sub_type_id', $subTypeId);
+        } else {
+            $query->whereNull('policy_sub_type_id');
+        }
+
+        $rule = $query->latest('id')->first();
+
+        $subTypesList = $cat->subTypes->map(fn($st) => ['id' => $st->id, 'name' => $st->name])->values();
 
         return response()->json([
             'success' => true,
             'category_id' => $cat->id,
             'category_name' => $cat->name,
+            'sub_type_id' => $subTypeId ? (int)$subTypeId : null,
+            'sub_types' => $subTypesList,
             'rule_id' => $rule?->id,
             'pay_in_type' => $rule?->pay_in_type ?? 'percentage',
             'pay_in_value' => (float) ($rule?->pay_in_value ?? 20),
@@ -202,30 +306,41 @@ class SettingController extends Controller
     }
 
     /**
-     * Save/Update category-wise commission directly from Settings modal
+     * Save/Update category-wise or sub-type commission directly from Settings modal
      */
     public function saveCategoryCommission(Request $request)
     {
         $validated = $request->validate([
-            'policy_type_id'   => 'required|exists:insurance_policy_types,id',
-            'pay_in_type'      => 'required|in:percentage,flat',
-            'pay_in_value'     => 'required|numeric|min:0',
-            'pay_out_type'     => 'required|in:percentage,flat',
-            'pay_out_value'    => 'required|numeric|min:0',
-            'pay_out_based_on' => 'nullable|in:admin_commission,premium',
-            'is_active'        => 'nullable|boolean',
+            'policy_type_id'     => 'required|exists:insurance_policy_types,id',
+            'policy_sub_type_id' => 'nullable|exists:insurance_policy_sub_types,id',
+            'pay_in_type'        => 'required|in:percentage,flat',
+            'pay_in_value'       => 'required|numeric|min:0',
+            'pay_out_type'       => 'required|in:percentage,flat',
+            'pay_out_value'      => 'required|numeric|min:0',
+            'pay_out_based_on'   => 'nullable|in:admin_commission,premium',
+            'is_active'          => 'nullable|boolean',
         ]);
 
         $cat = \App\Models\InsurancePolicyType::findOrFail($validated['policy_type_id']);
+        $subTypeId = !empty($validated['policy_sub_type_id']) ? (int)$validated['policy_sub_type_id'] : null;
+        $subTypeName = null;
+        if ($subTypeId) {
+            $subTypeName = \App\Models\InsurancePolicySubType::where('id', $subTypeId)->value('name');
+        }
+
+        $ruleName = $subTypeName 
+            ? ($cat->name . ' - ' . $subTypeName . ' Commission') 
+            : ($cat->name . ' Category Commission');
 
         $rule = \App\Models\CommissionRule::updateOrCreate(
             [
-                'policy_type_id' => $cat->id,
-                'company_id'     => null,
-                'policy_id'      => null,
+                'policy_type_id'     => $cat->id,
+                'policy_sub_type_id' => $subTypeId,
+                'company_id'         => null,
+                'policy_id'          => null,
             ],
             [
-                'rule_name'             => $cat->name . ' Category Commission',
+                'rule_name'             => $ruleName,
                 'pay_in_type'           => $validated['pay_in_type'],
                 'pay_in_value'          => $validated['pay_in_value'],
                 'pay_out_type'          => $validated['pay_out_type'],
@@ -238,12 +353,18 @@ class SettingController extends Controller
             ]
         );
 
+        $displayName = $subTypeName ? ($cat->name . ' (' . $subTypeName . ')') : $cat->name;
+
         return response()->json([
             'success' => true,
-            'message' => 'Commission successfully saved for ' . $cat->name . ' category!',
+            'message' => 'Commission successfully saved for ' . $displayName . '!',
             'category_id' => $cat->id,
-            'pay_in' => ($validated['pay_in_type'] === 'percentage' ? $validated['pay_in_value'] . '%' : '₹' . $validated['pay_in_value']),
-            'pay_out' => ($validated['pay_out_type'] === 'percentage' ? $validated['pay_out_value'] . '%' : '₹' . $validated['pay_out_value']),
+            'sub_type_id' => $subTypeId,
+            'rule_name' => $ruleName,
+            'pay_in' => ($validated['pay_in_type'] === 'percentage' ? number_format($validated['pay_in_value'], 2) . '%' : '₹' . number_format($validated['pay_in_value'], 2)),
+            'pay_out' => ($validated['pay_out_type'] === 'percentage' ? number_format($validated['pay_out_value'], 2) . '%' : '₹' . number_format($validated['pay_out_value'], 2)),
+            'pay_out_based_on' => ($validated['pay_out_based_on'] ?? 'admin_commission') === 'premium' ? '% of Gross Premium' : '% of Admin Pay-In',
+            'is_active' => $request->boolean('is_active', true),
             'updated_at' => now()->format('d M Y, h:i A'),
         ]);
     }
@@ -320,8 +441,98 @@ class SettingController extends Controller
             'success' => true,
             'message' => 'Commission successfully saved for ' . $comp->name . '!',
             'company_id' => $comp->id,
-            'pay_in' => ($validated['pay_in_type'] === 'percentage' ? $validated['pay_in_value'] . '%' : '₹' . $validated['pay_in_value']),
-            'pay_out' => ($validated['pay_out_type'] === 'percentage' ? $validated['pay_out_value'] . '%' : '₹' . $validated['pay_out_value']),
+            'pay_in' => ($validated['pay_in_type'] === 'percentage' ? number_format($validated['pay_in_value'], 2) . '%' : '₹' . number_format($validated['pay_in_value'], 2)),
+            'pay_out' => ($validated['pay_out_type'] === 'percentage' ? number_format($validated['pay_out_value'], 2) . '%' : '₹' . number_format($validated['pay_out_value'], 2)),
+            'pay_out_based_on' => ($validated['pay_out_based_on'] ?? 'admin_commission') === 'premium' ? '% of Gross Premium' : '% of Admin Pay-In',
+            'is_active' => $request->boolean('is_active', true),
+            'updated_at' => now()->format('d M Y, h:i A'),
+        ]);
+    }
+
+    /**
+     * Get commission configuration for a specific sub-agent or staff member (for modal)
+     */
+    public function getAgentCommission($userId)
+    {
+        $agent = \App\Models\User::findOrFail($userId);
+        $rule = \App\Models\CommissionRule::where('agent_id', $agent->id)
+            ->whereNull('company_id')
+            ->whereNull('policy_id')
+            ->whereNull('policy_type_id')
+            ->latest('id')
+            ->first();
+
+        return response()->json([
+            'success' => true,
+            'agent_id' => $agent->id,
+            'user_id' => $agent->id,
+            'agent_name' => $agent->name,
+            'user_name' => $agent->name,
+            'agent_email' => $agent->email,
+            'user_email' => $agent->email,
+            'agent_type' => ($agent->type === 'sub_agents') ? 'Sub-Agent' : 'Team Member / Staff',
+            'user_type_label' => ($agent->type === 'sub_agents') ? 'Sub-Agent' : 'Team Member / Staff',
+            'rule_id' => $rule?->id,
+            'pay_in_type' => $rule?->pay_in_type ?? 'percentage',
+            'pay_in_value' => (float) ($rule?->pay_in_value ?? 20),
+            'pay_out_type' => $rule?->pay_out_type ?? 'percentage',
+            'pay_out_value' => (float) ($rule?->pay_out_value ?? 10),
+            'pay_out_based_on' => $rule?->pay_out_based_on ?? 'admin_commission',
+            'is_active' => (bool) ($rule?->is_active ?? true),
+        ]);
+    }
+
+    /**
+     * Save/Update agent/team member commission directly from Settings modal
+     */
+    public function saveAgentCommission(Request $request)
+    {
+        // Support both agent_id and user_id parameter names
+        $agentId = $request->input('agent_id') ?: $request->input('user_id');
+        $request->merge(['agent_id' => $agentId]);
+
+        $validated = $request->validate([
+            'agent_id'         => 'required|exists:users,id',
+            'pay_in_type'      => 'required|in:percentage,flat',
+            'pay_in_value'     => 'required|numeric|min:0',
+            'pay_out_type'     => 'required|in:percentage,flat',
+            'pay_out_value'    => 'required|numeric|min:0',
+            'pay_out_based_on' => 'nullable|in:admin_commission,premium',
+            'is_active'        => 'nullable|boolean',
+        ]);
+
+        $agent = \App\Models\User::findOrFail($validated['agent_id']);
+
+        $rule = \App\Models\CommissionRule::updateOrCreate(
+            [
+                'agent_id'       => $agent->id,
+                'company_id'     => null,
+                'policy_type_id' => null,
+                'policy_id'      => null,
+            ],
+            [
+                'rule_name'             => $agent->name . ' Agent Commission',
+                'pay_in_type'           => $validated['pay_in_type'],
+                'pay_in_value'          => $validated['pay_in_value'],
+                'pay_out_type'          => $validated['pay_out_type'],
+                'pay_out_value'         => $validated['pay_out_value'],
+                'pay_out_based_on'      => $validated['pay_out_based_on'] ?? 'admin_commission',
+                'commission_type'       => $validated['pay_out_type'],
+                'commission_value'      => $validated['pay_out_value'],
+                'is_active'             => $request->boolean('is_active', true),
+                'commission_on'         => now()->toDateString(),
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Commission successfully saved for ' . $agent->name . '!',
+            'agent_id' => $agent->id,
+            'user_id' => $agent->id,
+            'pay_in' => ($validated['pay_in_type'] === 'percentage' ? number_format($validated['pay_in_value'], 2) . '%' : '₹' . number_format($validated['pay_in_value'], 2)),
+            'pay_out' => ($validated['pay_out_type'] === 'percentage' ? number_format($validated['pay_out_value'], 2) . '%' : '₹' . number_format($validated['pay_out_value'], 2)),
+            'pay_out_based_on' => ($validated['pay_out_based_on'] ?? 'admin_commission') === 'premium' ? '% of Gross Premium' : '% of Admin Pay-In',
+            'is_active' => $request->boolean('is_active', true),
             'updated_at' => now()->format('d M Y, h:i A'),
         ]);
     }
@@ -444,7 +655,7 @@ class SettingController extends Controller
             'whatsapp_integration_enabled' => ['sometimes', 'required', 'boolean'],
             'social_integrations_enabled' => ['sometimes', 'required', 'boolean'],
             'google_connection_enabled' => ['sometimes', 'required', 'boolean'],
-            'commission_calculation_method' => ['sometimes', 'required', 'in:company_wise,category_wise,policy_wise,manual_override'],
+            'commission_calculation_method' => ['sometimes', 'required', 'in:company_wise,category_wise,sub_type_wise,agent_wise,policy_wise,manual_override'],
             'commission_allow_manual_override' => ['sometimes', 'nullable', 'boolean'],
         ]);
 

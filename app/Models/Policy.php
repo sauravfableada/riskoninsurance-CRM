@@ -102,4 +102,14 @@ class Policy extends Model
     {
         return $this->policyType && stripos((string) $this->policyType->name, 'vehicle') !== false;
     }
+
+    public function commissionEntries()
+    {
+        return $this->hasMany(CommissionEntry::class, 'policy_id');
+    }
+
+    public function latestCommissionEntry()
+    {
+        return $this->hasOne(CommissionEntry::class, 'policy_id')->latestOfMany();
+    }
 }

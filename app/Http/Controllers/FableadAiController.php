@@ -291,16 +291,18 @@ class FableadAiController extends Controller
 
             $coveredMembersJson = $request->input('covered_members');
             if ($coveredMembersJson) {
-                $coveredMembers = json_decode($coveredMembersJson, true) ?? [];
-                foreach ($coveredMembers as $member) {
-                    if (!empty($member['name'])) {
-                        \App\Models\PolicyMember::create([
-                            'policy_id' => $policy->id,
-                            'name'      => $member['name'],
-                            'relation'  => !empty($member['relation']) ? $member['relation'] : null,
-                            'dob'       => !empty($member['dob']) ? $member['dob'] : null,
-                            'gender'    => !empty($member['gender']) ? $member['gender'] : null,
-                        ]);
+                $coveredMembers = is_array($coveredMembersJson) ? $coveredMembersJson : (json_decode($coveredMembersJson, true) ?? []);
+                if (\Illuminate\Support\Facades\Schema::hasTable('policy_members')) {
+                    foreach ($coveredMembers as $member) {
+                        if (!empty($member['name'])) {
+                            \App\Models\PolicyMember::create([
+                                'policy_id' => $policy->id,
+                                'name'      => $member['name'],
+                                'relation'  => !empty($member['relation']) ? $member['relation'] : null,
+                                'dob'       => !empty($member['dob']) ? $member['dob'] : null,
+                                'gender'    => !empty($member['gender']) ? $member['gender'] : null,
+                            ]);
+                        }
                     }
                 }
             }
@@ -308,14 +310,16 @@ class FableadAiController extends Controller
             // Policy Addons
             $addonsJson = $request->input('addon_covers');
             if ($addonsJson) {
-                $addons = json_decode($addonsJson, true) ?? [];
-                foreach ($addons as $addon) {
-                    if (!empty($addon['cover_name'])) {
-                        \App\Models\PolicyAddon::create([
-                            'policy_id'      => $policy->id,
-                            'cover_name'     => $addon['cover_name'],
-                            'premium_amount' => $addon['premium_amount'] ?: null,
-                        ]);
+                $addons = is_array($addonsJson) ? $addonsJson : (json_decode($addonsJson, true) ?? []);
+                if (\Illuminate\Support\Facades\Schema::hasTable('policy_addons')) {
+                    foreach ($addons as $addon) {
+                        if (!empty($addon['cover_name'])) {
+                            \App\Models\PolicyAddon::create([
+                                'policy_id'      => $policy->id,
+                                'cover_name'     => $addon['cover_name'],
+                                'premium_amount' => $addon['premium_amount'] ?: null,
+                            ]);
+                        }
                     }
                 }
             }

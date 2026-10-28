@@ -30,14 +30,40 @@ class AdminWithdrawalController extends Controller
 
         $withdrawals = $query->paginate(15)->withQueryString();
 
-        // Metrics
-        $totalPendingCount = WithdrawalRequest::where('status', 'pending')->count();
-        $totalPendingAmount = WithdrawalRequest::where('status', 'pending')->sum('amount');
-        $totalApprovedAmount = WithdrawalRequest::where('status', 'approved')->sum('amount');
-        $totalRejectedCount = WithdrawalRequest::where('status', 'rejected')->count();
+        // Metrics base query (filtered by subagent if selected)
+        $metricQuery = WithdrawalRequest::query();
+        if (!empty($subagentId)) {
+            $metricQuery->where('user_id', $subagentId);
+        }
+
+        $totalPendingCount = (clone $metricQuery)->where('status', 'pending')->count();
+        $totalPendingAmount = (float) (clone $metricQuery)->where('status', 'pending')->sum('amount');
+        $totalApprovedAmount = (float) (clone $metricQuery)->where('status', 'approved')->sum('amount');
+        $totalRejectedCount = (clone $metricQuery)->where('status', 'rejected')->count();
 
         // Subagents list for filter
         $subagents = User::where('type', 'sub_agents')->orderBy('name')->get(['id', 'name', 'email']);
+
+        // Count active subagents (if a specific subagent is filtered, 1 if valid, else total subagents count)
+        $activeSubAgentsCount = !empty($subagentId)
+            ? $subagents->where('id', $subagentId)->count()
+            : $subagents->count();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            $tableHtml = view('crm.withdrawals.partials.table', compact('withdrawals'))->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $tableHtml,
+                'metrics' => [
+                    'pending_count' => $totalPendingCount,
+                    'pending_amount_formatted' => '₹' . number_format($totalPendingAmount, 2),
+                    'approved_amount_formatted' => '₹' . number_format($totalApprovedAmount, 2),
+                    'rejected_count' => $totalRejectedCount,
+                    'active_subagents_count' => $activeSubAgentsCount,
+                ],
+            ]);
+        }
 
         return view('crm.withdrawals.index', compact(
             'withdrawals',
@@ -47,6 +73,7 @@ class AdminWithdrawalController extends Controller
             'totalPendingAmount',
             'totalApprovedAmount',
             'totalRejectedCount',
+            'activeSubAgentsCount',
             'subagents'
         ));
     }

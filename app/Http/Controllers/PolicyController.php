@@ -300,8 +300,12 @@ class PolicyController extends Controller
             $policy = Policy::create($data);
             $this->syncVehicleDetails($policy, $request);
 
-            // Handle commission for agents
-            if ($userRole == 1) {
+            // Handle commission calculation if policy is booked by or assigned to an agent/staff
+            $assignedUserId = (int) ($policy->user_id ?: 0);
+            $assignedUser = $assignedUserId ? User::find($assignedUserId) : null;
+            $isAgentAssigned = $assignedUser && in_array($assignedUser->type, ['staff', 'sub_agents'], true);
+
+            if ($userRole == 1 || $isAgentAssigned) {
                 $premiumAmount = (float) ($policy->premium_amount ?? 0);
                 $commissionDate = $policy->payment_date ?: $policy->start_date ?: now()->toDateString();
 
@@ -314,59 +318,141 @@ class PolicyController extends Controller
                 $commissionRule = null;
                 // If setting is manual_override, skip automatic rule assignment on creation
                 if ($commissionMethod !== 'manual_override') {
-                    $commissionRuleQuery = CommissionRule::query()
-                        ->active()
-                        ->where(function ($query) use ($policy, $insuranceCompanyId, $commissionMethod) {
-                            if ($commissionMethod === 'policy_wise') {
-                                // Strictly policy-wise rule
-                                $query->where('policy_id', $policy->id);
-                            } elseif ($commissionMethod === 'category_wise') {
-                                // Priority to category/type-wise rule
-                                $query->where(function ($q) use ($policy) {
-                                    $q->whereNull('policy_id')
-                                      ->where('policy_type_id', $policy->policy_type_id);
-                                });
-                            } else {
-                                // Default: company_wise priority
-                                if ($insuranceCompanyId) {
-                                    $query->where('company_id', $insuranceCompanyId);
-                                }
-                                $query->orWhere(function ($q) use ($policy) {
-                                    $q->whereNull('policy_id')
-                                      ->where('policy_type_id', $policy->policy_type_id);
-                                });
-                            }
-                        })
-                        ->where(function ($query) use ($premiumAmount) {
-                            $query->whereNull('min_premium')->orWhere('min_premium', '<=', $premiumAmount);
-                        })
-                        ->where(function ($query) use ($premiumAmount) {
-                            $query->whereNull('max_premium')->orWhere('max_premium', '>=', $premiumAmount);
-                        })
-                        ->where(function ($query) use ($commissionDate) {
-                            $query->whereNull('effective_from')->orWhereDate('effective_from', '<=', $commissionDate);
-                        })
-                        ->where(function ($query) use ($commissionDate) {
-                            $query->whereNull('effective_to')->orWhereDate('effective_to', '>=', $commissionDate);
-                        });
+                    // If method is sub_type_wise:
+                    // 1. Look for rule matching policy_sub_type_id
+                    // 2. If not found or not present, fallback to Category/Type-wise rule (policy_type_id)
+                    if ($commissionMethod === 'sub_type_wise') {
+                        $baseQuery = CommissionRule::query()
+                            ->active()
+                            ->whereNull('policy_id')
+                            ->whereNull('company_id')
+                            ->where('policy_type_id', $policy->policy_type_id)
+                            ->where(function ($query) use ($premiumAmount) {
+                                $query->whereNull('min_premium')->orWhere('min_premium', '<=', $premiumAmount);
+                            })
+                            ->where(function ($query) use ($premiumAmount) {
+                                $query->whereNull('max_premium')->orWhere('max_premium', '>=', $premiumAmount);
+                            })
+                            ->where(function ($query) use ($commissionDate) {
+                                $query->whereNull('effective_from')->orWhereDate('effective_from', '<=', $commissionDate);
+                            })
+                            ->where(function ($query) use ($commissionDate) {
+                                $query->whereNull('effective_to')->orWhereDate('effective_to', '>=', $commissionDate);
+                            });
 
-                    if ($commissionMethod === 'category_wise') {
-                        $commissionRuleQuery->orderByRaw('CASE 
-                            WHEN policy_type_id IS NOT NULL AND company_id IS NULL THEN 1
-                            WHEN policy_type_id IS NOT NULL THEN 2
-                            ELSE 3 
-                        END');
+                        // Step A: If policy has a sub-type selected, try to find rule specifically for that sub_type_id
+                        if ($policy->policy_sub_type_id) {
+                            $commissionRule = (clone $baseQuery)
+                                ->where('policy_sub_type_id', $policy->policy_sub_type_id)
+                                ->latest('id')
+                                ->first();
+                        }
+
+                        // Step B: If no sub-type rule found, fallback to Category/Type-wise rule
+                        if (!$commissionRule) {
+                            $commissionRule = (clone $baseQuery)
+                                ->whereNull('policy_sub_type_id')
+                                ->latest('id')
+                                ->first();
+                        }
+
+                        // Step C: If still no rule configured in category/sub-type, fallback to assigned Agent / Member rule
+                        if (!$commissionRule && $assignedUserId) {
+                            $commissionRule = CommissionRule::query()
+                                ->active()
+                                ->where('agent_id', $assignedUserId)
+                                ->latest('id')
+                                ->first();
+                        }
+
+                        // Step D: Fallback to Insurance Company rule
+                        if (!$commissionRule && $insuranceCompanyId) {
+                            $commissionRule = CommissionRule::query()
+                                ->active()
+                                ->where('company_id', $insuranceCompanyId)
+                                ->latest('id')
+                                ->first();
+                        }
                     } else {
-                        // company_wise
-                        $commissionRuleQuery->orderByRaw('CASE 
-                            WHEN company_id IS NOT NULL AND policy_type_id IS NULL THEN 1
-                            WHEN company_id IS NOT NULL AND policy_type_id IS NOT NULL THEN 2
-                            WHEN company_id IS NOT NULL THEN 3
-                            ELSE 4 
-                        END');
-                    }
+                        // 1. Check for specific Agent Rule (agent-wise rates configured in commission management)
+                        if ($assignedUserId) {
+                            $commissionRule = CommissionRule::query()
+                                ->active()
+                                ->where('agent_id', $assignedUserId)
+                                ->latest('id')
+                                ->first();
+                        }
 
-                    $commissionRule = $commissionRuleQuery->latest('id')->first();
+                        // 2. Fallback to general policy / company / category rules if no agent rule found
+                        if (!$commissionRule) {
+                            $commissionRuleQuery = CommissionRule::query()
+                                ->active()
+                                ->where(function ($query) use ($policy, $insuranceCompanyId, $commissionMethod, $assignedUserId) {
+                                    if ($commissionMethod === 'policy_wise') {
+                                        // Strictly policy-wise rule
+                                        $query->where('policy_id', $policy->id);
+                                    } elseif ($commissionMethod === 'category_wise') {
+                                        // Priority to category/type-wise and sub-type rule
+                                        $query->where(function ($q) use ($policy) {
+                                            $q->whereNull('policy_id')
+                                              ->where('policy_type_id', $policy->policy_type_id);
+                                            if ($policy->policy_sub_type_id) {
+                                                $q->where(function ($subQ) use ($policy) {
+                                                    $subQ->where('policy_sub_type_id', $policy->policy_sub_type_id)
+                                                         ->orWhereNull('policy_sub_type_id');
+                                                });
+                                            } else {
+                                                $q->whereNull('policy_sub_type_id');
+                                            }
+                                        });
+                                    } else {
+                                        // Default: company_wise priority or agent rule
+                                        if ($assignedUserId) {
+                                            $query->where('agent_id', $assignedUserId);
+                                        }
+                                        if ($insuranceCompanyId) {
+                                            $query->orWhere('company_id', $insuranceCompanyId);
+                                        }
+                                        $query->orWhere(function ($q) use ($policy) {
+                                            $q->whereNull('policy_id')
+                                              ->where('policy_type_id', $policy->policy_type_id);
+                                        });
+                                    }
+                                })
+                                ->where(function ($query) use ($premiumAmount) {
+                                    $query->whereNull('min_premium')->orWhere('min_premium', '<=', $premiumAmount);
+                                })
+                                ->where(function ($query) use ($premiumAmount) {
+                                    $query->whereNull('max_premium')->orWhere('max_premium', '>=', $premiumAmount);
+                                })
+                                ->where(function ($query) use ($commissionDate) {
+                                    $query->whereNull('effective_from')->orWhereDate('effective_from', '<=', $commissionDate);
+                                })
+                                ->where(function ($query) use ($commissionDate) {
+                                    $query->whereNull('effective_to')->orWhereDate('effective_to', '>=', $commissionDate);
+                                });
+
+                            if ($commissionMethod === 'category_wise') {
+                                $commissionRuleQuery->orderByRaw('CASE 
+                                    WHEN policy_sub_type_id IS NOT NULL THEN 1
+                                    WHEN policy_type_id IS NOT NULL AND company_id IS NULL THEN 2
+                                    WHEN policy_type_id IS NOT NULL THEN 3
+                                    ELSE 4 
+                                END');
+                            } else {
+                                // company_wise priority
+                                $commissionRuleQuery->orderByRaw('CASE 
+                                    WHEN agent_id IS NOT NULL THEN 1
+                                    WHEN company_id IS NOT NULL AND policy_type_id IS NULL THEN 2
+                                    WHEN company_id IS NOT NULL AND policy_type_id IS NOT NULL THEN 3
+                                    WHEN company_id IS NOT NULL THEN 4
+                                    ELSE 5 
+                                END');
+                            }
+
+                            $commissionRule = $commissionRuleQuery->latest('id')->first();
+                        }
+                    }
                 }
 
                 if ($commissionRule) {

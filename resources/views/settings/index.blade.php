@@ -13,6 +13,8 @@
         #companyMasterCommissionTable_wrapper .dataTables_filter,
         #categoryMasterCommissionTable_wrapper .dataTables_length,
         #categoryMasterCommissionTable_wrapper .dataTables_filter,
+        #agentMasterCommissionTable_wrapper .dataTables_length,
+        #agentMasterCommissionTable_wrapper .dataTables_filter,
         #policyMasterCommissionTable_wrapper .dataTables_length,
         #policyMasterCommissionTable_wrapper .dataTables_filter {
             padding: 1rem 1.25rem 0.5rem 1.25rem;
@@ -23,6 +25,8 @@
         #companyMasterCommissionTable_wrapper .dataTables_paginate,
         #categoryMasterCommissionTable_wrapper .dataTables_info,
         #categoryMasterCommissionTable_wrapper .dataTables_paginate,
+        #agentMasterCommissionTable_wrapper .dataTables_info,
+        #agentMasterCommissionTable_wrapper .dataTables_paginate,
         #policyMasterCommissionTable_wrapper .dataTables_info,
         #policyMasterCommissionTable_wrapper .dataTables_paginate {
             padding: 0.5rem 1.25rem 1rem 1.25rem;
@@ -121,45 +125,65 @@
                                                     <h6 class="mb-0 fw-bold text-dark">2. Category/Type-wise Commission</h6>
                                                 </div>
                                                 <p class="text-muted small mb-2">
-                                                    Commissions are configured per <strong>Insurance Category / Policy Type</strong> (e.g. Motor 15%, Health 25%, Life 30%, Term 35%) across companies.
+                                                    Commissions are configured per <strong>Insurance Category / Policy Type</strong> (e.g. Motor, Health, Life, Fire).
                                                 </p>
-                                                <span class="badge bg-white text-secondary border small">Uniform rates by product type</span>
+                                                <span class="badge bg-white text-secondary border small">Uniform rates by product category</span>
                                             </div>
                                         </div>
                                     </label>
                                 </div>
 
-                                <!-- Option 3: Policy-wise -->
+                                <!-- Option 3: Sub Type Commission -->
+                                <div class="col-md-6">
+                                    <label class="commission-opt-card card h-100 p-3 border rounded-4 cursor-pointer position-relative shadow-sm {{ $commissionMethod === 'sub_type_wise' ? 'border-primary bg-light-primary' : 'border-light-subtle' }}" style="cursor: pointer; transition: all 0.2s ease;">
+                                        <div class="d-flex align-items-start gap-3">
+                                            <input type="radio" name="commission_calculation_method" value="sub_type_wise" class="form-check-input mt-1" {{ $commissionMethod === 'sub_type_wise' ? 'checked' : '' }}>
+                                            <div>
+                                                <div class="d-flex align-items-center gap-2 mb-1">
+                                                    <h6 class="mb-0 fw-bold text-dark">3. Sub Type Commission</h6>
+                                                    <span class="badge bg-warning bg-opacity-10 text-dark border border-warning border-opacity-25 small">Sub-Product Specific</span>
+                                                </div>
+                                                <p class="text-muted small mb-2">
+                                                    Commissions are configured specifically per <strong>Policy Sub Type</strong> (e.g. Comprehensive, Third Party, Term, Individual Health).
+                                                </p>
+                                                <span class="badge bg-white text-secondary border small">Dedicated Sub-Type rate master</span>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <!-- Option 4: Agent / Team Member-wise -->
+                                <div class="col-md-6">
+                                    <label class="commission-opt-card card h-100 p-3 border rounded-4 cursor-pointer position-relative shadow-sm {{ $commissionMethod === 'agent_wise' ? 'border-primary bg-light-primary' : 'border-light-subtle' }}" style="cursor: pointer; transition: all 0.2s ease;">
+                                        <div class="d-flex align-items-start gap-3">
+                                            <input type="radio" name="commission_calculation_method" value="agent_wise" class="form-check-input mt-1" {{ $commissionMethod === 'agent_wise' ? 'checked' : '' }}>
+                                            <div>
+                                                <div class="d-flex align-items-center gap-2 mb-1">
+                                                    <h6 class="mb-0 fw-bold text-dark">4. Agent / Team Member-wise Commission</h6>
+                                                    <span class="badge bg-purple-subtle text-purple border small" style="background-color: #f3e8ff; color: #6b21a8;">Sub-Agents & Staff</span>
+                                                </div>
+                                                <p class="text-muted small mb-2">
+                                                    Commissions are configured per <strong>Sub-Agent or Staff Member</strong>. Each agent gets their own custom Pay-In & Pay-Out rate across all bookings.
+                                                </p>
+                                                <span class="badge bg-white text-secondary border small">Individual agent rate master</span>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <!-- Option 5: Policy-wise -->
                                 <div class="col-md-6">
                                     <label class="commission-opt-card card h-100 p-3 border rounded-4 cursor-pointer position-relative shadow-sm {{ $commissionMethod === 'policy_wise' ? 'border-primary bg-light-primary' : 'border-light-subtle' }}" style="cursor: pointer; transition: all 0.2s ease;">
                                         <div class="d-flex align-items-start gap-3">
                                             <input type="radio" name="commission_calculation_method" value="policy_wise" class="form-check-input mt-1" {{ $commissionMethod === 'policy_wise' ? 'checked' : '' }}>
                                             <div>
                                                 <div class="d-flex align-items-center gap-2 mb-1">
-                                                    <h6 class="mb-0 fw-bold text-dark">3. Policy-wise Commission</h6>
+                                                    <h6 class="mb-0 fw-bold text-dark">5. Policy-wise Commission</h6>
                                                 </div>
                                                 <p class="text-muted small mb-2">
                                                     Rules require selecting a specific <strong>Individual Policy</strong>. Each policy gets its own custom rule rate.
                                                 </p>
                                                 <span class="badge bg-white text-secondary border small">Micro-level rule assignment</span>
-                                            </div>
-                                        </div>
-                                    </label>
-                                </div>
-
-                                <!-- Option 4: Manual Override (Strict) -->
-                                <div class="col-md-6">
-                                    <label class="commission-opt-card card h-100 p-3 border rounded-4 cursor-pointer position-relative shadow-sm {{ $commissionMethod === 'manual_override' ? 'border-primary bg-light-primary' : 'border-light-subtle' }}" style="cursor: pointer; transition: all 0.2s ease;">
-                                        <div class="d-flex align-items-start gap-3">
-                                            <input type="radio" name="commission_calculation_method" value="manual_override" class="form-check-input mt-1" {{ $commissionMethod === 'manual_override' ? 'checked' : '' }}>
-                                            <div>
-                                                <div class="d-flex align-items-center gap-2 mb-1">
-                                                    <h6 class="mb-0 fw-bold text-dark">4. Manual Override Primary</h6>
-                                                </div>
-                                                <p class="text-muted small mb-2">
-                                                    Commissions are not auto-applied from company/category rules. Admin enters or overrides Pay-In and Pay-Out on each policy transaction manually.
-                                                </p>
-                                                <span class="badge bg-white text-secondary border small">Full manual transaction control</span>
                                             </div>
                                         </div>
                                     </label>
@@ -255,19 +279,19 @@
                                                 </div>
                                                 <small class="d-block text-muted">Disbursed to Agent</small>
                                             </td>
-                                            <td>
+                                            <td id="comp_basis_{{ $compItem['id'] }}">
                                                 <span class="badge bg-light text-secondary border">
                                                     {{ $compItem['pay_out_based_on'] === 'premium' ? '% of Gross Premium' : '% of Admin Pay-In' }}
                                                 </span>
                                             </td>
-                                            <td>
+                                            <td id="comp_status_{{ $compItem['id'] }}">
                                                 @if($compItem['has_rule'] && $compItem['is_active'])
                                                     <span class="badge bg-success-subtle text-success border border-success border-opacity-25"><i class="fa fa-circle-check me-1"></i> Active</span>
                                                 @else
                                                     <span class="badge bg-secondary-subtle text-secondary border">Default / Inactive</span>
                                                 @endif
                                             </td>
-                                            <td class="pe-3 text-end">
+                                            <td class="pe-3 text-end" id="comp_action_{{ $compItem['id'] }}">
                                                 <button type="button" class="btn btn-sm {{ $compItem['has_rule'] ? 'btn-outline-primary' : 'btn-primary' }} px-3 open-company-commission-modal-btn" data-company-id="{{ $compItem['id'] }}">
                                                     <i class="fa-solid fa-pen-to-square me-1"></i> {{ $compItem['has_rule'] ? 'Edit Rate' : 'Set Commission' }}
                                                 </button>
@@ -319,7 +343,25 @@
                                                     </div>
                                                     <div>
                                                         <strong class="text-dark d-block">{{ $catItem['name'] }}</strong>
-                                                        <small class="text-muted">Updated: <span id="cat_updated_{{ $catItem['id'] }}">{{ $catItem['updated_at'] }}</span></small>
+                                                        <div class="d-flex flex-wrap align-items-center gap-1 mt-1">
+                                                            <small class="text-muted me-1">Sub Types ({{ $catItem['sub_types_count'] }}):</small>
+                                                            @forelse($catItem['sub_types'] as $subItem)
+                                                                <button type="button" 
+                                                                    class="badge bg-light text-dark border px-2 py-1 open-category-commission-modal-btn border-1" 
+                                                                    style="cursor: pointer; font-size: 0.72rem;"
+                                                                    data-category-id="{{ $catItem['id'] }}" 
+                                                                    data-sub-type-id="{{ $subItem['id'] }}"
+                                                                    title="Configure {{ $subItem['name'] }} rate">
+                                                                    <i class="fa-solid fa-code-fork text-warning me-1"></i>{{ $subItem['name'] }}
+                                                                    @if($subItem['has_rule'])
+                                                                        <span class="text-success fw-bold ms-1">({{ $subItem['pay_out_type'] === 'percentage' ? number_format($subItem['pay_out_value'], 1) . '%' : '₹' . number_format($subItem['pay_out_value'], 0) }})</span>
+                                                                    @endif
+                                                                </button>
+                                                            @empty
+                                                                <small class="text-muted fst-italic">None</small>
+                                                            @endforelse
+                                                        </div>
+                                                        <small class="text-muted d-block mt-1">Updated: <span id="cat_updated_{{ $catItem['id'] }}">{{ $catItem['updated_at'] }}</span></small>
                                                     </div>
                                                 </div>
                                             </td>
@@ -347,21 +389,208 @@
                                                 </div>
                                                 <small class="d-block text-muted">Disbursed to Agent</small>
                                             </td>
-                                            <td>
+                                            <td id="cat_basis_{{ $catItem['id'] }}">
                                                 <span class="badge bg-light text-secondary border">
                                                     {{ $catItem['pay_out_based_on'] === 'premium' ? '% of Gross Premium' : '% of Admin Pay-In' }}
                                                 </span>
                                             </td>
-                                            <td>
+                                            <td id="cat_status_{{ $catItem['id'] }}">
                                                 @if($catItem['has_rule'] && $catItem['is_active'])
                                                     <span class="badge bg-success-subtle text-success border border-success border-opacity-25"><i class="fa fa-circle-check me-1"></i> Active</span>
                                                 @else
                                                     <span class="badge bg-secondary-subtle text-secondary border">Default / Inactive</span>
                                                 @endif
                                             </td>
-                                            <td class="pe-3 text-end">
-                                                <button type="button" class="btn btn-sm {{ $catItem['has_rule'] ? 'btn-outline-warning text-dark' : 'btn-warning text-dark' }} px-3 open-category-commission-modal-btn" data-category-id="{{ $catItem['id'] }}">
+                                            <td class="pe-3 text-end" id="cat_action_{{ $catItem['id'] }}">
+                                                <button type="button" class="btn btn-sm {{ $catItem['has_rule'] ? 'btn-outline-warning text-dark' : 'btn-warning text-dark' }} px-3 open-category-commission-modal-btn" data-category-id="{{ $catItem['id'] }}" data-sub-type-id="">
                                                     <i class="fa-solid fa-pen-to-square me-1"></i> {{ $catItem['has_rule'] ? 'Edit Rate' : 'Set Commission' }}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUB TYPE-WISE COMMISSION MASTER MANAGER -->
+                <div class="settings-panel mt-4 commission-method-section" id="section_sub_type_wise" style="{{ $commissionMethod === 'sub_type_wise' ? '' : 'display: none;' }}">
+                    <div class="settings-panel-head d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div>
+                            <i class="fa-solid fa-code-fork me-2 text-warning"></i>
+                            <strong>Sub Type Commission Master</strong>
+                            <span class="badge bg-warning bg-opacity-10 text-dark border border-warning border-opacity-25 ms-2">{{ count($subTypesWithCommission) }} Policy Sub Types</span>
+                        </div>
+                        <div>
+                            <span class="text-muted small">Manage specific Pay-In & Pay-Out rates per Policy Sub Type (Comprehensive, Third Party, Term, etc.)</span>
+                        </div>
+                    </div>
+                    <div class="settings-panel-body p-0">
+                        <div class="p-3 border-bottom bg-light d-flex justify-content-between align-items-center">
+                            <span class="text-dark fw-semibold"><i class="fa-solid fa-shapes text-warning me-2"></i> Configure rates per individual policy sub type</span>
+                            <span class="badge bg-warning bg-opacity-25 text-dark border border-warning border-opacity-50 px-2 py-1">Sub Type Master</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="subTypeMasterCommissionTable" style="font-size: 0.9rem;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-3 py-3">Policy Sub Type</th>
+                                        <th class="py-3">Parent Category</th>
+                                        <th class="py-3">Pay-In (Admin Share)</th>
+                                        <th class="py-3">Pay-Out (Agent Share)</th>
+                                        <th class="py-3">Calculation Basis</th>
+                                        <th class="py-3">Status</th>
+                                        <th class="pe-3 py-3 text-end">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($subTypesWithCommission as $stItem)
+                                        <tr>
+                                            <td class="ps-3">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-warning bg-opacity-10 text-dark fw-bold" style="width: 36px; height: 36px;">
+                                                        <i class="fa-solid fa-code-fork text-warning"></i>
+                                                    </div>
+                                                    <div>
+                                                        <strong class="text-dark d-block">{{ $stItem['name'] }}</strong>
+                                                        <small class="text-muted">Updated: <span id="st_updated_{{ $stItem['id'] }}">{{ $stItem['updated_at'] }}</span></small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-light text-dark border">
+                                                    <i class="fa-solid fa-folder me-1 text-secondary"></i> {{ $stItem['category_name'] }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div id="st_payin_badge_{{ $stItem['id'] }}">
+                                                    @if($stItem['has_rule'])
+                                                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 fw-bold fs-6">
+                                                            {{ $stItem['pay_in_type'] === 'percentage' ? number_format($stItem['pay_in_value'], 2) . '%' : '₹' . number_format($stItem['pay_in_value'], 2) }}
+                                                        </span>
+                                                    @else
+                                                        <span class="badge bg-light text-muted border">Not Configured</span>
+                                                    @endif
+                                                </div>
+                                                <small class="d-block text-muted">Admin from Insurer</small>
+                                            </td>
+                                            <td>
+                                                <div id="st_payout_badge_{{ $stItem['id'] }}">
+                                                    @if($stItem['has_rule'])
+                                                        <span class="badge bg-warning bg-opacity-25 text-dark border border-warning border-opacity-50 px-2 py-1 fw-bold fs-6">
+                                                            {{ $stItem['pay_out_type'] === 'percentage' ? number_format($stItem['pay_out_value'], 2) . '%' : '₹' . number_format($stItem['pay_out_value'], 2) }}
+                                                        </span>
+                                                    @else
+                                                        <span class="badge bg-light text-muted border">Not Configured</span>
+                                                    @endif
+                                                </div>
+                                                <small class="d-block text-muted">Disbursed to Agent</small>
+                                            </td>
+                                            <td id="st_basis_{{ $stItem['id'] }}">
+                                                <span class="badge bg-light text-secondary border">
+                                                    {{ $stItem['pay_out_based_on'] === 'premium' ? '% of Gross Premium' : '% of Admin Pay-In' }}
+                                                </span>
+                                            </td>
+                                            <td id="st_status_{{ $stItem['id'] }}">
+                                                @if($stItem['has_rule'] && $stItem['is_active'])
+                                                    <span class="badge bg-success-subtle text-success border border-success border-opacity-25"><i class="fa fa-circle-check me-1"></i> Active</span>
+                                                @else
+                                                    <span class="badge bg-secondary-subtle text-secondary border">Default / Inactive</span>
+                                                @endif
+                                            </td>
+                                            <td class="pe-3 text-end" id="st_action_{{ $stItem['id'] }}">
+                                                <button type="button" class="btn btn-sm {{ $stItem['has_rule'] ? 'btn-outline-warning text-dark' : 'btn-warning text-dark' }} px-3 open-category-commission-modal-btn" data-category-id="{{ $stItem['category_id'] }}" data-sub-type-id="{{ $stItem['id'] }}">
+                                                    <i class="fa-solid fa-pen-to-square me-1"></i> {{ $stItem['has_rule'] ? 'Edit Rate' : 'Set Commission' }}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AGENT / TEAM MEMBER-WISE COMMISSION MASTER MANAGER -->
+                <div class="card border-0 rounded-4 shadow-sm mb-4 mt-4 commission-method-section" id="section_agent_wise" style="{{ $commissionMethod === 'agent_wise' ? '' : 'display: none;' }}">
+                    <div class="card-header bg-white border-bottom py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div>
+                            <strong class="fs-6 text-dark"><i class="fa-solid fa-users text-teal me-2" style="color: #0d9488;"></i>Agent & Team Member-wise Commission Master</strong>
+                            <span class="badge bg-opacity-10 border ms-2" style="background-color: rgba(13, 148, 136, 0.1); color: #0d9488; border-color: rgba(13, 148, 136, 0.25) !important;">{{ count($agentsWithCommission) }} Members</span>
+                            <p class="text-muted small mb-0 mt-1">Configure customized default Pay-In & Pay-Out commissions for specific Sub-Agents and Staff Team Members.</p>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="agentMasterCommissionTable" style="font-size: 0.9rem;">
+                                <thead class="table-light text-uppercase text-secondary" style="font-size: 0.78rem; letter-spacing: 0.5px;">
+                                    <tr>
+                                        <th class="ps-3 py-3">Member & Role</th>
+                                        <th class="py-3">Pay-In (Admin Share)</th>
+                                        <th class="py-3">Pay-Out (Agent Share)</th>
+                                        <th class="py-3">Calculation Basis</th>
+                                        <th class="py-3">Status</th>
+                                        <th class="pe-3 py-3 text-end">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($agentsWithCommission as $agentItem)
+                                        <tr>
+                                            <td class="ps-3">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 36px; height: 36px; background-color: rgba(13, 148, 136, 0.1); color: #0d9488;">
+                                                        <i class="fa-solid {{ $agentItem['type'] === 'sub_agents' ? 'fa-user-tie' : 'fa-id-badge' }}"></i>
+                                                    </div>
+                                                    <div>
+                                                        <strong class="text-dark d-block">{{ $agentItem['name'] }}</strong>
+                                                        <small class="text-muted d-block">{{ $agentItem['email'] }}</small>
+                                                        <span class="badge rounded-pill {{ $agentItem['type'] === 'sub_agents' ? 'bg-primary-subtle text-primary border' : 'bg-secondary-subtle text-dark border' }}" style="font-size: 0.7rem;">
+                                                            {{ $agentItem['type_label'] }}
+                                                        </span>
+                                                        <small class="text-muted ms-1">Updated: <span id="agent_updated_{{ $agentItem['id'] }}">{{ $agentItem['updated_at'] }}</span></small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div id="agent_payin_badge_{{ $agentItem['id'] }}">
+                                                    @if($agentItem['has_rule'])
+                                                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 fw-bold fs-6">
+                                                            {{ $agentItem['pay_in_type'] === 'percentage' ? number_format($agentItem['pay_in_value'], 2) . '%' : '₹' . number_format($agentItem['pay_in_value'], 2) }}
+                                                        </span>
+                                                    @else
+                                                        <span class="badge bg-light text-muted border">Default / Global</span>
+                                                    @endif
+                                                </div>
+                                                <small class="d-block text-muted">Admin from Insurer</small>
+                                            </td>
+                                            <td>
+                                                <div id="agent_payout_badge_{{ $agentItem['id'] }}">
+                                                    @if($agentItem['has_rule'])
+                                                        <span class="badge bg-warning bg-opacity-25 text-dark border border-warning border-opacity-50 px-2 py-1 fw-bold fs-6">
+                                                            {{ $agentItem['pay_out_type'] === 'percentage' ? number_format($agentItem['pay_out_value'], 2) . '%' : '₹' . number_format($agentItem['pay_out_value'], 2) }}
+                                                        </span>
+                                                    @else
+                                                        <span class="badge bg-light text-muted border">Default / Global</span>
+                                                    @endif
+                                                </div>
+                                                <small class="d-block text-muted">Disbursed to Member</small>
+                                            </td>
+                                            <td id="agent_basis_{{ $agentItem['id'] }}">
+                                                <span class="badge bg-light text-secondary border">
+                                                    {{ $agentItem['pay_out_based_on'] === 'premium' ? '% of Gross Premium' : '% of Admin Pay-In' }}
+                                                </span>
+                                            </td>
+                                            <td id="agent_status_{{ $agentItem['id'] }}">
+                                                @if($agentItem['has_rule'] && $agentItem['is_active'])
+                                                    <span class="badge bg-success-subtle text-success border border-success border-opacity-25"><i class="fa fa-circle-check me-1"></i> Active</span>
+                                                @else
+                                                    <span class="badge bg-secondary-subtle text-secondary border">Default / Inactive</span>
+                                                @endif
+                                            </td>
+                                            <td class="pe-3 text-end" id="agent_action_{{ $agentItem['id'] }}">
+                                                <button type="button" class="btn btn-sm {{ $agentItem['has_rule'] ? 'btn-outline-dark' : 'btn-dark' }} px-3 open-agent-commission-modal-btn" data-user-id="{{ $agentItem['id'] }}">
+                                                    <i class="fa-solid fa-pen-to-square me-1"></i> {{ $agentItem['has_rule'] ? 'Edit Rate' : 'Set Commission' }}
                                                 </button>
                                             </td>
                                         </tr>
@@ -447,7 +676,7 @@
                                                     <span class="badge bg-light text-secondary border">₹0.00</span>
                                                 @endif
                                             </td>
-                                            <td>
+                                            <td id="pol_status_{{ $polItem['id'] }}">
                                                 @if($polItem['is_manual_override'])
                                                     <span class="badge bg-purple-subtle text-purple border" style="background-color: #f3e8ff; color: #6b21a8;"><i class="fa fa-sliders me-1"></i> Custom Override</span>
                                                 @elseif($polItem['has_rule'])
@@ -456,7 +685,7 @@
                                                     <span class="badge bg-secondary-subtle text-secondary border">Default / System</span>
                                                 @endif
                                             </td>
-                                            <td class="pe-4 text-end">
+                                            <td class="pe-4 text-end" id="pol_action_{{ $polItem['id'] }}">
                                                 <button type="button" class="btn btn-sm {{ $polItem['has_rule'] ? 'btn-outline-info text-dark' : 'btn-info text-white' }} px-3 open-policy-commission-settings-btn" data-policy-id="{{ $polItem['id'] }}" data-policy-number="{{ $polItem['policy_number'] }}">
                                                     <i class="fa-solid fa-pen-to-square me-1"></i> {{ $polItem['has_rule'] ? 'Edit Rate' : 'Set Commission' }}
                                                 </button>
@@ -465,63 +694,6 @@
                                     @endforeach
                                 </tbody>
                             </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- MANUAL OVERRIDE PRIMARY SECTION -->
-                <div class="card border-0 rounded-4 shadow-sm mb-4 mt-4 commission-method-section" id="section_manual_override" style="{{ $commissionMethod === 'manual_override' ? '' : 'display: none;' }}">
-                    <div class="card-header bg-white border-bottom py-3">
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-purple-subtle text-purple p-2 fs-6" style="background-color: #f3e8ff; color: #6b21a8;">
-                                <i class="fa-solid fa-sliders"></i>
-                            </span>
-                            <div>
-                                <h6 class="mb-0 fw-bold text-dark">Manual Override Primary Configuration</h6>
-                                <small class="text-muted">Master company and category auto-calculations are suspended. Direct manual transaction control is enabled.</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-body p-4">
-                        <div class="alert alert-info border-0 rounded-4 p-3 mb-4" style="background-color: #f0fdf4; border-left: 4px solid #10b981 !important;">
-                            <div class="d-flex gap-3">
-                                <i class="fa-solid fa-circle-info fs-4 text-success mt-1"></i>
-                                <div>
-                                    <h6 class="fw-bold text-dark mb-1">Manual Override Primary Mode is Active</h6>
-                                    <p class="text-muted small mb-0">
-                                        In this mode, the system does not auto-apply general company or product category percentages. 
-                                        Instead, the admin sets or modifies Pay-In & Pay-Out manually for each individual transaction from the Policy List or the policy commission modal.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <div class="p-3 border rounded-4 bg-light h-100">
-                                    <div class="d-flex align-items-center gap-2 mb-2">
-                                        <i class="fa-solid fa-list-check text-primary"></i>
-                                        <span class="fw-bold text-dark">Policy List Direct Controls</span>
-                                    </div>
-                                    <p class="text-muted small mb-3">
-                                        Navigate to the Policies page and click on the <strong>"% Commission"</strong> button on any policy row to instantly enter or edit custom Pay-In & Pay-Out values.
-                                    </p>
-                                    <a href="{{ route('policy.index') }}" class="btn btn-outline-primary btn-sm px-3 rounded-pill">
-                                        <i class="fa-solid fa-arrow-right me-1"></i> Go to Policy List
-                                    </a>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="p-3 border rounded-4 bg-light h-100">
-                                    <div class="d-flex align-items-center gap-2 mb-2">
-                                        <i class="fa-solid fa-calculator text-success"></i>
-                                        <span class="fw-bold text-dark">Automatic Profit Tracking</span>
-                                    </div>
-                                    <p class="text-muted small mb-0">
-                                        Every manually entered Pay-In and Pay-Out automatically calculates and records the <strong>Admin Net Retained Earnings</strong> and reflects dynamically on all dashboard reports, pay-out disbursements, and agent commission statements.
-                                    </p>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -1194,13 +1366,24 @@
                     </div>
 
                     <div class="modal-body p-4" style="background-color: #f8fafc;">
-                        <!-- Category Highlight Header -->
+                        <!-- Category & Sub Type Highlight Header -->
                         <div class="p-3 bg-white rounded-4 border mb-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
                             <div>
                                 <span class="text-muted small text-uppercase fw-bold">Insurance Category / Product Type</span>
                                 <h4 class="mb-0 fw-bold text-dark" id="modal_category_name">—</h4>
                             </div>
-                            <span class="badge bg-warning bg-opacity-25 text-dark border border-warning border-opacity-50 px-3 py-2 fw-semibold">Category Master</span>
+                            <span class="badge bg-warning bg-opacity-25 text-dark border border-warning border-opacity-50 px-3 py-2 fw-semibold">Category / Sub Type Master</span>
+                        </div>
+
+                        <!-- Policy Sub Type Selector -->
+                        <div class="p-3 bg-white rounded-4 border mb-4">
+                            <label class="form-label small fw-bold text-dark mb-1">
+                                <i class="fa-solid fa-code-fork me-1 text-warning"></i> Policy Sub Type (Optional Specific Rate)
+                            </label>
+                            <p class="text-muted small mb-2">Leave as <strong>"All Sub Types (Default for Category)"</strong> to set a uniform rate, or select a specific <strong>Policy Sub Type</strong> (e.g. Comprehensive, Third Party) to apply custom rates.</p>
+                            <select name="policy_sub_type_id" id="modal_cat_sub_type_id" class="form-select form-select-sm">
+                                <option value="">All Sub Types (Default for Category)</option>
+                            </select>
                         </div>
 
                         <div class="row g-4 mb-4">
@@ -1298,6 +1481,139 @@
                         <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-dark-blue px-4" id="saveCategoryCommissionBtn">
                             <i class="fa-solid fa-floppy-disk me-1"></i> Save Category Commission
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- AGENT / TEAM MEMBER-WISE COMMISSION MASTER MODAL -->
+    <div class="modal fade" id="agentCommissionModal" tabindex="-1" aria-labelledby="agentCommissionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
+                <form id="agentCommissionModalForm">
+                    @csrf
+                    <input type="hidden" name="agent_id" id="modal_agent_id">
+                    <input type="hidden" name="user_id" id="modal_user_id">
+                    
+                    <div class="modal-header py-3 px-4 text-white" style="background-color: #0d9488;">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-users fs-4"></i>
+                            <div>
+                                <h5 class="modal-title fw-bold mb-0 text-white" id="agentCommissionModalLabel">Set Member Commission Rate</h5>
+                                <small class="text-white opacity-75">Configure personalized Pay-In & Pay-Out rates for this Sub-Agent or Staff member</small>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+
+                    <div class="modal-body p-4" style="background-color: #f8fafc;">
+                        <!-- Agent Highlight Header -->
+                        <div class="p-3 bg-white rounded-4 border mb-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <span class="text-muted small text-uppercase fw-bold">Agent / Team Member</span>
+                                <h4 class="mb-0 fw-bold text-dark" id="modal_agent_name">—</h4>
+                                <small class="text-muted" id="modal_agent_email">—</small>
+                            </div>
+                            <span class="badge rounded-pill px-3 py-2 fw-semibold border" id="modal_agent_role_badge" style="background-color: rgba(13, 148, 136, 0.1); color: #0d9488;">Sub-Agent</span>
+                        </div>
+
+                        <div class="row g-4 mb-4">
+                            <!-- PAY-IN (Admin's Share from Insurance Company) -->
+                            <div class="col-md-6">
+                                <div class="card h-100 border-primary border-opacity-25 rounded-4 shadow-sm" style="background: #ffffff;">
+                                    <div class="card-header bg-primary text-white py-2 px-3 rounded-top-4 d-flex justify-content-between align-items-center">
+                                        <span class="fw-bold"><i class="fa-solid fa-arrow-down-left me-1"></i> PAY-IN (Admin Share)</span>
+                                        <span class="badge bg-white text-primary">From Company</span>
+                                    </div>
+                                    <div class="card-body p-3">
+                                        <p class="text-muted small mb-3">Expected Admin gross commission on policies booked by this member.</p>
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-6">
+                                                <label class="form-label small fw-semibold">Commission Type <span class="text-danger">*</span></label>
+                                                <select name="pay_in_type" id="modal_agent_pay_in_type" class="form-select form-select-sm" required>
+                                                    <option value="percentage">% (Percentage)</option>
+                                                    <option value="flat">Fixed (₹ Amount)</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label small fw-semibold">Commission Value <span class="text-danger">*</span></label>
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" step="0.01" name="pay_in_value" id="modal_agent_pay_in_value" class="form-control" value="20" required>
+                                                    <span class="input-group-text modal-agent-payin-unit">%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="p-2 rounded-3 text-center bg-light border border-primary border-opacity-25">
+                                            <small class="text-muted fw-semibold">Admin Rate</small>
+                                            <div class="h4 fw-bold text-primary mb-0" id="modal_agent_preview_payin">20.00%</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- PAY-OUT (Agent / Sub-Agent Share) -->
+                            <div class="col-md-6">
+                                <div class="card h-100 rounded-4 shadow-sm" style="background: #ffffff; border-color: rgba(13, 148, 136, 0.4);">
+                                    <div class="card-header text-white py-2 px-3 rounded-top-4 d-flex justify-content-between align-items-center" style="background-color: #0d9488;">
+                                        <span class="fw-bold"><i class="fa-solid fa-arrow-up-right-from-square me-1"></i> PAY-OUT (Member Share)</span>
+                                        <span class="badge bg-white text-teal" style="color: #0d9488;">To Member</span>
+                                    </div>
+                                    <div class="card-body p-3">
+                                        <p class="text-muted small mb-3">Commission payout disbursed to this sub-agent or staff member.</p>
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-4">
+                                                <label class="form-label small fw-semibold">Type <span class="text-danger">*</span></label>
+                                                <select name="pay_out_type" id="modal_agent_pay_out_type" class="form-select form-select-sm" required>
+                                                    <option value="percentage">% (Percentage)</option>
+                                                    <option value="flat">Fixed (₹)</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-4">
+                                                <label class="form-label small fw-semibold">Base</label>
+                                                <select name="pay_out_based_on" id="modal_agent_pay_out_based_on" class="form-select form-select-sm">
+                                                    <option value="admin_commission">% of Pay-In</option>
+                                                    <option value="premium">% of Premium</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-4">
+                                                <label class="form-label small fw-semibold">Value <span class="text-danger">*</span></label>
+                                                <div class="input-group input-group-sm">
+                                                    <input type="number" step="0.01" name="pay_out_value" id="modal_agent_pay_out_value" class="form-control" value="10" required>
+                                                    <span class="input-group-text modal-agent-payout-unit">%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="p-2 rounded-3 text-center bg-light border" style="border-color: rgba(13, 148, 136, 0.4) !important;">
+                                            <small class="text-muted fw-semibold">Member Share</small>
+                                            <div class="h4 fw-bold mb-0" id="modal_agent_preview_payout" style="color: #0d9488;">10.00%</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- LIVE PROFIT BANNER -->
+                        <div class="p-3 rounded-4 d-flex justify-content-between align-items-center border border-success border-2 shadow-sm" style="background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);">
+                            <div>
+                                <h6 class="mb-0 fw-bold" style="color: #064e3b !important;">Admin Net Retained Earnings</h6>
+                                <small class="text-secondary fw-semibold">Admin commission minus member payout</small>
+                            </div>
+                            <div class="h3 fw-bold mb-0" id="modal_agent_preview_profit" style="color: #047857 !important;">18.00%</div>
+                        </div>
+
+                        <!-- Active Switch -->
+                        <div class="form-check form-switch mt-3">
+                            <input class="form-check-input" type="checkbox" name="is_active" id="modal_agent_is_active" value="1" checked>
+                            <label class="form-check-label fw-semibold" for="modal_agent_is_active">Rule is Active for all policies booked by this member</label>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer border-top py-3 px-4 bg-white">
+                        <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-dark px-4" id="saveAgentCommissionBtn" style="background-color: #0d9488; border-color: #0d9488;">
+                            <i class="fa-solid fa-floppy-disk me-1"></i> Save Member Commission
                         </button>
                     </div>
                 </form>
@@ -1482,9 +1798,44 @@
                         "ordering": false
                     });
 
-                    // External search input link
-                    $('#searchCompanyMasterTable').on('keyup', function() {
-                        companyTable.search($(this).val()).draw();
+                    // Initialize Category Master DataTable with pagination
+                    $('#categoryMasterCommissionTable').DataTable({
+                        "pageLength": 10,
+                        "lengthMenu": [5, 10, 20, 50],
+                        "dom": "<'d-flex justify-content-between align-items-center p-3 border-bottom'<'d-flex align-items-center'l><'d-flex'f>>t<'d-flex justify-content-between align-items-center p-3 border-top'ip>",
+                        "language": {
+                            "search": "",
+                            "searchPlaceholder": "Search categories...",
+                            "lengthMenu": "Show _MENU_ categories per page",
+                            "info": "Showing _START_ to _END_ of _TOTAL_ categories",
+                            "paginate": {
+                                "first": "First",
+                                "last": "Last",
+                                "next": '<i class="fa fa-angle-right"></i>',
+                                "previous": '<i class="fa fa-angle-left"></i>'
+                            }
+                        },
+                        "ordering": false
+                    });
+
+                    // Initialize Sub Type Master DataTable with pagination
+                    $('#subTypeMasterCommissionTable').DataTable({
+                        "pageLength": 10,
+                        "lengthMenu": [5, 10, 20, 50, 100],
+                        "dom": "<'d-flex justify-content-between align-items-center p-3 border-bottom'<'d-flex align-items-center'l><'d-flex'f>>t<'d-flex justify-content-between align-items-center p-3 border-top'ip>",
+                        "language": {
+                            "search": "",
+                            "searchPlaceholder": "Search policy sub types...",
+                            "lengthMenu": "Show _MENU_ sub types per page",
+                            "info": "Showing _START_ to _END_ of _TOTAL_ sub types",
+                            "paginate": {
+                                "first": "First",
+                                "last": "Last",
+                                "next": '<i class="fa fa-angle-right"></i>',
+                                "previous": '<i class="fa fa-angle-left"></i>'
+                            }
+                        },
+                        "ordering": false
                     });
 
                     // Initialize Policy Master DataTable with pagination
@@ -1497,6 +1848,26 @@
                             "searchPlaceholder": "Search policies, holders, companies...",
                             "lengthMenu": "Show _MENU_ policies per page",
                             "info": "Showing _START_ to _END_ of _TOTAL_ policies",
+                            "paginate": {
+                                "first": "First",
+                                "last": "Last",
+                                "next": '<i class="fa fa-angle-right"></i>',
+                                "previous": '<i class="fa fa-angle-left"></i>'
+                            }
+                        },
+                        "ordering": false
+                    });
+
+                    // Initialize Agent Master DataTable with pagination
+                    $('#agentMasterCommissionTable').DataTable({
+                        "pageLength": 10,
+                        "lengthMenu": [5, 10, 20, 50],
+                        "dom": "<'d-flex justify-content-between align-items-center p-3 border-bottom'<'d-flex align-items-center'l><'d-flex'f>>t<'d-flex justify-content-between align-items-center p-3 border-top'ip>",
+                        "language": {
+                            "search": "",
+                            "searchPlaceholder": "Search sub-agents, staff...",
+                            "lengthMenu": "Show _MENU_ members per page",
+                            "info": "Showing _START_ to _END_ of _TOTAL_ members",
                             "paginate": {
                                 "first": "First",
                                 "last": "Last",
@@ -1675,27 +2046,7 @@
                         });
                 });
 
-                    // Initialize Category Master DataTable with pagination
-                    $('#categoryMasterCommissionTable').DataTable({
-                        "pageLength": 10,
-                        "lengthMenu": [5, 10, 20, 50],
-                        "dom": "<'d-flex justify-content-between align-items-center p-3 border-bottom'<'d-flex align-items-center'l><'d-flex'f>>t<'d-flex justify-content-between align-items-center p-3 border-top'ip>",
-                        "language": {
-                            "search": "",
-                            "searchPlaceholder": "Search categories...",
-                            "lengthMenu": "Show _MENU_ categories per page",
-                            "info": "Showing _START_ to _END_ of _TOTAL_ categories",
-                            "paginate": {
-                                "first": "First",
-                                "last": "Last",
-                                "next": '<i class="fa fa-angle-right"></i>',
-                                "previous": '<i class="fa fa-angle-left"></i>'
-                            }
-                        },
-                        "ordering": false
-                    });
-
-                    // Submit company commission form via AJAX
+                // Submit company commission form via AJAX
                 $('#companyCommissionModalForm').on('submit', function(e) {
                     e.preventDefault();
                     const submitBtn = $('#saveCompanyCommissionBtn');
@@ -1722,6 +2073,21 @@
                                     <span class="badge bg-warning bg-opacity-25 text-dark border border-warning border-opacity-50 px-2 py-1 fw-bold fs-6">
                                         ${res.pay_out}
                                     </span>
+                                `);
+                                $(`#comp_basis_${res.company_id}`).html(`
+                                    <span class="badge bg-light text-secondary border">
+                                        ${res.pay_out_based_on}
+                                    </span>
+                                `);
+                                $(`#comp_status_${res.company_id}`).html(
+                                    res.is_active
+                                        ? '<span class="badge bg-success-subtle text-success border border-success border-opacity-25"><i class="fa fa-circle-check me-1"></i> Active</span>'
+                                        : '<span class="badge bg-secondary-subtle text-secondary border">Default / Inactive</span>'
+                                );
+                                $(`#comp_action_${res.company_id}`).html(`
+                                    <button type="button" class="btn btn-sm btn-outline-primary px-3 open-company-commission-modal-btn" data-company-id="${res.company_id}">
+                                        <i class="fa-solid fa-pen-to-square me-1"></i> Edit Rate
+                                    </button>
                                 `);
                                 $(`#comp_updated_${res.company_id}`).text(res.updated_at);
 
@@ -1789,16 +2155,32 @@
                 // Open Category Modal via AJAX
                 $(document).on('click', '.open-category-commission-modal-btn', function() {
                     const catId = $(this).data('category-id');
+                    const initialSubTypeId = $(this).data('sub-type-id') || '';
                     const btn = $(this);
                     btn.prop('disabled', true);
 
-                    fetch(`{{ url('/settings/category-commission') }}/${catId}`)
-                        .then(r => r.json())
+                    function loadCategoryCommissionData(catId, subTypeId) {
+                        const url = `{{ url('/settings/category-commission') }}/${catId}` + (subTypeId ? `?sub_type_id=${subTypeId}` : '');
+                        return fetch(url).then(r => r.json());
+                    }
+
+                    loadCategoryCommissionData(catId, initialSubTypeId)
                         .then(data => {
                             btn.prop('disabled', false);
                             if (data.success) {
                                 $('#modal_cat_id').val(data.category_id);
                                 $('#modal_category_name').text(data.category_name);
+
+                                // Populate sub types select
+                                const subSelect = $('#modal_cat_sub_type_id');
+                                subSelect.empty().append('<option value="">All Sub Types (Default for Category)</option>');
+                                if (data.sub_types && data.sub_types.length) {
+                                    data.sub_types.forEach(function(st) {
+                                        subSelect.append(`<option value="${st.id}">${st.name}</option>`);
+                                    });
+                                }
+                                subSelect.val(data.sub_type_id || '');
+
                                 $('#modal_cat_pay_in_type').val(data.pay_in_type);
                                 $('#modal_cat_pay_in_value').val(data.pay_in_value);
                                 $('#modal_cat_pay_out_type').val(data.pay_out_type);
@@ -1813,6 +2195,27 @@
                         .catch(() => {
                             btn.prop('disabled', false);
                             alert('Unable to load category details. Please try again.');
+                        });
+                });
+
+                // When user changes Policy Sub Type in the modal, load that specific sub-type rule rate
+                $('#modal_cat_sub_type_id').on('change', function() {
+                    const catId = $('#modal_cat_id').val();
+                    const subTypeId = $(this).val();
+
+                    const url = `{{ url('/settings/category-commission') }}/${catId}` + (subTypeId ? `?sub_type_id=${subTypeId}` : '');
+                    fetch(url)
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.success) {
+                                $('#modal_cat_pay_in_type').val(data.pay_in_type);
+                                $('#modal_cat_pay_in_value').val(data.pay_in_value);
+                                $('#modal_cat_pay_out_type').val(data.pay_out_type);
+                                $('#modal_cat_pay_out_value').val(data.pay_out_value);
+                                $('#modal_cat_pay_out_based_on').val(data.pay_out_based_on);
+                                $('#modal_cat_is_active').prop('checked', data.is_active);
+                                recalculateCategoryModalSummary();
+                            }
                         });
                 });
 
@@ -1834,17 +2237,61 @@
                                 $('#categoryCommissionModal').modal('hide');
                                 
                                 // Update table badges dynamically
-                                $(`#cat_payin_badge_${res.category_id}`).html(`
-                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 fw-bold fs-6">
-                                        ${res.pay_in}
-                                    </span>
-                                `);
-                                $(`#cat_payout_badge_${res.category_id}`).html(`
-                                    <span class="badge bg-warning bg-opacity-25 text-dark border border-warning border-opacity-50 px-2 py-1 fw-bold fs-6">
-                                        ${res.pay_out}
-                                    </span>
-                                `);
-                                $(`#cat_updated_${res.category_id}`).text(res.updated_at);
+                                if (res.sub_type_id) {
+                                    $(`#st_payin_badge_${res.sub_type_id}`).html(`
+                                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 fw-bold fs-6">
+                                            ${res.pay_in}
+                                        </span>
+                                    `);
+                                    $(`#st_payout_badge_${res.sub_type_id}`).html(`
+                                        <span class="badge bg-warning bg-opacity-25 text-dark border border-warning border-opacity-50 px-2 py-1 fw-bold fs-6">
+                                            ${res.pay_out}
+                                        </span>
+                                    `);
+                                    $(`#st_basis_${res.sub_type_id}`).html(`
+                                        <span class="badge bg-light text-secondary border">
+                                            ${res.pay_out_based_on}
+                                        </span>
+                                    `);
+                                    $(`#st_status_${res.sub_type_id}`).html(
+                                        res.is_active
+                                            ? '<span class="badge bg-success-subtle text-success border border-success border-opacity-25"><i class="fa fa-circle-check me-1"></i> Active</span>'
+                                            : '<span class="badge bg-secondary-subtle text-secondary border">Default / Inactive</span>'
+                                    );
+                                    $(`#st_action_${res.sub_type_id}`).html(`
+                                        <button type="button" class="btn btn-sm btn-outline-warning text-dark px-3 open-category-commission-modal-btn" data-category-id="${res.category_id}" data-sub-type-id="${res.sub_type_id}">
+                                            <i class="fa-solid fa-pen-to-square me-1"></i> Edit Rate
+                                        </button>
+                                    `);
+                                    $(`#st_updated_${res.sub_type_id}`).text(res.updated_at);
+                                } else {
+                                    $(`#cat_payin_badge_${res.category_id}`).html(`
+                                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 fw-bold fs-6">
+                                            ${res.pay_in}
+                                        </span>
+                                    `);
+                                    $(`#cat_payout_badge_${res.category_id}`).html(`
+                                        <span class="badge bg-warning bg-opacity-25 text-dark border border-warning border-opacity-50 px-2 py-1 fw-bold fs-6">
+                                            ${res.pay_out}
+                                        </span>
+                                    `);
+                                    $(`#cat_basis_${res.category_id}`).html(`
+                                        <span class="badge bg-light text-secondary border">
+                                            ${res.pay_out_based_on}
+                                        </span>
+                                    `);
+                                    $(`#cat_status_${res.category_id}`).html(
+                                        res.is_active
+                                            ? '<span class="badge bg-success-subtle text-success border border-success border-opacity-25"><i class="fa fa-circle-check me-1"></i> Active</span>'
+                                            : '<span class="badge bg-secondary-subtle text-secondary border">Default / Inactive</span>'
+                                    );
+                                    $(`#cat_action_${res.category_id}`).html(`
+                                        <button type="button" class="btn btn-sm btn-outline-warning text-dark px-3 open-category-commission-modal-btn" data-category-id="${res.category_id}" data-sub-type-id="">
+                                            <i class="fa-solid fa-pen-to-square me-1"></i> Edit Rate
+                                        </button>
+                                    `);
+                                    $(`#cat_updated_${res.category_id}`).text(res.updated_at);
+                                }
 
                                 if (typeof toastr !== 'undefined') {
                                     toastr.success(res.message);
@@ -1856,6 +2303,150 @@
                         error: function(err) {
                             submitBtn.prop('disabled', false).html(origHtml);
                             const msg = err.responseJSON?.message || 'Failed to save category commission.';
+                            alert(msg);
+                        }
+                    });
+                });
+
+                // ─── Agent / Team Member Commission Master Modal Logic ───────────
+                function recalculateAgentModalSummary() {
+                    const inType = $('#modal_agent_pay_in_type').val();
+                    const inVal = parseFloat($('#modal_agent_pay_in_value').val()) || 0;
+                    const outType = $('#modal_agent_pay_out_type').val();
+                    const outVal = parseFloat($('#modal_agent_pay_out_value').val()) || 0;
+                    const outBase = $('#modal_agent_pay_out_based_on').val();
+
+                    $('.modal-agent-payin-unit').text(inType === 'percentage' ? '%' : '₹');
+                    $('.modal-agent-payout-unit').text(outType === 'percentage' ? '%' : '₹');
+
+                    if (inType === 'percentage') {
+                        $('#modal_agent_preview_payin').text(inVal.toFixed(2) + '%');
+                        if (outType === 'percentage') {
+                            if (outBase === 'admin_commission') {
+                                const agentEffective = (inVal * outVal) / 100;
+                                const adminNet = Math.max(0, inVal - agentEffective);
+                                $('#modal_agent_preview_payout').text(outVal.toFixed(2) + '% (' + agentEffective.toFixed(2) + '% eff.)');
+                                $('#modal_agent_preview_profit').text(adminNet.toFixed(2) + '%');
+                            } else {
+                                const adminNet = Math.max(0, inVal - outVal);
+                                $('#modal_agent_preview_payout').text(outVal.toFixed(2) + '% of Gross');
+                                $('#modal_agent_preview_profit').text(adminNet.toFixed(2) + '%');
+                            }
+                        } else {
+                            $('#modal_agent_preview_payout').text('₹' + outVal.toFixed(2));
+                            $('#modal_agent_preview_profit').text(inVal.toFixed(2) + '% - ₹' + outVal.toFixed(2));
+                        }
+                    } else {
+                        $('#modal_agent_preview_payin').text('₹' + inVal.toFixed(2));
+                        if (outType === 'percentage') {
+                            const agentAmt = (inVal * outVal) / 100;
+                            const profit = Math.max(0, inVal - agentAmt);
+                            $('#modal_agent_preview_payout').text('₹' + agentAmt.toFixed(2) + ' (' + outVal.toFixed(2) + '%)');
+                            $('#modal_agent_preview_profit').text('₹' + profit.toFixed(2));
+                        } else {
+                            const profit = Math.max(0, inVal - outVal);
+                            $('#modal_agent_preview_payout').text('₹' + outVal.toFixed(2));
+                            $('#modal_agent_preview_profit').text('₹' + profit.toFixed(2));
+                        }
+                    }
+                }
+
+                $('#modal_agent_pay_in_type, #modal_agent_pay_out_type, #modal_agent_pay_out_based_on').on('change', recalculateAgentModalSummary);
+                $('#modal_agent_pay_in_value, #modal_agent_pay_out_value').on('input', recalculateAgentModalSummary);
+
+                // Open Agent Modal via AJAX
+                $(document).on('click', '.open-agent-commission-modal-btn', function() {
+                    const userId = $(this).data('user-id');
+                    const btn = $(this);
+                    btn.prop('disabled', true);
+
+                    fetch(`{{ url('/settings/agent-commission') }}/${userId}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            btn.prop('disabled', false);
+                            if (data.success) {
+                                const aId = data.agent_id || data.user_id;
+                                const aName = data.agent_name || data.user_name || '—';
+                                const aEmail = data.agent_email || data.user_email || '—';
+                                const aRole = data.user_type_label || data.agent_type || 'Member';
+
+                                $('#modal_agent_id').val(aId);
+                                $('#modal_user_id').val(aId);
+                                $('#modal_agent_name').text(aName);
+                                $('#modal_agent_email').text(aEmail);
+                                $('#modal_agent_role_badge').text(aRole);
+                                $('#modal_agent_pay_in_type').val(data.pay_in_type);
+                                $('#modal_agent_pay_in_value').val(data.pay_in_value);
+                                $('#modal_agent_pay_out_type').val(data.pay_out_type);
+                                $('#modal_agent_pay_out_value').val(data.pay_out_value);
+                                $('#modal_agent_pay_out_based_on').val(data.pay_out_based_on);
+                                $('#modal_agent_is_active').prop('checked', data.is_active);
+
+                                recalculateAgentModalSummary();
+                                $('#agentCommissionModal').modal('show');
+                            }
+                        })
+                        .catch(() => {
+                            btn.prop('disabled', false);
+                            alert('Unable to load agent commission details. Please try again.');
+                        });
+                });
+
+                // Submit agent commission form via AJAX
+                $('#agentCommissionModalForm').on('submit', function(e) {
+                    e.preventDefault();
+                    const submitBtn = $('#saveAgentCommissionBtn');
+                    const origHtml = submitBtn.html();
+                    submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span> Saving...');
+
+                    $.ajax({
+                        url: `{{ route('settings.agent-commission.save') }}`,
+                        type: 'POST',
+                        data: $(this).serialize(),
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        success: function(res) {
+                            submitBtn.prop('disabled', false).html(origHtml);
+                            if (res.success) {
+                                $('#agentCommissionModal').modal('hide');
+                                
+                                // Update table badges dynamically
+                                $(`#agent_payin_badge_${res.user_id}`).html(`
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 fw-bold fs-6">
+                                        ${res.pay_in}
+                                    </span>
+                                `);
+                                $(`#agent_payout_badge_${res.user_id}`).html(`
+                                    <span class="badge bg-warning bg-opacity-25 text-dark border border-warning border-opacity-50 px-2 py-1 fw-bold fs-6">
+                                        ${res.pay_out}
+                                    </span>
+                                `);
+                                $(`#agent_basis_${res.user_id}`).html(`
+                                    <span class="badge bg-light text-secondary border">
+                                        ${res.pay_out_based_on}
+                                    </span>
+                                `);
+                                $(`#agent_status_${res.user_id}`).html(
+                                    res.is_active
+                                        ? '<span class="badge bg-success-subtle text-success border border-success border-opacity-25"><i class="fa fa-circle-check me-1"></i> Active</span>'
+                                        : '<span class="badge bg-secondary-subtle text-secondary border">Default / Inactive</span>'
+                                );
+                                $(`#agent_action_${res.user_id}`).html(`
+                                    <button type="button" class="btn btn-sm btn-outline-dark px-3 open-agent-commission-modal-btn" data-user-id="${res.user_id}">
+                                        <i class="fa-solid fa-pen-to-square me-1"></i> Edit Rate
+                                    </button>
+                                `);
+                                $(`#agent_updated_${res.user_id}`).text(res.updated_at);
+
+                                if (typeof toastr !== 'undefined') {
+                                    toastr.success(res.message);
+                                } else {
+                                    alert(res.message);
+                                }
+                            }
+                        },
+                        error: function(err) {
+                            submitBtn.prop('disabled', false).html(origHtml);
+                            const msg = err.responseJSON?.message || 'Failed to save agent commission.';
                             alert(msg);
                         }
                     });
@@ -1970,6 +2561,14 @@
                                     <span class="badge bg-emerald-subtle text-success border border-success border-opacity-25 px-2 py-1 fw-bold fs-6">
                                         ₹${parseFloat(res.profit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
+                                `);
+                                $(`#pol_status_${policyId}`).html(
+                                    '<span class="badge bg-success-subtle text-success border border-success border-opacity-25"><i class="fa fa-circle-check me-1"></i> Active</span>'
+                                );
+                                $(`#pol_action_${policyId}`).html(`
+                                    <button type="button" class="btn btn-sm btn-outline-info text-dark px-3 open-policy-commission-settings-btn" data-policy-id="${policyId}">
+                                        <i class="fa-solid fa-pen-to-square me-1"></i> Edit Rate
+                                    </button>
                                 `);
 
                                 if (typeof toastr !== 'undefined') {

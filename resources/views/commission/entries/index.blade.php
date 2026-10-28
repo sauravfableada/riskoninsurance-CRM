@@ -130,7 +130,7 @@
                 <div class="card-header pb-0 pt-3 p-4 px-2 px-md-4">
                     <div class="d-flex flex-row flex-nowrap justify-content-between align-items-center w-100 mt-lg-n3" style="gap: 10px;">
                         <div class="d-flex align-items-center flex-shrink-0">
-                            <h5 class="fw-bold mb-0">Commission History (Pay-In & Pay-Out)</h5>
+                            <h5 class="fw-bold mb-0">{{ ($isSubAgent ?? false) ? 'My Commission History' : 'Commission History (Pay-In & Pay-Out)' }}</h5>
                         </div>
                     </div>
                 </div>
@@ -148,11 +148,11 @@
                                     <th class="text-primary">Pay-In (Admin)</th>
                                     <th class="text-warning">Pay-Out (Agent)</th>
                                     <th class="text-success">Net Profit</th>
+                                    <th>Status</th>
                                 @else
-                                    <th>My Commission (₹)</th>
+                                    <th class="text-success">My Commission (₹)</th>
                                     <th>Commission %</th>
                                 @endif
-                                <th>Status</th>
                                 <th>Entry Date</th>
                                 <th>Remarks</th>
                             </tr>
@@ -163,6 +163,11 @@
                                     $inAmt = (float) ($entry->pay_in_amount > 0 ? $entry->pay_in_amount : $entry->commission_amount);
                                     $outAmt = (float) ($entry->pay_out_amount > 0 ? $entry->pay_out_amount : $entry->commission_amount);
                                     $profit = (float) ($entry->net_admin_profit > 0 ? $entry->net_admin_profit : max(0, $inAmt - $outAmt));
+                                    $myCommAmt = (float) ($entry->pay_out_amount > 0 ? $entry->pay_out_amount : $entry->commission_amount);
+                                    $myCommPct = $entry->commission_percentage ?? $entry->pay_out_percentage;
+                                    if ($myCommPct === null && $entry->premium_amount > 0 && $myCommAmt > 0) {
+                                        $myCommPct = round(($myCommAmt / $entry->premium_amount) * 100, 2);
+                                    }
                                 @endphp
                                 <tr>
                                     <td class="text-center">{{ $index + 1 }}</td>
@@ -179,23 +184,23 @@
                                         <td class="fw-bold text-primary">₹{{ number_format($inAmt, 2) }}</td>
                                         <td class="fw-bold text-dark">₹{{ number_format($outAmt, 2) }}</td>
                                         <td class="fw-bold text-success">₹{{ number_format($profit, 2) }}</td>
-                                    @else
-                                        <td class="fw-bold text-success">₹{{ number_format($entry->commission_amount, 2) }}</td>
                                         <td>
-                                            {{ $entry->commission_percentage !== null
-                                                ? number_format($entry->commission_percentage, 2) . '%'
+                                            @if($entry->payment_status === 'paid')
+                                                <span class="commission-status paid">Paid</span>
+                                            @elseif($entry->payment_status === 'pending')
+                                                <span class="commission-status pending">Pending</span>
+                                            @else
+                                                <span class="commission-status cancelled">Cancelled</span>
+                                            @endif
+                                        </td>
+                                    @else
+                                        <td class="fw-bold text-success">₹{{ number_format($myCommAmt, 2) }}</td>
+                                        <td>
+                                            {{ $myCommPct !== null
+                                                ? number_format((float)$myCommPct, 2) . '%'
                                                 : '—' }}
                                         </td>
                                     @endif
-                                    <td>
-                                        @if($entry->payment_status === 'paid')
-                                            <span class="commission-status paid">Paid</span>
-                                        @elseif($entry->payment_status === 'pending')
-                                            <span class="commission-status pending">Pending</span>
-                                        @else
-                                            <span class="commission-status cancelled">Cancelled</span>
-                                        @endif
-                                    </td>
                                     <td>{{ $entry->entry_date ? $entry->entry_date->format('d-m-Y') : '—' }}</td>
                                     <td><small class="text-muted">{{ $entry->remarks ?? '—' }}</small></td>
                                 </tr>

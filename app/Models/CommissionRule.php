@@ -15,6 +15,7 @@ class CommissionRule extends Model
         'company_rule_id',
         'company_id',
         'policy_type_id',
+        'policy_sub_type_id',
         'policy_id',
         'agent_id',
         'rule_name',
@@ -85,6 +86,14 @@ class CommissionRule extends Model
     public function policyType()
     {
         return $this->belongsTo(InsurancePolicyType::class, 'policy_type_id');
+    }
+
+    /**
+     * Relationship: belongs to an insurance policy sub type.
+     */
+    public function policySubType()
+    {
+        return $this->belongsTo(InsurancePolicySubType::class, 'policy_sub_type_id');
     }
 
     /**

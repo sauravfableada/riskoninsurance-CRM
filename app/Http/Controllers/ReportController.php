@@ -1588,6 +1588,9 @@ class ReportController extends Controller
 
         $totalPremium = array_sum(array_map(fn ($row) => (float) ($row['premium'] ?? 0), $rows));
         $totalSumAssured = array_sum(array_map(fn ($row) => (float) ($row['sum_assured'] ?? 0), $rows));
+        $totalAdminCommission = array_sum(array_map(fn ($row) => (float) ($row['admin_commission'] ?? 0), $rows));
+        $totalStaffCommission = array_sum(array_map(fn ($row) => (float) ($row['staff_commission'] ?? 0), $rows));
+        $totalAdminProfit = array_sum(array_map(fn ($row) => (float) ($row['net_profit'] ?? 0), $rows));
 
         $monthlyPolicies = [
             'Jan' => 0, 'Feb' => 0, 'Mar' => 0, 'Apr' => 0,
@@ -1612,6 +1615,9 @@ class ReportController extends Controller
             'totalPolicies' => $recordsTotal,
             'totalPremium' => $totalPremium,
             'totalSumAssured' => $totalSumAssured,
+            'totalAdminCommission' => $totalAdminCommission,
+            'totalStaffCommission' => $totalStaffCommission,
+            'totalAdminProfit' => $totalAdminProfit,
             'monthlyPolicies' => $monthlyPolicies,
         ]);
     }
@@ -1668,8 +1674,9 @@ class ReportController extends Controller
                 'Family Group' => 'family_group', 'Policy Type' => 'policy_type', 'Policy Sub Type' => 'policy_sub_type',
                 'Segment' => 'segment', 'Insurance Company' => 'company', 'Branch' => 'branch',
                 'Payment Mode' => 'payment_mode', 'Start Date' => 'start_date', 'End Date' => 'end_date',
-                'Sum Assured' => 'sum_assured', 'Premium Amount' => 'premium', 'Tax Amount' => 'tax_amount',
-                'Payment Date' => 'payment_date', 'Payment Type' => 'payment_type', 'Payment Amount' => 'payment_amount',
+                'Sum Assured' => 'sum_assured', 'Premium Amount' => 'premium', 'Admin Commission' => 'admin_commission',
+                'Staff Commission' => 'staff_commission', 'Net Profit' => 'net_profit', 'Commission Status' => 'commission_status',
+                'Tax Amount' => 'tax_amount', 'Payment Date' => 'payment_date', 'Payment Type' => 'payment_type', 'Payment Amount' => 'payment_amount',
                 'Nominee Name' => 'nominee_name', 'Nominee Contact' => 'nominee_contact',
                 'Vehicle Registration No.' => 'vehicle_registration_number', 'Vehicle Model' => 'vehicle_model',
                 'Engine Number' => 'engine_number', 'Chassis Number' => 'chassis_number', 'Fuel Type' => 'fuel_type',
@@ -1920,7 +1927,7 @@ class ReportController extends Controller
 
         $query = Policy::query()->with([
             'policyType', 'policySubType', 'segment', 'company', 'branch', 'familyGroup',
-            'creator', 'holder',
+            'creator', 'holder', 'user', 'latestCommissionEntry'
         ]);
 
         if (!empty($staffId)) {
@@ -2022,9 +2029,32 @@ class ReportController extends Controller
         $policies = $query->orderByDesc('start_date')->get();
         $rows = [];
         foreach ($policies as $policy) {
-            $staffName = $policy->creator?->name;
-            if (!$staffName || $policy->creator?->isAdmin()) {
-                $staffName = $policy->holder?->owner?->name ?? $staffName ?? 'System';
+            $assignedAgent = $policy->user;
+            if ($assignedAgent && in_array($assignedAgent->type, ['staff', 'sub_agents'], true)) {
+                $staffName = $assignedAgent->name;
+            } else {
+                $staffName = $policy->creator?->name;
+                if (!$staffName || $policy->creator?->isAdmin()) {
+                    $staffName = $policy->holder?->owner?->name ?? $staffName ?? 'System';
+                }
+            }
+
+            // Commission Resolution (from latest CommissionEntry or policy columns)
+            $commEntry = $policy->latestCommissionEntry;
+            $adminCommission = 0.0;
+            $staffCommission = 0.0;
+            $adminProfit = 0.0;
+            $commissionStatus = 'Pending';
+
+            if ($commEntry) {
+                $adminCommission = (float) ($commEntry->pay_in_amount > 0 ? $commEntry->pay_in_amount : $commEntry->commission_amount);
+                $staffCommission = (float) ($commEntry->pay_out_amount > 0 ? $commEntry->pay_out_amount : $commEntry->commission_amount);
+                $adminProfit = (float) ($commEntry->net_admin_profit > 0 ? $commEntry->net_admin_profit : max(0, $adminCommission - $staffCommission));
+                $commissionStatus = ucfirst($commEntry->payment_status ?: 'Pending');
+            } else {
+                $adminCommission = (float) ($policy->pay_in_amount ?? 0);
+                $staffCommission = (float) ($policy->pay_out_amount ?? 0);
+                $adminProfit = max(0, round($adminCommission - $staffCommission, 2));
             }
 
             $rows[] = [
@@ -2054,6 +2084,10 @@ class ReportController extends Controller
                 'payment_mode' => $policy->payment_mode ?? '--',
                 'sum_assured' => $policy->sum_assured ?? '--',
                 'premium' => $policy->{$premiumColumn} ?? '--',
+                'admin_commission' => $adminCommission,
+                'staff_commission' => $staffCommission,
+                'net_profit' => $adminProfit,
+                'commission_status' => $commissionStatus,
                 'start_date' => $policy->start_date ?: '--',
                 'end_date' => $policy->end_date ?: '--',
                 'tax_amount' => $policy->tax_amount ?? '--',
@@ -2083,7 +2117,7 @@ class ReportController extends Controller
             ];
         }
 
-        $this->sortRowsByDataTableOrder($rows, $request, ['policy_number', 'policy_type', 'sum_assured', 'premium', 'start_date', 'end_date', 'status']);
+        $this->sortRowsByDataTableOrder($rows, $request, ['policy_number', 'policy_type', 'sum_assured', 'premium', 'admin_commission', 'staff_commission', 'net_profit', 'start_date', 'end_date', 'status']);
 
         return $rows;
     }

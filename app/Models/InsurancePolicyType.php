@@ -37,4 +37,9 @@ public function deleter()
 {
     return $this->belongsTo(User::class, 'deleted_by');
 }
+
+public function subTypes()
+{
+    return $this->hasMany(InsurancePolicySubType::class, 'insurance_policy_types_id');
+}
 }

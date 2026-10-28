@@ -10,7 +10,44 @@
     .report-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     .report-filters .filter-item { display: flex; align-items: center; gap: 8px; }
     .report-filters label { margin: 0; white-space: nowrap; font-weight: 500; }
-    .metric-card h3 { margin: 0; font-size: 1.4rem; }
+    /* Metric cards layout fix */
+    .compact-report-chart-with-metrics > [class*="col-"]:last-child > .row {
+        height: auto !important;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+    }
+    .compact-report-chart-with-metrics .metric-card {
+        flex: 1 1 calc(50% - 6px) !important;
+        max-width: 100% !important;
+        min-height: auto !important;
+        padding: 0 !important;
+    }
+    .compact-report-chart-with-metrics .metric-card.metric-card-3 {
+        flex: 1 1 calc(33.333% - 6px) !important;
+    }
+    .metric-card .card {
+        border-radius: 8px !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+    }
+    .metric-card .card-body {
+        padding: 0.4rem 0.5rem !important;
+    }
+    .metric-card h6 {
+        font-size: 0.65rem !important;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 2px !important;
+    }
+    .metric-card h4, .metric-card h5 {
+        font-size: 0.95rem !important;
+        font-weight: 700 !important;
+        margin: 0 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
     @media (max-width: 768px) {
         .report-filters { flex-direction: column; align-items: stretch; }
         .report-filters .filter-item { width: 100%; }
@@ -152,14 +189,16 @@
             </div>
 
             <div class="row mt-3 g-3">
-                <div class="col-md-9">
-                    <canvas id="line-chart" height="100"></canvas>
+                <div class="col-md-7">
+                    <canvas id="line-chart" height="110"></canvas>
                 </div>
-                <div class="col-md-3 mt-0">
-                    <div class="row g-3 gap-0">
-                        <div class="col-12 metric-card"><div class="card border-0 shadow-sm"><div class="card-body text-center"><h6>Total Policies</h6><h3 id="total-policies">0</h3></div></div></div>
-                        <div class="col-12 metric-card"><div class="card border-0 shadow-sm"><div class="card-body text-center"><h6>Total Premium</h6><h3 id="total-premium">0</h3></div></div></div>
-                        <div class="col-12 metric-card"><div class="card border-0 shadow-sm"><div class="card-body text-center"><h6>Total Sum Assured</h6><h3 id="total-sum-assured">0</h3></div></div></div>
+                <div class="col-md-5 mt-0">
+                    <div class="row g-2">
+                        <div class="col-6 metric-card"><div class="card border-0 shadow-sm"><div class="card-body p-2 text-center"><h6 class="small text-muted mb-1">Total Policies</h6><h4 class="fw-bold mb-0" id="total-policies">0</h4></div></div></div>
+                        <div class="col-6 metric-card"><div class="card border-0 shadow-sm"><div class="card-body p-2 text-center"><h6 class="small text-muted mb-1">Gross Premium</h6><h4 class="fw-bold text-dark mb-0" id="total-premium">₹0.00</h4></div></div></div>
+                        <div class="col-4 metric-card metric-card-3"><div class="card border-0 shadow-sm border-start border-primary border-3"><div class="card-body p-2 text-center"><h6 class="small text-primary mb-1">Admin Comm.</h6><h5 class="fw-bold text-primary mb-0" id="total-admin-commission">₹0.00</h5></div></div></div>
+                        <div class="col-4 metric-card metric-card-3"><div class="card border-0 shadow-sm border-start border-warning border-3"><div class="card-body p-2 text-center"><h6 class="small text-dark mb-1">Staff Comm.</h6><h5 class="fw-bold text-dark mb-0" id="total-staff-commission">₹0.00</h5></div></div></div>
+                        <div class="col-4 metric-card metric-card-3"><div class="card border-0 shadow-sm border-start border-success border-3"><div class="card-body p-2 text-center"><h6 class="small text-success mb-1">Admin Net Profit</h6><h5 class="fw-bold text-success mb-0" id="total-admin-profit">₹0.00</h5></div></div></div>
                     </div>
                 </div>
             </div>
@@ -262,11 +301,14 @@
                     <thead>
                         <tr>
                             <th class="ps-4">Sr.No</th>
-                            <th>Sub Agent Name</th>
+                            <th>Sub Agent / Staff</th>
                             <th>Policy Number</th>
                             <th>Policy Type</th>
                             <th>Sum Assured</th>
-                            <th>Premium</th>
+                            <th>Gross Premium</th>
+                            <th class="text-primary">Admin Comm.</th>
+                            <th class="text-warning">Staff Comm.</th>
+                            <th class="text-success">Net Profit</th>
                             <th>Start Date</th>
                             <th>End Date</th>
                             <th>Status</th>
@@ -381,18 +423,58 @@ $(function () {
             dataSrc: function (json) {
                 updateChart(json.monthlyPolicies || {});
                 $('#total-policies').text(json.totalPolicies || 0);
-                $('#total-premium').text(Number(json.totalPremium || 0).toFixed(2));
-                $('#total-sum-assured').text(Number(json.totalSumAssured || 0).toFixed(2));
+                $('#total-premium').text('₹' + Number(json.totalPremium || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                $('#total-admin-commission').text('₹' + Number(json.totalAdminCommission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                $('#total-staff-commission').text('₹' + Number(json.totalStaffCommission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                $('#total-admin-profit').text('₹' + Number(json.totalAdminProfit || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
                 return json.data || [];
             }
         },
         columns: [
             { data: null, className: 'ps-4', render: function (data, type, row, meta) { return meta.row + meta.settings._iDisplayStart + 1; } },
-            { data: 'staff_name', defaultContent: '--' },
-            { data: 'policy_number' },
+            { 
+                data: 'staff_name', 
+                render: function (data) {
+                    return `<strong class="text-dark">${data || '--'}</strong>`;
+                }
+            },
+            { 
+                data: 'policy_number',
+                render: function (data) {
+                    return `<span class="badge bg-light text-dark border">${data}</span>`;
+                }
+            },
             { data: 'policy_type' },
-            { data: 'sum_assured' },
-            { data: 'premium' },
+            { 
+                data: 'sum_assured',
+                render: function (data) {
+                    return data && data !== '--' ? '₹' + Number(data).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '--';
+                }
+            },
+            { 
+                data: 'premium',
+                render: function (data) {
+                    return data && data !== '--' ? '<strong class="text-dark">₹' + Number(data).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</strong>' : '--';
+                }
+            },
+            { 
+                data: 'admin_commission',
+                render: function (data) {
+                    return '<strong class="text-primary">₹' + Number(data || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</strong>';
+                }
+            },
+            { 
+                data: 'staff_commission',
+                render: function (data) {
+                    return '<strong class="text-dark">₹' + Number(data || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</strong>';
+                }
+            },
+            { 
+                data: 'net_profit',
+                render: function (data) {
+                    return '<strong class="text-success">₹' + Number(data || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</strong>';
+                }
+            },
             { data: 'start_date' },
             { data: 'end_date' },
             {
