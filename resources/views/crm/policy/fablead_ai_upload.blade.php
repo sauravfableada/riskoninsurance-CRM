@@ -341,7 +341,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                         <div class="ai-form-header-title"><i class="fas fa-clipboard-list me-2" style="color:var(--ai-brown)"></i> AI Extracted Data</div>
                     </div>
 
-                    <form id="policy_ai_form">
+                    <form id="policy_ai_form" action="javascript:void(0);" method="POST" onsubmit="return false;">
                         @csrf
                         <input type="hidden" name="base_url" id="base_url" value="<?= base_url(); ?>">
                         <input type="hidden" name="upload_id" id="upload_id_input">
@@ -1055,7 +1055,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 <h5 class="modal-title text-white fw-bold" id="modalFamilyGroupLabel">Add Family Group</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="formFamilyGroup">
+            <form id="formFamilyGroup" action="javascript:void(0);" method="POST" onsubmit="return false;">
                 @csrf
                 <div class="modal-body">
                     <div class="row">
@@ -1089,7 +1089,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-dark-blue">Submit</button>
+                    <button type="button" class="btn btn-dark-blue btn-submit-modal" onclick="submitModalAjax('#formFamilyGroup', '#modalFamilyGroup', 'family-groups/store')">Submit</button>
                 </div>
             </form>
         </div>
@@ -1104,7 +1104,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 <h5 class="modal-title text-white fw-bold" id="modalPolicyHolderLabel">Add Policy Holder</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="formPolicyHolder">
+            <form id="formPolicyHolder" action="javascript:void(0);" method="POST" onsubmit="return false;">
                 @csrf
                 <div class="modal-body">
                     <div class="row">
@@ -1142,7 +1142,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-dark-blue">Submit</button>
+                    <button type="button" class="btn btn-dark-blue btn-submit-modal" onclick="submitModalAjax('#formPolicyHolder', '#modalPolicyHolder', 'save-customer')">Submit</button>
                 </div>
             </form>
         </div>
@@ -1157,7 +1157,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 <h5 class="modal-title text-white fw-bold" id="modalPolicyTypeLabel">Add Policy Type</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="formPolicyType">
+            <form id="formPolicyType" action="javascript:void(0);" method="POST" onsubmit="return false;">
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">
@@ -1171,7 +1171,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-dark-blue">Submit</button>
+                    <button type="button" class="btn btn-dark-blue btn-submit-modal" onclick="submitModalAjax('#formPolicyType', '#modalPolicyType', 'policy-type/store')">Submit</button>
                 </div>
             </form>
         </div>
@@ -1186,7 +1186,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 <h5 class="modal-title text-white fw-bold" id="modalPolicySubTypeLabel">Add Policy Sub Type</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="formPolicySubType">
+            <form id="formPolicySubType" action="javascript:void(0);" method="POST" onsubmit="return false;">
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">
@@ -1206,7 +1206,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-dark-blue">Submit</button>
+                    <button type="button" class="btn btn-dark-blue btn-submit-modal" onclick="submitModalAjax('#formPolicySubType', '#modalPolicySubType', 'policy-sub-type/store')">Submit</button>
                 </div>
             </form>
         </div>
@@ -1221,7 +1221,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 <h5 class="modal-title text-white fw-bold" id="modalSegmentLabel">Add Segment</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="formSegment">
+            <form id="formSegment" action="javascript:void(0);" method="POST" onsubmit="return false;">
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">
@@ -1241,7 +1241,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-dark-blue">Submit</button>
+                    <button type="button" class="btn btn-dark-blue btn-submit-modal" onclick="submitModalAjax('#formSegment', '#modalSegment', 'store-segment')">Submit</button>
                 </div>
             </form>
         </div>
@@ -1256,7 +1256,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 <h5 class="modal-title text-white fw-bold" id="modalInsuranceCompanyLabel">Add Insurance Company</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="formInsuranceCompany">
+            <form id="formInsuranceCompany" action="javascript:void(0);" method="POST" onsubmit="return false;">
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">
@@ -1270,7 +1270,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-dark-blue">Submit</button>
+                    <button type="button" class="btn btn-dark-blue btn-submit-modal" onclick="submitModalAjax('#formInsuranceCompany', '#modalInsuranceCompany', 'store-company')">Submit</button>
                 </div>
             </form>
         </div>
@@ -1285,7 +1285,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 <h5 class="modal-title text-white fw-bold" id="modalBranchLabel">Add Branch</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="formBranch">
+            <form id="formBranch" action="javascript:void(0);" method="POST" onsubmit="return false;">
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">
@@ -1301,7 +1301,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-dark-blue">Submit</button>
+                    <button type="button" class="btn btn-dark-blue btn-submit-modal" onclick="submitModalAjax('#formBranch', '#modalBranch', 'branch/store')">Submit</button>
                 </div>
             </form>
         </div>
@@ -1316,7 +1316,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 <h5 class="modal-title text-white fw-bold" id="modalBrokerLabel">Add Broker</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="formBroker">
+            <form id="formBroker" action="javascript:void(0);" method="POST" onsubmit="return false;">
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">
@@ -1326,7 +1326,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-dark-blue">Submit</button>
+                    <button type="button" class="btn btn-dark-blue btn-submit-modal" onclick="submitModalAjax('#formBroker', '#modalBroker', 'api/masters/brokers')">Submit</button>
                 </div>
             </form>
         </div>
@@ -1341,7 +1341,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 <h5 class="modal-title text-white fw-bold" id="modalStaffLabel">Add Sub Agent / Staff</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="formStaff">
+            <form id="formStaff" action="javascript:void(0);" method="POST" onsubmit="return false;">
                 @csrf
                 <div class="modal-body">
                     <div class="mb-3">
@@ -1367,7 +1367,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-dark-blue">Submit</button>
+                    <button type="button" class="btn btn-dark-blue btn-submit-modal" onclick="submitModalAjax('#formStaff', '#modalStaff', 'api/users')">Submit</button>
                 </div>
             </form>
         </div>
@@ -1472,10 +1472,10 @@ $(document).ready(function() {
     $('#premium').on('input', recalcTotal);
 
     // ════════════════════════════════════════════════════════════════════════
-    // ADD MODALS LOGIC & HANDLERS
+    // ADD MODALS LOGIC & HANDLERS (AJAX NO-RELOAD)
     // ════════════════════════════════════════════════════════════════════════
 
-    function appendAndSelect(selectId, id, label, extraAttrs) {
+    window.appendAndSelect = function(selectId, id, label, extraAttrs) {
         var $sel = $(selectId);
         $sel.find('option[value="' + id + '"]').remove();
         var $opt = $('<option>', { value: id, text: label });
@@ -1489,9 +1489,9 @@ $(document).ready(function() {
         if ($sel.data('select2')) {
             $sel.trigger('change.select2');
         }
-    }
+    };
 
-    function populateSelect(selectId, url, valueFn, labelFn, placeholder, selectedVal) {
+    window.populateSelect = function(selectId, url, valueFn, labelFn, placeholder, selectedVal) {
         var $sel = $(selectId);
         $sel.html('<option value="">Loading...</option>');
         $.getJSON(url, function (data) {
@@ -1506,38 +1506,107 @@ $(document).ready(function() {
             $sel.html('<option value="">' + (placeholder || '-- Select --') + '</option>');
             if ($sel.data('select2')) { $sel.trigger('change.select2'); }
         });
-    }
+    };
 
-    function handleModalSubmit(formId, modalId, url, onSuccess) {
-        $(formId).on('submit', function (e) {
-            e.preventDefault();
-            var $btn = $(formId + ' [type=submit]').prop('disabled', true).text('Saving...');
-            $.ajax({
-                url: BASE_URL + url.replace(/^\/+/, ''),
-                type: 'POST',
-                data: $(this).serialize(),
-                headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
-                dataType: 'json',
-                success: function (res) {
-                    $btn.prop('disabled', false).text('Submit');
-                    var ok = res.status === 'success' || res.status === true || res.success === true;
-                    if (ok) {
-                        toastr.success(res.message || 'Saved successfully.');
-                        onSuccess(res);
-                        $(modalId).modal('hide');
-                    } else {
-                        toastr.error(res.message || 'Failed. Please try again.');
+    window.submitModalAjax = function (formId, modalId, url) {
+        var $form = $(formId);
+        var formEl = document.querySelector(formId);
+        if (!formEl) return false;
+
+        if (formEl.checkValidity && !formEl.checkValidity()) {
+            formEl.reportValidity();
+            return false;
+        }
+
+        var $modal = $(modalId);
+        var $btn = $modal.find('.btn-submit-modal');
+        var origHtml = $btn.html();
+        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
+
+        var endpoint = (typeof BASE_URL !== 'undefined' ? BASE_URL : '/').replace(/\/+$/, '') + '/' + url.replace(/^\/+/, '');
+        var token = (typeof CSRF_TOKEN !== 'undefined' && CSRF_TOKEN) ? CSRF_TOKEN : $('meta[name="csrf-token"]').attr('content');
+
+        $.ajax({
+            url: endpoint,
+            type: 'POST',
+            data: $form.serialize(),
+            headers: { 'X-CSRF-TOKEN': token },
+            dataType: 'json',
+            success: function (res) {
+                $btn.prop('disabled', false).html(origHtml);
+                var ok = res.status === 'success' || res.status === true || res.success === true || (res.id && !res.error);
+                if (ok) {
+                    toastr.success(res.message || 'Saved successfully.');
+
+                    if (modalId === '#modalFamilyGroup') {
+                        appendAndSelect('#family_group_id', res.id, res.group_name || $form.find('[name="group_name"]').val(), { 'holder-id': res.holder_id || '' });
+                    } else if (modalId === '#modalPolicyHolder') {
+                        var label = res.name || $form.find('[name="name"]').val();
+                        appendAndSelect('#user_id', res.id, label);
+                        if (res.email && !$('#customer_email').val()) { $('#customer_email').val(res.email); }
+                        if (res.phone && !$('#customer_phone').val()) { $('#customer_phone').val(res.phone); }
+                        if (res.address && !$('#customer_address').val()) { $('#customer_address').val(res.address); }
+                    } else if (modalId === '#modalPolicyType') {
+                        var label = res.name || $form.find('[name="policy_type_name"]').val();
+                        appendAndSelect('#policy_type_id', res.id, label);
+                        populateSelect('#pst_type_id', BASE_URL + 'all-policy-type-json', function (r) { return r.id; }, function (r) { return r.name; }, '-- Select Policy Type --');
+                        populateSelect('#seg_type_id', BASE_URL + 'all-policy-type-json', function (r) { return r.id; }, function (r) { return r.name; }, '-- Select Policy Type --');
+                    } else if (modalId === '#modalPolicySubType') {
+                        var label = res.name || $form.find('[name="name"]').val();
+                        var selectedType = $('#policy_type_id').val();
+                        if (!selectedType || selectedType == res.type_id || selectedType == res.insurance_policy_types_id) {
+                            appendAndSelect('#sub_type_id', res.id, label);
+                        } else {
+                            toastr.info('Sub type saved. Select the matching policy type to see it in the list.');
+                        }
+                    } else if (modalId === '#modalSegment') {
+                        var label = res.name || $form.find('[name="name"]').val();
+                        var selectedType = $('#policy_type_id').val();
+                        if (!selectedType || selectedType == res.insurance_type_id) {
+                            appendAndSelect('#segment_id', res.id, label);
+                        } else {
+                            toastr.info('Segment saved. Select the matching policy type to see it in the list.');
+                        }
+                    } else if (modalId === '#modalInsuranceCompany') {
+                        var label = res.name || $form.find('[name="name"]').val();
+                        appendAndSelect('#company_id', res.id, label);
+                        populateSelect('#branch_company_id', BASE_URL + 'get-companies-json', function (r) { return r.id; }, function (r) { return r.name; }, '-- Select Company --');
+                    } else if (modalId === '#modalBranch') {
+                        var label = res.name || $form.find('[name="branch_name"]').val();
+                        appendAndSelect('#branch_id', res.id, label);
+                    } else if (modalId === '#modalBroker') {
+                        var broker = res.data || res;
+                        var label = broker.broker_name || broker.name || $form.find('[name="broker_name"]').val();
+                        appendAndSelect('#broker_id', broker.id, label);
+                    } else if (modalId === '#modalStaff') {
+                        var user = res.data || res.user || res;
+                        var label = user.name || $form.find('[name="name"]').val();
+                        appendAndSelect('#staff_id', user.id, label);
                     }
-                },
-                error: function (xhr) {
-                    $btn.prop('disabled', false).text('Submit');
-                    var msg = 'Server error.';
-                    try { msg = JSON.parse(xhr.responseText).message || msg; } catch(e) {}
-                    toastr.error(msg);
+
+                    var modalEl = document.querySelector(modalId);
+                    if (modalEl) {
+                        var bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                        bsModal.hide();
+                    }
+                    formEl.reset();
+                } else {
+                    toastr.error(res.message || 'Failed. Please try again.');
                 }
-            });
+            },
+            error: function (xhr) {
+                $btn.prop('disabled', false).html(origHtml);
+                var msg = 'Failed to save.';
+                try {
+                    var parsed = JSON.parse(xhr.responseText);
+                    msg = parsed.message || (parsed.errors ? Object.values(parsed.errors).flat().join('<br>') : msg);
+                } catch (e) {}
+                toastr.error(msg);
+            }
         });
-    }
+
+        return false;
+    };
 
     // Modal Preloaders
     $('#modalFamilyGroup').on('show.bs.modal', function () {
@@ -1584,87 +1653,27 @@ $(document).ready(function() {
             function (r) { return r.id; }, function (r) { return r.name; }, '-- Select Company --', currentCId);
     });
 
-    // 1. Family Group
-    handleModalSubmit('#formFamilyGroup', '#modalFamilyGroup', 'family-groups/store', function (res) {
-        appendAndSelect('#family_group_id', res.id, res.group_name, { 'holder-id': res.holder_id || '' });
-        $('#formFamilyGroup')[0].reset();
+    // Universal form submit blocker (Prevents any form from causing page reloads)
+    $(document).on('submit', 'form', function (e) {
+        e.preventDefault();
+        return false;
     });
 
-    // 2. Policy Holder (Customer)
-    handleModalSubmit('#formPolicyHolder', '#modalPolicyHolder', 'save-customer', function (res) {
-        var label = res.name || $('[name="name"]', '#formPolicyHolder').val();
-        appendAndSelect('#user_id', res.id, label);
-        if (res.email && !$('#customer_email').val()) { $('#customer_email').val(res.email); }
-        if (res.phone && !$('#customer_phone').val()) { $('#customer_phone').val(res.phone); }
-        if (res.address && !$('#customer_address').val()) { $('#customer_address').val(res.address); }
-        $('#formPolicyHolder')[0].reset();
-    });
-
-    // 3. Policy Type
-    handleModalSubmit('#formPolicyType', '#modalPolicyType', 'policy-type/store', function (res) {
-        var label = res.name || $('[name="policy_type_name"]', '#formPolicyType').val();
-        appendAndSelect('#policy_type_id', res.id, label);
-        populateSelect('#pst_type_id', BASE_URL + 'all-policy-type-json',
-            function (r) { return r.id; }, function (r) { return r.name; }, '-- Select Policy Type --');
-        populateSelect('#seg_type_id', BASE_URL + 'all-policy-type-json',
-            function (r) { return r.id; }, function (r) { return r.name; }, '-- Select Policy Type --');
-        $('#formPolicyType')[0].reset();
-    });
-
-    // 4. Policy Sub Type
-    handleModalSubmit('#formPolicySubType', '#modalPolicySubType', 'policy-sub-type/store', function (res) {
-        var label = res.name || $('[name="name"]', '#formPolicySubType').val();
-        var selectedType = $('#policy_type_id').val();
-        if (!selectedType || selectedType == res.type_id || selectedType == res.insurance_policy_types_id) {
-            appendAndSelect('#sub_type_id', res.id, label);
-        } else {
-            toastr.info('Sub type saved. Select the matching policy type to see it in the list.');
+    // Enter key handling: In modals, trigger the modal submit button; in main form, prevent reload
+    $(document).on('keydown', '.modal form input', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            var $btn = $(this).closest('.modal').find('.btn-submit-modal');
+            if ($btn.length) { $btn.click(); }
+            return false;
         }
-        $('#formPolicySubType')[0].reset();
     });
 
-    // 5. Segment
-    handleModalSubmit('#formSegment', '#modalSegment', 'store-segment', function (res) {
-        var label = res.name || $('[name="name"]', '#formSegment').val();
-        var selectedType = $('#policy_type_id').val();
-        if (!selectedType || selectedType == res.insurance_type_id) {
-            appendAndSelect('#segment_id', res.id, label);
-        } else {
-            toastr.info('Segment saved. Select the matching policy type to see it in the list.');
+    $(document).on('keydown', '#policy_ai_form input', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            return false;
         }
-        $('#formSegment')[0].reset();
-    });
-
-    // 6. Insurance Company
-    handleModalSubmit('#formInsuranceCompany', '#modalInsuranceCompany', 'store-company', function (res) {
-        var label = res.name || $('[name="name"]', '#formInsuranceCompany').val();
-        appendAndSelect('#company_id', res.id, label);
-        populateSelect('#branch_company_id', BASE_URL + 'get-companies-json',
-            function (r) { return r.id; }, function (r) { return r.name; }, '-- Select Company --');
-        $('#formInsuranceCompany')[0].reset();
-    });
-
-    // 7. Branch
-    handleModalSubmit('#formBranch', '#modalBranch', 'branch/store', function (res) {
-        var label = res.name || $('[name="branch_name"]', '#formBranch').val();
-        appendAndSelect('#branch_id', res.id, label);
-        $('#formBranch')[0].reset();
-    });
-
-    // 8. Broker
-    handleModalSubmit('#formBroker', '#modalBroker', 'api/masters/brokers', function (res) {
-        var broker = res.data || res;
-        var label = broker.broker_name || broker.name || $('[name="broker_name"]', '#formBroker').val();
-        appendAndSelect('#broker_id', broker.id, label);
-        $('#formBroker')[0].reset();
-    });
-
-    // 9. Staff / Sub Agent
-    handleModalSubmit('#formStaff', '#modalStaff', 'api/users', function (res) {
-        var user = res.data || res.user || res;
-        var label = user.name || $('[name="name"]', '#formStaff').val();
-        appendAndSelect('#staff_id', user.id, label);
-        $('#formStaff')[0].reset();
     });
 });
 
