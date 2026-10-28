@@ -116,7 +116,14 @@
                                             <i class="bi bi-file-earmark-text fs-5"></i>
                                         @endif
                                     </div>
-                                    <div class="fw-semibold text-dark">{{ $document->title }}</div>
+                                    <div class="fw-semibold text-dark">
+                                        @if($document->is_kyc)
+                                            <span class="badge bg-warning text-dark me-1" style="font-size:10px;">KYC</span>
+                                        @elseif(str_contains(strtolower($document->title), 'policy') || ($document->documentable_type && str_contains($document->documentable_type, 'Policy')))
+                                            <span class="badge bg-info text-white me-1" style="font-size:10px;">POLICY</span>
+                                        @endif
+                                        {{ $document->title }}
+                                    </div>
                                 </div>
                             </td>
                             <td>
@@ -128,12 +135,12 @@
                             <td>
                                 <span class="text-muted">{{ $document->created_at ? $document->created_at->format('M d, Y') : '--' }}</span>
                             </td>
-                            <td class="pe-4 text-end">
+                            <td class="pe-4 text-end text-nowrap">
+                                <a href="{{ route('documents.view', $document->id) }}" target="_blank" class="btn btn-sm btn-light rounded-circle me-1" title="View Document">
+                                    <i class="bi bi-eye text-primary"></i>
+                                </a>
                                 <a href="{{ route('documents.download', $document->id) }}" class="btn btn-sm btn-light rounded-circle me-1" title="Download">
                                     <i class="bi bi-download text-success"></i>
-                                </a>
-                                <a href="{{ route('documents.edit', $document->id) }}" class="btn btn-sm btn-light rounded-circle me-1" title="Edit">
-                                    <i class="bi bi-pencil-square text-primary"></i>
                                 </a>
                                 <button type="button" class="btn btn-sm btn-light rounded-circle ajax-document-delete" data-id="{{ $document->id }}" title="Delete">
                                     <i class="bi bi-trash text-danger"></i>

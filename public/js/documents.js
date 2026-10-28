@@ -64,30 +64,43 @@
                 else if (['png', 'jpg', 'jpeg', 'gif', 'svg'].includes(fileType)) { iconClass = 'bi-file-earmark-image'; iconColor = 'text-success'; }
                 else if (['doc', 'docx'].includes(fileType)) { iconClass = 'bi-file-earmark-word'; iconColor = 'text-primary'; }
 
+                const isKyc = !!item.is_kyc;
+                const isPolicy = !!(item.documentable_type && item.documentable_type.includes('Policy'));
+                const kycBadge = isKyc ? `<span class="badge bg-warning text-dark me-1" style="font-size: 10px;">KYC</span>` : '';
+                const policyBadge = isPolicy ? `<span class="badge bg-info text-dark me-1" style="font-size: 10px;">POLICY</span>` : '';
+                const customerName = item.customer ? item.customer.name : '--';
+                const customerSub = item.customer ? (item.customer.phone || item.customer.email || '') : '';
+
                 return `
                     <tr>
-                        <td class="ps-4" data-label="Sr.No">${item.row_number}</td>
+                        <td class="ps-4" data-label="Sr.No">${item.row_number || ''}</td>
+                        <td data-label="Customer">
+                            <div class="fw-semibold text-dark">${customerName}</div>
+                            ${customerSub ? `<div class="small text-muted">${customerSub}</div>` : ''}
+                        </td>
                         <td data-label="Title">
                             <div class="d-flex align-items-center">
                                 <div class="bg-light rounded p-2 me-3 d-flex align-items-center justify-content-center ${iconColor}" style="width: 36px; height: 36px;">
                                     <i class="bi ${iconClass} fs-5"></i>
                                 </div>
-                                <div class="fw-semibold text-dark">${item.title}</div>
+                                <div>
+                                    <div class="fw-semibold text-dark">${kycBadge}${policyBadge}${item.title}</div>
+                                </div>
                             </div>
                         </td>
                         <td class="d-none d-md-table-cell" data-label="Type">
-                            <span class="badge bg-secondary rounded-pill px-3">${fileType.toUpperCase()}</span>
+                            <span class="badge bg-secondary rounded-pill px-3">${fileType.toUpperCase() || 'FILE'}</span>
                         </td>
                         <td class="d-none d-md-table-cell" data-label="Uploaded By">
-                            <span class="text-muted">${item.user?.name || 'Unknown'}</span>
+                            <span class="text-muted">${item.user?.name || 'System'}</span>
                         </td>
                         <td class="d-none d-md-table-cell" data-label="Date">
                             <span class="text-muted">${date}</span>
                         </td>
                         <td class="text-end pe-4 d-none d-md-table-cell" data-label="Actions">
                             <div class="d-inline-flex align-items-center gap-2 justify-content-end">
-                                <a href="/documents/${item.id}/download" class="btn crm-action-btn btn-sm" title="Download"><i class="bi bi-download"></i></a>
-                                <a href="/documents/${item.id}/edit" class="btn crm-action-btn btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
+                                <a href="/documents/${item.id}/view" target="_blank" class="btn crm-action-btn btn-sm" title="View Document"><i class="bi bi-eye text-primary"></i></a>
+                                <a href="/documents/${item.id}/download" class="btn crm-action-btn btn-sm" title="Download"><i class="bi bi-download text-success"></i></a>
                                 <button type="button" class="btn crm-action-btn btn-sm text-danger ajax-document-delete" data-id="${item.id}" title="Delete"><i class="bi bi-trash text-danger"></i></button>
                             </div>
                         </td>

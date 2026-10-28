@@ -40,6 +40,11 @@ class DocumentController extends ApiBaseController
             }
         }
 
+        // Auto-sync Policy PDFs & KYC documents so they are available in repository
+        try {
+            (new \App\Http\Controllers\DocumentController())->syncCustomerPolicyDocuments();
+        } catch (\Throwable $e) {}
+
         $with = ['user'];
         if (\Illuminate\Support\Facades\Schema::hasColumn('documents', 'customer_id')) {
             $with[] = 'customer';
@@ -65,9 +70,18 @@ class DocumentController extends ApiBaseController
         }
         
         // Apply ownership filter for non-admin users
-        $this->scopeOwnedRecords($query);
+        if (!$user->isAdmin()) {
+            $this->scopeOwnedRecords($query);
+        }
         
-        $documents = $query->latest()->paginate(10);
+        $documents = $query->latest()->paginate(15);
+
+        // Add row_number for frontend table display
+        $startNumber = ($documents->currentPage() - 1) * $documents->perPage();
+        $documents->getCollection()->transform(function ($item, $index) use ($startNumber) {
+            $item->row_number = $startNumber + $index + 1;
+            return $item;
+        });
 
         return response()->json([
             'success' => true,

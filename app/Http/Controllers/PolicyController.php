@@ -1077,7 +1077,7 @@ class PolicyController extends Controller
         $fileName = basename($storedPath);
         $policy->update(['policy_pdf' => $fileName]);
 
-        return PolicyPdfHistory::create([
+        $history = PolicyPdfHistory::create([
             'policy_id' => $policy->id,
             'file_name' => $fileName,
             'original_file_name' => $file->getClientOriginalName(),
@@ -1087,6 +1087,36 @@ class PolicyController extends Controller
             'document_date' => $documentDate,
             'uploaded_by' => Auth::id(),
         ]);
+
+        // Sync into Customer Documents Repository
+        try {
+            $customerId = $policy->holder_id ?: null;
+            $ext = $file->getClientOriginalExtension() ?: 'pdf';
+            $policyNum = $policy->policy_number ?: ('#' . $policy->id);
+            $docTitle = ($label ?: 'Policy PDF') . ' - Policy ' . $policyNum . ' (' . $file->getClientOriginalName() . ')';
+            $docUserId = Auth::id() ?: ($policy->created_by ?? null) ?: \App\Models\User::value('id') ?: 1;
+
+            \App\Models\Document::create([
+                'customer_id'       => $customerId,
+                'title'             => $docTitle,
+                'file_path'         => 'policies/' . $fileName,
+                'file_type'         => strtolower($ext),
+                'is_kyc'            => false,
+                'meta'              => json_encode([
+                    'source' => 'policy_pdf_history',
+                    'history_id' => $history->id,
+                    'policy_id' => $policy->id,
+                    'policy_number' => $policyNum,
+                ]),
+                'documentable_id'   => $policy->id,
+                'documentable_type' => Policy::class,
+                'user_id'           => $docUserId,
+            ]);
+        } catch (\Throwable $e) {
+            \Log::warning('Sync storePolicyPdf to Document failed: ' . $e->getMessage());
+        }
+
+        return $history;
     }
 
     public function viewPolicyHistoryDocument(PolicyPdfHistory $document)
@@ -1869,6 +1899,58 @@ class PolicyController extends Controller
         } else {
             KycDocumentsModel::create($updateData);
             $message = $singleMode ? 'Document submitted successfully' : 'KYC submitted successfully';
+        }
+
+        // Sync newly uploaded KYC files into Customer Documents repository
+        try {
+            $policy = Policy::find($policyId);
+            $customerId = $policy ? ($policy->holder_id ?: null) : null;
+            $policyNum = $policy ? ($policy->policy_number ?: ('#' . $policy->id)) : ('#' . $policyId);
+            $docUserId = Auth::id() ?: ($policy->created_by ?? null) ?: \App\Models\User::value('id') ?: 1;
+
+            $kycFieldLabels = [
+                'aadhaar_card'        => 'Aadhaar Card',
+                'pan_card'            => 'PAN Card',
+                'driving_licence'     => 'Driving Licence',
+                'addr_aadhaar'        => 'Address Proof (Aadhaar)',
+                'addr_driving_licence'=> 'Address Proof (DL)',
+                'photo'               => 'Passport Photo',
+                'signature'           => 'Signature',
+            ];
+
+            foreach (array_merge($multiFields, $singleFields) as $f) {
+                if (!isset($updateData[$f]) || empty($updateData[$f])) continue;
+                $val = $updateData[$f];
+                $fList = is_string($val) && str_starts_with(trim($val), '[') ? json_decode($val, true) : [$val];
+                if (!is_array($fList)) $fList = [$val];
+
+                foreach ($fList as $fileName) {
+                    if (empty($fileName) || !is_string($fileName)) continue;
+                    $cleanName = basename($fileName);
+                    $fPath = 'uploads/kyc/' . $cleanName;
+
+                    $exists = \App\Models\Document::where('file_path', $fPath)->exists();
+                    if (!$exists) {
+                        $fExt = pathinfo($cleanName, PATHINFO_EXTENSION) ?: 'jpg';
+                        $lbl = $kycFieldLabels[$f] ?? strtoupper(str_replace('_', ' ', $f));
+                        $title = 'KYC ' . $lbl . ' - Policy ' . $policyNum . ' (' . $cleanName . ')';
+
+                        \App\Models\Document::create([
+                            'customer_id'       => $customerId,
+                            'title'             => $title,
+                            'file_path'         => $fPath,
+                            'file_type'         => strtolower($fExt),
+                            'is_kyc'            => true,
+                            'meta'              => json_encode(['source' => 'kyc_document', 'field' => $f, 'policy_id' => $policyId, 'policy_number' => $policyNum]),
+                            'documentable_id'   => $policyId,
+                            'documentable_type' => Policy::class,
+                            'user_id'           => $docUserId,
+                        ]);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Sync KYC to Document failed: ' . $e->getMessage());
         }
 
         return response()->json([

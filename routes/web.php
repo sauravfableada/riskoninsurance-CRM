@@ -259,6 +259,7 @@ Route::middleware('auth.api')->group(function () {
     // Documents web routes
     Route::resource('documents', DocumentController::class)->only(['index', 'create', 'edit']);
     Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
+    Route::get('documents/{document}/view', [DocumentController::class, 'viewFile'])->name('documents.view');
 
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');

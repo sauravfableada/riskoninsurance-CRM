@@ -14,6 +14,8 @@ class Document extends Model
         'title',
         'file_path',
         'file_type',
+        'is_kyc',
+        'meta',
         'documentable_id',
         'documentable_type',
         'user_id',
