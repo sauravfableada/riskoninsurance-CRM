@@ -51,7 +51,58 @@ class CustomerController extends Controller
             'deals.assignedUser',
             'followUps.assignedUser',
             'followUps.creator',
+            'policies.company',
+            'policies.branch',
+            'policies.policyType',
+            'policies.policySubType',
+            'policies.segment',
+            'documents.user',
+            'invoices.currency',
+            'familyGroups.members',
         ]);
+
+        // Load Life Insurances linked by holder ID, email, or phone
+        $lifeInsurances = \App\Models\LifeInsurance::with(['insuranceCompany', 'branch', 'familyGroup'])
+            ->where(function ($query) use ($customer) {
+                $query->where('policy_holder_id', $customer->id);
+                if (!empty($customer->email)) {
+                    $query->orWhere('email_address', $customer->email);
+                }
+                if (!empty($customer->phone)) {
+                    $query->orWhere('mobile_number', $customer->phone);
+                }
+            })->latest('transaction_date')->get();
+        $customer->setRelation('lifeInsurances', $lifeInsurances);
+
+        // Load Investments linked by holder ID, holder name, email, or mobile
+        $investments = \App\Models\Investment::where(function ($query) use ($customer) {
+            $query->where('investment_holder_id', $customer->id);
+            if (!empty($customer->email)) {
+                $query->orWhere('email_address', $customer->email);
+            }
+            if (!empty($customer->phone)) {
+                $query->orWhere('mobile_number', $customer->phone);
+            }
+            if (!empty($customer->name)) {
+                $holderIds = \Illuminate\Support\Facades\DB::table('investment_holders')
+                    ->where('holder_name', 'like', '%' . $customer->name . '%')
+                    ->pluck('id');
+                if ($holderIds->isNotEmpty()) {
+                    $query->orWhereIn('investment_holder_id', $holderIds);
+                }
+            }
+        })->latest('transaction_date')->get();
+        $customer->setRelation('investments', $investments);
+
+        // Load Claims linked directly or via policy
+        $claims = \App\Models\ClaimTracker::with(['policy', 'insuredMember', 'familyGroup'])
+            ->where(function ($query) use ($customer) {
+                $query->where('proposer_id', $customer->id)
+                    ->orWhereHas('policy', function ($pq) use ($customer) {
+                        $pq->where('holder_id', $customer->id);
+                    });
+            })->latest()->get();
+        $customer->setRelation('claims', $claims);
 
         return view('masters.customers.show', compact('customer'));
     }

@@ -106,17 +106,37 @@ class Customer extends Authenticatable
 
     public function invoices()
     {
-        return $this->hasMany(Invoice::class);
+        return $this->hasMany(Invoice::class, 'customer_id')->latest();
     }
 
     public function policies()
     {
-        return $this->hasMany(Policy::class, 'holder_id');
+        return $this->hasMany(Policy::class, 'holder_id')->latest();
+    }
+
+    public function lifeInsurances()
+    {
+        return $this->hasMany(LifeInsurance::class, 'policy_holder_id')->latest('transaction_date');
+    }
+
+    public function investments()
+    {
+        return $this->hasMany(Investment::class, 'investment_holder_id')->latest('transaction_date');
+    }
+
+    public function claims()
+    {
+        return $this->hasMany(ClaimTracker::class, 'proposer_id')->latest();
+    }
+
+    public function familyGroups()
+    {
+        return $this->hasMany(FamilyGroup::class, 'holder_id');
     }
 
     public function documents()
     {
-        return $this->hasMany(Document::class, 'customer_id');
+        return $this->hasMany(Document::class, 'customer_id')->latest();
     }
 
     public function supportTickets()
