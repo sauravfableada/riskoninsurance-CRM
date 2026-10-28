@@ -62,13 +62,13 @@
             </a>
 
             <!-- Commission Button -->
-            <button type="button" class="btn btn-warning p-2 edit-policy-commission-btn" 
+            <!-- <button type="button" class="btn btn-warning p-2 edit-policy-commission-btn" 
                 data-policy-id="{{ $polId }}" 
                 data-policy-number="{{ $policy['policy_number'] ?? $polId }}" 
                 data-premium="{{ $policy['premium'] ?? 0 }}"
                 title="Manage Commission (Pay-In & Pay-Out)">
                 <i class="fa fa-percent"></i>
-            </button>
+            </button> -->
 
             <!-- Edit Button -->
             <a href="{{ base_url('edit-policy/' . $polId) }}" class="btn btn-light p-2" title="Edit Policy">
