@@ -172,7 +172,7 @@ class UserController extends ApiBaseController
         }
 
         $this->syncMatrixPermissions($user, $data['permissions'] ?? []);
-        app(\App\Services\UserLogService::class)->created($user, 'Created a Staff ' . $user->name);
+        app(\App\Services\UserLogService::class)->created($user, 'Created a Sub-Agent ' . $user->name);
 
         try {
             $phone = $user->whatsapp ?: $user->phone;
@@ -203,7 +203,7 @@ class UserController extends ApiBaseController
 
         return response()->json([
             'success' => true,
-            'message' => 'User created successfully.',
+            'message' => 'Sub Agent created successfully.',
             'data' => $user->load(['roles', 'permissions']),
             'redirect' => route('users.index'),
         ], 201);
@@ -277,7 +277,7 @@ class UserController extends ApiBaseController
         }
 
         $this->syncMatrixPermissions($user, $data['permissions'] ?? []);
-        app(\App\Services\UserLogService::class)->updated($user, 'Updated a Staff ' . $user->name);
+        app(\App\Services\UserLogService::class)->updated($user, 'Updated a Sub-Agent ' . $user->name);
 
         try {
             $phone = $user->whatsapp ?: $user->phone;
@@ -308,7 +308,7 @@ class UserController extends ApiBaseController
 
         return response()->json([
             'success' => true,
-            'message' => 'User updated successfully.',
+            'message' => 'Sub Agent updated successfully.',
             'data' => $user->load(['roles', 'permissions']),
             'redirect' => route('users.index'),
         ]);
@@ -329,12 +329,12 @@ class UserController extends ApiBaseController
                 Storage::disk('public')->delete($user->avatar_path);
             }
 
-            app(\App\Services\UserLogService::class)->deleted($user, 'Deleted a Staff ' . $user->name);
+            app(\App\Services\UserLogService::class)->deleted($user, 'Deleted a Sub-Agent ' . $user->name);
             $user->delete();
 
             return response()->json([
                 'success' => true,
-                'message' => 'User deleted successfully.',
+                'message' => 'Sub Agent deleted successfully.',
             ]);
         } catch (QueryException $exception) {
             // Foreign-key protected records exist for this user in other modules.
@@ -344,18 +344,18 @@ class UserController extends ApiBaseController
             if ($isConstraintError) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Module in use. This staff is linked with existing records, so it cannot be deleted.',
+                    'message' => 'Module in use. This sub-agent is linked with existing records, so it cannot be deleted.',
                 ], 422);
             }
 
             return response()->json([
                 'success' => false,
-                'message' => 'Unable to delete staff right now. Please try again.',
+                'message' => 'Unable to delete sub-agent right now. Please try again.',
             ], 500);
         } catch (Throwable $exception) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unable to delete staff right now. Please try again.',
+                'message' => 'Unable to delete sub-agent right now. Please try again.',
             ], 500);
         }
     }
@@ -376,7 +376,7 @@ class UserController extends ApiBaseController
 
         $user->is_active = (bool) $data['is_active'];
         $user->save();
-        app(\App\Services\UserLogService::class)->updated($user, 'Updated a Staff ' . $user->name);
+        app(\App\Services\UserLogService::class)->updated($user, 'Updated a Sub-Agent ' . $user->name);
 
         return response()->json([
             'success' => true,
@@ -399,7 +399,7 @@ class UserController extends ApiBaseController
         ]);
 
         $this->syncMatrixPermissions($user, $data['permissions'] ?? []);
-        app(\App\Services\UserLogService::class)->updated($user, 'Updated a Staff ' . $user->name);
+        app(\App\Services\UserLogService::class)->updated($user, 'Updated a Sub-Agent ' . $user->name);
 
         return response()->json([
             'success' => true,

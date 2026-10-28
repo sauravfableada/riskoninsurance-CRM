@@ -28,6 +28,7 @@
     .select2-container--default .select2-selection--single .select2-selection__rendered {
         line-height: 38px;
         padding-left: 12px;
+        color: #334155;
     }
     
     .select2-container--default .select2-selection--single .select2-selection__arrow {
@@ -36,12 +37,14 @@
     }
     
     .select2-dropdown {
-        border: 1px solid #d2d6da;
-        border-radius: 0.375rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 0.5rem;
+        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+        z-index: 1065 !important;
     }
     
     .select2-search--dropdown .select2-search__field {
-        border: 1px solid #d2d6da;
+        border: 1px solid #cbd5e1;
         border-radius: 0.375rem;
         padding: 8px;
     }
@@ -134,6 +137,35 @@
 
 <div class="card-body p-0">
     <div class="px-4 pt-3">
+        <div class="row g-3 mb-2">
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <p class="text-muted small mb-1">Total Target Amount</p>
+                        <h4 class="fw-bold mb-0" id="total_target_amount">0</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <p class="text-muted small mb-1">Total Achieved Amount</p>
+                        <h4 class="fw-bold mb-0" id="total_achieved_amount">0</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body">
+                        <p class="text-muted small mb-1">Total Difference Amount</p>
+                        <h4 class="fw-bold mb-0" id="total_difference_amount">0</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="px-4 pt-3">
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
             <h6 class="fw-bold mb-0">Target Entries</h6>
             <div class="input-group input-group-sm" style="max-width: 300px; width: 100%;">
@@ -144,7 +176,7 @@
         </div>
     </div>
 
-    <div class="px-4 pt-3">
+    <div class="px-4 pt-1">
         <div class="row g-3 mb-3">
             <div class="col-md-3">
                 <label for="from_month" class="form-label fw-semibold">From Month</label>
@@ -179,35 +211,6 @@
             </thead>
             <tbody></tbody>
         </table>
-    </div>
-
-    <div class="px-4 py-4">
-        <div class="row g-3">
-            <div class="col-md-4">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body">
-                        <p class="text-muted small mb-1">Total Target Amount</p>
-                        <h4 class="fw-bold mb-0" id="total_target_amount">0</h4>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body">
-                        <p class="text-muted small mb-1">Total Achieved Amount</p>
-                        <h4 class="fw-bold mb-0" id="total_achieved_amount">0</h4>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-body">
-                        <p class="text-muted small mb-1">Total Difference Amount</p>
-                        <h4 class="fw-bold mb-0" id="total_difference_amount">0</h4>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -257,22 +260,13 @@
                         <label for="department_id" class="form-label fw-semibold">Select Department <span class="text-danger">*</span></label>
                         <div class="d-flex gap-2 align-items-start"><div class="flex-grow-1 overflow-hidden"><select class="form-select select2-department" id="department_id" name="department_id" required>
                             <option value="">Search for target department</option>
-                            <option value="1">General Insurance Target</option>
-                            <option value="2">Investment Target</option>
-                            <option value="3">Life Insurance Target</option>
                         </select></div><button type="button" class="btn btn-dark-blue quick-add-department" data-select="department_id" title="Add department"><i class="fas fa-plus"></i></button></div>
                     </div>
                     
                     <div class="col-md-6">
                         <label for="factor_id" class="form-label fw-semibold">Select Factor <span class="text-danger">*</span></label>
-                        <div class="d-flex gap-2 align-items-start"><div class="flex-grow-1 overflow-hidden"><select class="form-select select2-factor" id="factor_id" name="factor_id" required>
-                            <option value="">Search for target factor</option>
-                            <option value="1" data-department="1">Gen. Ins. New Business</option>
-                            <option value="4" data-department="1">Gen. Ins. Ren. Business</option>
-                            <option value="5" data-department="2">MF-SIP New Business</option>
-                            <option value="6" data-department="2">MF-Lumpsum New Business</option>
-                            <option value="3" data-department="3">Life Ins. New Business</option>
-                            <option value="2" data-department="3">Life Ins. Ren. Business</option>
+                        <div class="d-flex gap-2 align-items-start"><div class="flex-grow-1 overflow-hidden"><select class="form-select select2-factor" id="factor_id" name="factor_id" required disabled>
+                            <option value="">Please select a department first</option>
                         </select></div><button type="button" class="btn btn-dark-blue quick-add-factor" data-department="department_id" data-select="factor_id" title="Add factor"><i class="fas fa-plus"></i></button></div>
                     </div>
                     
@@ -350,22 +344,13 @@
                         <label for="edit_department_id" class="form-label fw-semibold">Select Department <span class="text-danger">*</span></label>
                         <div class="d-flex gap-2 align-items-start"><div class="flex-grow-1 overflow-hidden"><select class="form-select select2-department" id="edit_department_id" name="department_id" required>
                             <option value="">Search for target department</option>
-                            <option value="1">General Insurance Target</option>
-                            <option value="2">Investment Target</option>
-                            <option value="3">Life Insurance Target</option>
                         </select></div><button type="button" class="btn btn-dark-blue quick-add-department" data-select="edit_department_id" title="Add department"><i class="fas fa-plus"></i></button></div>
                     </div>
                     
                     <div class="col-md-6">
                         <label for="edit_factor_id" class="form-label fw-semibold">Select Factor <span class="text-danger">*</span></label>
-                        <div class="d-flex gap-2 align-items-start"><div class="flex-grow-1 overflow-hidden"><select class="form-select select2-factor" id="edit_factor_id" name="factor_id" required>
-                            <option value="">Search for target factor</option>
-                            <option value="1" data-department="1">Gen. Ins. New Business</option>
-                            <option value="4" data-department="1">Gen. Ins. Ren. Business</option>
-                            <option value="5" data-department="2">MF-SIP New Business</option>
-                            <option value="6" data-department="2">MF-Lumpsum New Business</option>
-                            <option value="3" data-department="3">Life Ins. New Business</option>
-                            <option value="2" data-department="3">Life Ins. Ren. Business</option>
+                        <div class="d-flex gap-2 align-items-start"><div class="flex-grow-1 overflow-hidden"><select class="form-select select2-factor" id="edit_factor_id" name="factor_id" required disabled>
+                            <option value="">Please select a department first</option>
                         </select></div><button type="button" class="btn btn-dark-blue quick-add-factor" data-department="edit_department_id" data-select="edit_factor_id" title="Add factor"><i class="fas fa-plus"></i></button></div>
                     </div>
                     
@@ -1036,10 +1021,10 @@ $(document).ready(function() {
                 } else {
                     $department.val('');
                 }
-                $department.trigger('change');
+                $department.trigger('change.select2');
             },
             error: function() {
-                $department.trigger('change');
+                $department.trigger('change.select2');
             }
         });
     }
@@ -1048,12 +1033,16 @@ $(document).ready(function() {
         const $factor = $('#' + factorSelectId);
         const pendingSelectedFactor = selectedFactor !== null ? selectedFactor : ($factor.data('selectedFactor') || '');
         $factor.removeData('selectedFactor');
-        $factor.html('<option value="">Search for target factor</option>');
 
         if (!departmentId) {
-            $factor.trigger('change');
+            $factor.prop('disabled', true);
+            $factor.html('<option value="">Please select a department first</option>');
+            $factor.val('').trigger('change.select2');
             return;
         }
+
+        $factor.prop('disabled', false);
+        $factor.html('<option value="">Search for target factor</option>');
 
         $.ajax({
             url: baseUrl + 'targetandreview/factors',
@@ -1072,10 +1061,10 @@ $(document).ready(function() {
                 } else {
                     $factor.val('');
                 }
-                $factor.trigger('change');
+                $factor.trigger('change.select2');
             },
             error: function() {
-                $factor.trigger('change');
+                $factor.trigger('change.select2');
             }
         });
     }
@@ -1159,7 +1148,7 @@ $(document).ready(function() {
         });
     });
     
-    // Auto-generate transaction date and number when Add modal opens
+    // Auto-generate transaction date, number and default month when Add modal opens
     $('#addTargetModal').on('show.bs.modal', function() {
         // Set today's date
         const today = new Date();
@@ -1168,6 +1157,9 @@ $(document).ready(function() {
         const year = today.getFullYear();
         const dateStr = `${year}-${month}-${day}`;
         $('#transaction_date').val(dateStr);
+        
+        // Set current month (YYYY-MM) as default
+        $('#target_month').val(`${year}-${month}`);
         
         // Generate transaction number (format: DDMMYY + random 5 digits)
         const transNum = day + month + String(year).substring(2) + Math.floor(10000 + Math.random() * 90000);

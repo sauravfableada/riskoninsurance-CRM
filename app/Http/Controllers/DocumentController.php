@@ -2,19 +2,43 @@
 
 namespace App\Http\Controllers;
 
-
 use App\Models\Document;
+use App\Models\Customer;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class DocumentController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Display a listing of the resource grouped / filterable by customer.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $documents = Document::with('user')->latest()->paginate(10);
-        return view('crm.documents.index', compact('documents'));
+        $selectedCustomerId = $request->input('customer_id');
+        $search = $request->input('search');
+
+        $customers = Customer::orderBy('name')->get();
+
+        $query = Document::with(['user', 'customer']);
+
+        if ($selectedCustomerId) {
+            $query->where('customer_id', $selectedCustomerId);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhereHas('customer', function ($cq) use ($search) {
+                      $cq->where('name', 'like', "%{$search}%")
+                         ->orWhere('email', 'like', "%{$search}%")
+                         ->orWhere('phone', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $documents = $query->latest()->paginate(15)->withQueryString();
+
+        return view('crm.documents.index', compact('documents', 'customers', 'selectedCustomerId', 'search'));
     }
 
     /**
@@ -22,7 +46,8 @@ class DocumentController extends Controller
      */
     public function create()
     {
-        return view('crm.documents.create');
+        $customers = Customer::orderBy('name')->get();
+        return view('crm.documents.create', compact('customers'));
     }
 
     /**
@@ -38,7 +63,8 @@ class DocumentController extends Controller
      */
     public function edit(Document $document)
     {
-        return view('crm.documents.edit', compact('document'));
+        $customers = Customer::orderBy('name')->get();
+        return view('crm.documents.edit', compact('document', 'customers'));
     }
 
     /**

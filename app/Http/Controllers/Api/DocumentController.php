@@ -30,7 +30,23 @@ class DocumentController extends ApiBaseController
             ], 401);
         }
 
-        $query = Document::with('user');
+        $query = Document::with(['user', 'customer']);
+
+        if ($request->filled('customer_id')) {
+            $query->where('customer_id', $request->customer_id);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhereHas('customer', function ($cq) use ($search) {
+                      $cq->where('name', 'like', "%{$search}%")
+                         ->orWhere('email', 'like', "%{$search}%")
+                         ->orWhere('phone', 'like', "%{$search}%");
+                  });
+            });
+        }
         
         // Apply ownership filter for non-admin users
         $this->scopeOwnedRecords($query);
@@ -49,6 +65,7 @@ class DocumentController extends ApiBaseController
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:255',
             'file' => ['required', 'file', $this->fileRule()],
+            'customer_id' => 'nullable|integer|exists:customers,id',
             'documentable_id' => 'nullable|integer',
             'documentable_type' => 'nullable|string',
         ]);
@@ -65,17 +82,18 @@ class DocumentController extends ApiBaseController
 
         $document = Document::create([
             'title' => $request->title,
+            'customer_id' => $request->customer_id,
             'file_path' => $path,
             'file_type' => $file->getClientOriginalExtension(),
-            'documentable_id' => $request->documentable_id,
-            'documentable_type' => $request->documentable_type,
+            'documentable_id' => $request->documentable_id ?: $request->customer_id,
+            'documentable_type' => $request->documentable_type ?: ($request->customer_id ? Customer::class : null),
             'user_id' => Auth::id(),
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Document uploaded successfully.',
-            'data' => $document->fresh('user'),
+            'data' => $document->fresh(['user', 'customer']),
             'redirect' => route('documents.index'),
         ], 201);
     }
@@ -99,6 +117,7 @@ class DocumentController extends ApiBaseController
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:255',
             'file' => ['nullable', 'file', $this->fileRule()],
+            'customer_id' => 'nullable|integer|exists:customers,id',
             'documentable_id' => 'nullable|integer',
             'documentable_type' => 'nullable|string',
         ]);

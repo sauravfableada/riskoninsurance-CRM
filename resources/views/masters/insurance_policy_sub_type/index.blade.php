@@ -10,7 +10,7 @@
                 <p class="text-muted small mb-0">Create and manage insurance policy sub type records.</p>
             </div>
             <div class="d-flex flex-wrap align-items-center gap-2 ms-md-auto">
-                <a href="{{ route('masters.masters.index') }}" class="btn btn-sm btn-dark px-3">
+                <a href="{{ route('masters.masters.index') }}" class="btn btn-sm btn-dark-blue px-3 master-header-btn">
                     <i class="fa-solid fa-arrow-left me-1"></i> Back
                 </a>
                 <div class="d-flex flex-wrap gap-2" id="policySubTypeActions"></div>

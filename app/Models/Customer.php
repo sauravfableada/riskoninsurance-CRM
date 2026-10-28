@@ -114,6 +114,11 @@ class Customer extends Authenticatable
         return $this->hasMany(Policy::class, 'holder_id');
     }
 
+    public function documents()
+    {
+        return $this->hasMany(Document::class, 'customer_id');
+    }
+
     public function supportTickets()
     {
         return $this->hasMany(SupportTicket::class);

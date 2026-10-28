@@ -456,7 +456,7 @@
                     }),
                     success: function (res) {
                         if (res.success) {
-                            notify(res.message || "User deleted successfully.", "success");
+                            notify(res.message || "Sub Agent deleted successfully.", "success");
                             fetchUsers();
                         } else {
                             notify(res.message || "Unable to delete user.", "error");
@@ -753,7 +753,7 @@
                         Accept: "application/json",
                     }),
                     success: function (response) {
-                        notify(response.message || "User saved successfully.", "success");
+                        notify(response.message || "Sub Agent saved successfully.", "success");
                         setTimeout(function () {
                             window.location.href = response.redirect || "/users";
                         }, 300);

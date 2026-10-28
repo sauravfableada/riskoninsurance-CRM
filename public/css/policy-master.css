@@ -16,3 +16,13 @@
 .policy-master-table tbody tr:hover {
     background-color: rgba(59, 130, 246, 0.04);
 }
+
+.master-header-btn {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}

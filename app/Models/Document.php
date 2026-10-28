@@ -10,6 +10,7 @@ class Document extends Model
     use HasFactory;
 
     protected $fillable = [
+        'customer_id',
         'title',
         'file_path',
         'file_type',
@@ -21,5 +22,10 @@ class Document extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class, 'customer_id');
     }
 }

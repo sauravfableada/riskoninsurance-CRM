@@ -682,7 +682,7 @@ class PolicyController extends Controller
         $this->syncLegacySession();
         $policy = Policy::with([
             'holder', 'user', 'policyType', 'policySubType', 
-            'segment', 'company', 'branch', 'familyGroup', 'creator'
+            'segment', 'company', 'branch', 'familyGroup', 'creator', 'members'
         ])->findOrFail($id);
 
         // Vehicle Details
@@ -702,10 +702,17 @@ class PolicyController extends Controller
         $assignedStaff = User::find($policy->user_id);
         $policyDocuments = $this->policyDocumentHistory($policy);
 
+        // Fetch family members if this policy is tied to a family group
+        $familyMembers = collect();
+        if (!empty($policy->family_group_id)) {
+            $familyMembers = FamilyGroupMember::where('family_group_id', $policy->family_group_id)->get();
+        }
+
         return view('crm.policy.view', [
             'policy' => $policy,
             'assignedStaff' => $assignedStaff,
             'familyGroup' => $policy->familyGroup,
+            'familyMembers' => $familyMembers,
             'policyTypes' => $policy->policyType,
             'subTypes' => $policy->policySubType,
             'segments' => $policy->segment,

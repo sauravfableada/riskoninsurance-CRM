@@ -172,7 +172,7 @@
         if (actionsContainer && !document.getElementById('btnAddPolicyType')) {
             const addBtn = document.createElement('button');
             addBtn.id = 'btnAddPolicyType';
-            addBtn.className = 'btn btn-dark-blue';
+            addBtn.className = 'btn btn-dark-blue btn-sm px-3 master-header-btn';
             addBtn.innerHTML = '<i class="fa-solid fa-plus me-1"></i>Add Policy Type';
             addBtn.onclick = () => openModal();
             actionsContainer.appendChild(addBtn);

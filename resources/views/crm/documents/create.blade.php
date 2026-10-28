@@ -11,16 +11,29 @@
 @section('content')
 <div class="card border-0 shadow-sm mb-4 overflow-hidden">
     <div class="card-header bg-white border-bottom-0 py-4 px-4">
-        <h5 class="fw-bold mb-0">Upload New File</h5>
+        <h5 class="fw-bold mb-0">Upload New Customer Document</h5>
     </div>
     <div class="card-body px-4 pb-4">
         <form action="/api/documents" method="POST" enctype="multipart/form-data" class="ajax-document-form" id="documentForm">
             @csrf
 
             <div class="row g-4">
-                <div class="col-md-12">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Customer / Client <span class="text-danger">*</span></label>
+                    <select name="customer_id" id="customer_id" class="form-select select2-customer" required>
+                        <option value="">-- Select Customer --</option>
+                        @foreach($customers as $c)
+                            <option value="{{ $c->id }}" {{ (string)old('customer_id', request('customer_id')) === (string)$c->id ? 'selected' : '' }}>
+                                {{ $c->name }} ({{ $c->phone ?: $c->email ?: 'ID: ' . $c->id }})
+                            </option>
+                        @endforeach
+                    </select>
+                    <div class="invalid-feedback d-block" id="customer_id-error">@error('customer_id'){{ $message }}@enderror</div>
+                </div>
+
+                <div class="col-md-6">
                     <label class="form-label fw-semibold">Document Title <span class="text-danger">*</span></label>
-                    <input type="text" name="title" id="title" class="form-control @error('title') is-invalid @enderror" value="{{ old('title') }}" required placeholder="E.g., Corporate Brochure Q3">
+                    <input type="text" name="title" id="title" class="form-control @error('title') is-invalid @enderror" value="{{ old('title') }}" required placeholder="E.g., PAN Card, Aadhar, Policy Schedule">
                     <div class="invalid-feedback d-block" id="title-error">@error('title'){{ $message }}@enderror</div>
                 </div>
                 

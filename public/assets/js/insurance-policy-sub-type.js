@@ -198,7 +198,7 @@
         if (actionsContainer && !document.getElementById('btnAddPolicySubType')) {
             const addBtn = document.createElement('button');
             addBtn.id = 'btnAddPolicySubType';
-            addBtn.className = 'btn btn-dark-blue';
+            addBtn.className = 'btn btn-dark-blue btn-sm px-3 master-header-btn';
             addBtn.innerHTML = '<i class="fa-solid fa-plus me-1"></i>Add Policy Sub Type';
             addBtn.onclick = () => openModalSubType();
             actionsContainer.appendChild(addBtn);

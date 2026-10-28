@@ -21,7 +21,20 @@
             @method('PUT')
 
             <div class="row g-4">
-                <div class="col-md-12">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Customer / Client</label>
+                    <select name="customer_id" id="customer_id" class="form-select select2-customer">
+                        <option value="">-- Unassigned / General --</option>
+                        @foreach($customers as $c)
+                            <option value="{{ $c->id }}" {{ (string)old('customer_id', $document->customer_id) === (string)$c->id ? 'selected' : '' }}>
+                                {{ $c->name }} ({{ $c->phone ?: $c->email ?: 'ID: ' . $c->id }})
+                            </option>
+                        @endforeach
+                    </select>
+                    <div class="invalid-feedback d-block" id="customer_id-error">@error('customer_id'){{ $message }}@enderror</div>
+                </div>
+
+                <div class="col-md-6">
                     <label class="form-label fw-semibold">Document Title <span class="text-danger">*</span></label>
                     <input type="text" name="title" id="title" class="form-control @error('title') is-invalid @enderror" value="{{ old('title', $document->title) }}" required>
                     <div class="invalid-feedback d-block" id="title-error">@error('title'){{ $message }}@enderror</div>

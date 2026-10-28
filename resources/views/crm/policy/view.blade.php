@@ -303,9 +303,93 @@
                             </div>
                         </div>
 
+                        {{-- Insured Members / Family Members Details --}}
+                        @php
+                            $allMembers = collect();
+                            // Collect direct policy members
+                            if (!empty($policy->members) && $policy->members->isNotEmpty()) {
+                                foreach ($policy->members as $m) {
+                                    $allMembers->push([
+                                        'name' => $m->name,
+                                        'relation' => $m->relation ?: '--',
+                                        'dob' => $m->dob ? $m->dob->format('j M Y') : '--',
+                                        'gender' => $m->gender ?: '--',
+                                        'source' => 'Insured Member',
+                                    ]);
+                                }
+                            }
+                            // Collect family group members
+                            if (!empty($familyMembers) && $familyMembers->isNotEmpty()) {
+                                foreach ($familyMembers as $fm) {
+                                    $allMembers->push([
+                                        'name' => $fm->member_name,
+                                        'relation' => $fm->relation ?: '--',
+                                        'dob' => $fm->dob ? date('j M Y', strtotime($fm->dob)) : '--',
+                                        'gender' => '--',
+                                        'contact' => $fm->contact ?: '--',
+                                        'source' => 'Family Group Member',
+                                    ]);
+                                }
+                            }
+                        @endphp
+
                         <div class="bg-light p-3 rounded mb-3 shadow-sm">
                             <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
-                                <h5 class="text-dark mb-0">Policy PDF History</h5>
+                                <h5 class="text-dark mb-0">
+                                    <i class="fa-solid fa-users me-2 text-primary"></i>Insured / Family Member Details
+                                </h5>
+                                <span class="badge bg-secondary">{{ $allMembers->count() }} {{ Str::plural('Member', $allMembers->count()) }}</span>
+                            </div>
+                            @if($allMembers->isNotEmpty())
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm bg-white mb-0 align-middle">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="ps-3">#</th>
+                                                <th>Member Name</th>
+                                                <th>Relationship</th>
+                                                <th>Date of Birth</th>
+                                                <th>Gender / Contact</th>
+                                                <th class="pe-3">Category</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($allMembers as $idx => $member)
+                                                <tr>
+                                                    <td class="ps-3">{{ $idx + 1 }}</td>
+                                                    <td><strong>{{ $member['name'] }}</strong></td>
+                                                    <td><span class="badge bg-light text-dark border">{{ $member['relation'] }}</span></td>
+                                                    <td>{{ $member['dob'] }}</td>
+                                                    <td>
+                                                        @if(!empty($member['contact']) && $member['contact'] !== '--')
+                                                            <i class="fa-solid fa-phone small text-muted me-1"></i>{{ $member['contact'] }}
+                                                        @else
+                                                            {{ $member['gender'] }}
+                                                        @endif
+                                                    </td>
+                                                    <td class="pe-3"><span class="badge bg-info text-white">{{ $member['source'] }}</span></td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @else
+                                <p class="text-muted mb-0 small"><i class="fa-solid fa-info-circle me-1"></i>No additional member details linked with this policy.</p>
+                            @endif
+                        </div>
+
+                        {{-- Policy PDF Sections (Categorized into Original & Renewal) --}}
+                        @php
+                            $pdfCollection = $policyDocuments ?? collect();
+                            $originalPdfs = $pdfCollection->filter(fn($doc) => $doc->document_type !== 'renewal');
+                            $renewalPdfs = $pdfCollection->filter(fn($doc) => $doc->document_type === 'renewal');
+                        @endphp
+
+                        <div class="bg-light p-3 rounded mb-3 shadow-sm">
+                            <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+                                <h5 class="text-dark mb-0">
+                                    <i class="fa-solid fa-file-pdf me-2 text-danger"></i>Policy PDF Documents
+                                </h5>
                                 @if(auth()->check() && (auth()->user()->isAdmin() || auth()->user()->hasMatrixPermission('edit_policies')))
                                     <button type="button" class="btn btn-dark-blue btn-sm" id="uploadPolicyPdfBtn">
                                         <i class="fa-solid fa-upload me-1"></i>Upload PDF
@@ -313,57 +397,120 @@
                                     <input type="file" id="uploadPolicyPdfInput" class="d-none" accept="application/pdf,.pdf">
                                 @endif
                             </div>
-                            @forelse(($policyDocuments ?? collect()) as $document)
-                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 border-bottom py-2">
-                                    <div>
-                                        <strong>{{ $document->label ?: ($document->document_type === 'renewal' ? 'Renewed Policy PDF' : 'Policy PDF') }}</strong>
-                                        <div class="small text-muted">
-                                            {{ $document->original_file_name ?: $document->file_name }}
-                                            &middot; Uploaded {{ $document->created_at?->format('j M Y, g:i A') ?? '--' }}
-                                            @if($document->uploader)
-                                                by {{ $document->uploader->name }}
-                                            @endif
-                                            @if(false)
-                                                · {{ $documentPolicy->start_date ? date('j M Y', strtotime($documentPolicy->start_date)) : '--' }}
-                                                to --
-                                            @endif
-                                        </div>
-                                        @if($document->policy?->policy_number_no || $document->policy?->policy_number || $document->policy?->start_date || $document->policy?->end_date)
-                                        <div class="small text-muted">
-                                            @if($document->policy?->policy_number_no || $document->policy?->policy_number)
-                                                Policy {{ $document->policy?->policy_number_no ?: $document->policy?->policy_number }}
-                                            @endif
-                                            @if($document->policy?->start_date || $document->policy?->end_date)
-                                                @if($document->policy?->policy_number_no || $document->policy?->policy_number)&middot;@endif
-                                                {{ $document->policy?->start_date ? date('j M Y', strtotime($document->policy->start_date)) : '--' }}
-                                                to {{ $document->policy?->end_date ? date('j M Y', strtotime($document->policy->end_date)) : '--' }}
-                                            @endif
-                                        </div>
-                                        @endif
-                                        @if(filled($document->comment))
-                                            <div class="small mt-1"><strong>Comment:</strong> {{ $document->comment }}</div>
-                                        @endif
-                                        @if($document->document_date)
-                                            <div class="small mt-1"><strong>Document Date:</strong> {{ $document->document_date->format('d M Y') }}</div>
-                                        @endif
-                                    </div>
-                                    <div class="d-flex flex-wrap gap-2 flex-shrink-0">
-                                        <a href="{{ route('policies.legacy.documents.history.view', $document->id) }}" target="_blank"
-                                            rel="noopener noreferrer" class="btn btn-outline-danger btn-sm">
-                                            <i class="fa-solid fa-file-pdf me-1"></i>View PDF
-                                        </a>
-                                        @if(auth()->check() && (auth()->user()->isAdmin() || auth()->user()->hasMatrixPermission('delete_policies')))
-                                            <button type="button" class="btn btn-danger btn-sm delete-policy-pdf"
-                                                data-document-id="{{ $document->id }}"
-                                                data-file-name="{{ $document->original_file_name ?: $document->file_name }}">
-                                                <i class="fa-solid fa-trash me-1"></i>Delete
-                                            </button>
-                                        @endif
-                                    </div>
+
+                            {{-- Renewal Policies Section --}}
+                            <div class="card mb-3 border-0 shadow-sm">
+                                <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold text-success"><i class="fa-solid fa-arrows-rotate me-2"></i>Renewal Policy Documents</span>
+                                    <span class="badge bg-success">{{ $renewalPdfs->count() }}</span>
                                 </div>
-                            @empty
-                                <p class="text-muted mb-0">No policy PDFs have been uploaded.</p>
-                            @endforelse
+                                <div class="card-body p-3">
+                                    @forelse($renewalPdfs as $document)
+                                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 border-bottom py-2">
+                                            <div>
+                                                <span class="badge bg-success-subtle text-success me-2">Renewal</span>
+                                                <strong>{{ $document->label ?: 'Renewed Policy PDF' }}</strong>
+                                                <div class="small text-muted">
+                                                    {{ $document->original_file_name ?: $document->file_name }}
+                                                    &middot; Uploaded {{ $document->created_at?->format('j M Y, g:i A') ?? '--' }}
+                                                    @if($document->uploader)
+                                                        by {{ $document->uploader->name }}
+                                                    @endif
+                                                </div>
+                                                @if($document->policy?->policy_number_no || $document->policy?->policy_number || $document->policy?->start_date || $document->policy?->end_date)
+                                                    <div class="small text-muted">
+                                                        @if($document->policy?->policy_number_no || $document->policy?->policy_number)
+                                                            Policy #{{ $document->policy?->policy_number_no ?: $document->policy?->policy_number }}
+                                                        @endif
+                                                        @if($document->policy?->start_date || $document->policy?->end_date)
+                                                            &middot; {{ $document->policy?->start_date ? date('j M Y', strtotime($document->policy->start_date)) : '--' }}
+                                                            to {{ $document->policy?->end_date ? date('j M Y', strtotime($document->policy->end_date)) : '--' }}
+                                                        @endif
+                                                    </div>
+                                                @endif
+                                                @if(filled($document->comment))
+                                                    <div class="small mt-1"><strong>Comment:</strong> {{ $document->comment }}</div>
+                                                @endif
+                                                @if($document->document_date)
+                                                    <div class="small mt-1"><strong>Document Date:</strong> {{ $document->document_date->format('d M Y') }}</div>
+                                                @endif
+                                            </div>
+                                            <div class="d-flex flex-wrap gap-2 flex-shrink-0">
+                                                <a href="{{ route('policies.legacy.documents.history.view', $document->id) }}" target="_blank"
+                                                    rel="noopener noreferrer" class="btn btn-outline-danger btn-sm">
+                                                    <i class="fa-solid fa-file-pdf me-1"></i>View PDF
+                                                </a>
+                                                @if(auth()->check() && (auth()->user()->isAdmin() || auth()->user()->hasMatrixPermission('delete_policies')))
+                                                    <button type="button" class="btn btn-danger btn-sm delete-policy-pdf"
+                                                        data-document-id="{{ $document->id }}"
+                                                        data-file-name="{{ $document->original_file_name ?: $document->file_name }}">
+                                                        <i class="fa-solid fa-trash me-1"></i>Delete
+                                                    </button>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @empty
+                                        <p class="text-muted mb-0 small">No renewal policy PDFs uploaded yet.</p>
+                                    @endforelse
+                                </div>
+                            </div>
+
+                            {{-- Base / Original Policies Section --}}
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold text-primary"><i class="fa-solid fa-file-lines me-2"></i>Primary / Base Policy Documents</span>
+                                    <span class="badge bg-primary">{{ $originalPdfs->count() }}</span>
+                                </div>
+                                <div class="card-body p-3">
+                                    @forelse($originalPdfs as $document)
+                                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 border-bottom py-2">
+                                            <div>
+                                                <span class="badge bg-primary-subtle text-primary me-2">Original</span>
+                                                <strong>{{ $document->label ?: 'Policy PDF' }}</strong>
+                                                <div class="small text-muted">
+                                                    {{ $document->original_file_name ?: $document->file_name }}
+                                                    &middot; Uploaded {{ $document->created_at?->format('j M Y, g:i A') ?? '--' }}
+                                                    @if($document->uploader)
+                                                        by {{ $document->uploader->name }}
+                                                    @endif
+                                                </div>
+                                                @if($document->policy?->policy_number_no || $document->policy?->policy_number || $document->policy?->start_date || $document->policy?->end_date)
+                                                    <div class="small text-muted">
+                                                        @if($document->policy?->policy_number_no || $document->policy?->policy_number)
+                                                            Policy #{{ $document->policy?->policy_number_no ?: $document->policy?->policy_number }}
+                                                        @endif
+                                                        @if($document->policy?->start_date || $document->policy?->end_date)
+                                                            &middot; {{ $document->policy?->start_date ? date('j M Y', strtotime($document->policy->start_date)) : '--' }}
+                                                            to {{ $document->policy?->end_date ? date('j M Y', strtotime($document->policy->end_date)) : '--' }}
+                                                        @endif
+                                                    </div>
+                                                @endif
+                                                @if(filled($document->comment))
+                                                    <div class="small mt-1"><strong>Comment:</strong> {{ $document->comment }}</div>
+                                                @endif
+                                                @if($document->document_date)
+                                                    <div class="small mt-1"><strong>Document Date:</strong> {{ $document->document_date->format('d M Y') }}</div>
+                                                @endif
+                                            </div>
+                                            <div class="d-flex flex-wrap gap-2 flex-shrink-0">
+                                                <a href="{{ route('policies.legacy.documents.history.view', $document->id) }}" target="_blank"
+                                                    rel="noopener noreferrer" class="btn btn-outline-danger btn-sm">
+                                                    <i class="fa-solid fa-file-pdf me-1"></i>View PDF
+                                                </a>
+                                                @if(auth()->check() && (auth()->user()->isAdmin() || auth()->user()->hasMatrixPermission('delete_policies')))
+                                                    <button type="button" class="btn btn-danger btn-sm delete-policy-pdf"
+                                                        data-document-id="{{ $document->id }}"
+                                                        data-file-name="{{ $document->original_file_name ?: $document->file_name }}">
+                                                        <i class="fa-solid fa-trash me-1"></i>Delete
+                                                    </button>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @empty
+                                        <p class="text-muted mb-0 small">No base policy PDFs uploaded yet.</p>
+                                    @endforelse
+                                </div>
+                            </div>
                         </div>
 
 
