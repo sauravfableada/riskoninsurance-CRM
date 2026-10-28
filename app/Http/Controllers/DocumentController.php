@@ -14,25 +14,41 @@ class DocumentController extends Controller
      */
     public function index(Request $request)
     {
+        if (\Illuminate\Support\Facades\Schema::hasTable('documents')) {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('documents', 'customer_id')) {
+                try {
+                    \Illuminate\Support\Facades\Schema::table('documents', function (\Illuminate\Database\Schema\Blueprint $table) {
+                        $table->unsignedBigInteger('customer_id')->nullable()->after('id')->index();
+                    });
+                } catch (\Throwable $e) {}
+            }
+        }
+
         $selectedCustomerId = $request->input('customer_id');
         $search = $request->input('search');
 
         $customers = Customer::orderBy('name')->get();
 
-        $query = Document::with(['user', 'customer']);
+        $with = ['user'];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('documents', 'customer_id')) {
+            $with[] = 'customer';
+        }
+        $query = Document::with($with);
 
-        if ($selectedCustomerId) {
+        if ($selectedCustomerId && \Illuminate\Support\Facades\Schema::hasColumn('documents', 'customer_id')) {
             $query->where('customer_id', $selectedCustomerId);
         }
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                  ->orWhereHas('customer', function ($cq) use ($search) {
-                      $cq->where('name', 'like', "%{$search}%")
-                         ->orWhere('email', 'like', "%{$search}%")
-                         ->orWhere('phone', 'like', "%{$search}%");
-                  });
+                $q->where('title', 'like', "%{$search}%");
+                if (\Illuminate\Support\Facades\Schema::hasColumn('documents', 'customer_id')) {
+                    $q->orWhereHas('customer', function ($cq) use ($search) {
+                        $cq->where('name', 'like', "%{$search}%")
+                           ->orWhere('email', 'like', "%{$search}%")
+                           ->orWhere('phone', 'like', "%{$search}%");
+                    });
+                }
             });
         }
 

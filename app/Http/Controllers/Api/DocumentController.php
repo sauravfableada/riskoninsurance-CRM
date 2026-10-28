@@ -30,21 +30,37 @@ class DocumentController extends ApiBaseController
             ], 401);
         }
 
-        $query = Document::with(['user', 'customer']);
+        if (\Illuminate\Support\Facades\Schema::hasTable('documents')) {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('documents', 'customer_id')) {
+                try {
+                    \Illuminate\Support\Facades\Schema::table('documents', function (\Illuminate\Database\Schema\Blueprint $table) {
+                        $table->unsignedBigInteger('customer_id')->nullable()->after('id')->index();
+                    });
+                } catch (\Throwable $e) {}
+            }
+        }
 
-        if ($request->filled('customer_id')) {
+        $with = ['user'];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('documents', 'customer_id')) {
+            $with[] = 'customer';
+        }
+        $query = Document::with($with);
+
+        if ($request->filled('customer_id') && \Illuminate\Support\Facades\Schema::hasColumn('documents', 'customer_id')) {
             $query->where('customer_id', $request->customer_id);
         }
 
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                  ->orWhereHas('customer', function ($cq) use ($search) {
-                      $cq->where('name', 'like', "%{$search}%")
-                         ->orWhere('email', 'like', "%{$search}%")
-                         ->orWhere('phone', 'like', "%{$search}%");
-                  });
+                $q->where('title', 'like', "%{$search}%");
+                if (\Illuminate\Support\Facades\Schema::hasColumn('documents', 'customer_id')) {
+                    $q->orWhereHas('customer', function ($cq) use ($search) {
+                        $cq->where('name', 'like', "%{$search}%")
+                           ->orWhere('email', 'like', "%{$search}%")
+                           ->orWhere('phone', 'like', "%{$search}%");
+                    });
+                }
             });
         }
         

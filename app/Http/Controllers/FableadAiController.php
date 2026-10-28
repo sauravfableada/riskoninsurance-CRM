@@ -292,7 +292,20 @@ class FableadAiController extends Controller
             $coveredMembersJson = $request->input('covered_members');
             if ($coveredMembersJson) {
                 $coveredMembers = is_array($coveredMembersJson) ? $coveredMembersJson : (json_decode($coveredMembersJson, true) ?? []);
-                if (\Illuminate\Support\Facades\Schema::hasTable('policy_members')) {
+                if (!Schema::hasTable('policy_members')) {
+                    try {
+                        Schema::create('policy_members', function (\Illuminate\Database\Schema\Blueprint $table) {
+                            $table->id();
+                            $table->unsignedBigInteger('policy_id')->index();
+                            $table->string('name');
+                            $table->string('relation')->nullable();
+                            $table->date('dob')->nullable();
+                            $table->string('gender', 30)->nullable();
+                            $table->timestamps();
+                        });
+                    } catch (\Throwable $e) {}
+                }
+                if (Schema::hasTable('policy_members')) {
                     foreach ($coveredMembers as $member) {
                         if (!empty($member['name'])) {
                             \App\Models\PolicyMember::create([
@@ -311,7 +324,18 @@ class FableadAiController extends Controller
             $addonsJson = $request->input('addon_covers');
             if ($addonsJson) {
                 $addons = is_array($addonsJson) ? $addonsJson : (json_decode($addonsJson, true) ?? []);
-                if (\Illuminate\Support\Facades\Schema::hasTable('policy_addons')) {
+                if (!Schema::hasTable('policy_addons')) {
+                    try {
+                        Schema::create('policy_addons', function (\Illuminate\Database\Schema\Blueprint $table) {
+                            $table->id();
+                            $table->unsignedBigInteger('policy_id')->index();
+                            $table->string('cover_name');
+                            $table->decimal('premium_amount', 15, 2)->nullable();
+                            $table->timestamps();
+                        });
+                    } catch (\Throwable $e) {}
+                }
+                if (Schema::hasTable('policy_addons')) {
                     foreach ($addons as $addon) {
                         if (!empty($addon['cover_name'])) {
                             \App\Models\PolicyAddon::create([

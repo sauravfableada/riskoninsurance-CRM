@@ -307,7 +307,7 @@
                         @php
                             $allMembers = collect();
                             // Collect direct policy members
-                            if (!empty($policy->members) && $policy->members->isNotEmpty()) {
+                            if ($policy->relationLoaded('members') && !empty($policy->members) && $policy->members->isNotEmpty()) {
                                 foreach ($policy->members as $m) {
                                     $allMembers->push([
                                         'name' => $m->name,

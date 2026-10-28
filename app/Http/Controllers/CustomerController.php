@@ -38,7 +38,7 @@ class CustomerController extends Controller
     {
         $this->authorize('view', $customer);
 
-        $customer->load([
+        $relations = [
             'country',
             'city',
             'creator',
@@ -56,10 +56,24 @@ class CustomerController extends Controller
             'policies.policyType',
             'policies.policySubType',
             'policies.segment',
-            'documents.user',
             'invoices.currency',
             'familyGroups.members',
-        ]);
+        ];
+
+        if (\Illuminate\Support\Facades\Schema::hasTable('documents')) {
+            if (!\Illuminate\Support\Facades\Schema::hasColumn('documents', 'customer_id')) {
+                try {
+                    \Illuminate\Support\Facades\Schema::table('documents', function (\Illuminate\Database\Schema\Blueprint $table) {
+                        $table->unsignedBigInteger('customer_id')->nullable()->after('id')->index();
+                    });
+                } catch (\Throwable $e) {}
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('documents', 'customer_id')) {
+                $relations[] = 'documents.user';
+            }
+        }
+
+        $customer->load($relations);
 
         // Load Life Insurances linked by holder ID, email, or phone
         $lifeInsurances = \App\Models\LifeInsurance::with(['insuranceCompany', 'branch', 'familyGroup'])

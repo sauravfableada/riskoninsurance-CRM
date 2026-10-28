@@ -646,6 +646,10 @@ class LifeInsuranceController extends Controller
     public function storeFamilyGroup(Request $request)
     {
         try {
+            if ($request->has('holder_id') && !$request->filled('policy_holder_id')) {
+                $request->merge(['policy_holder_id' => $request->input('holder_id')]);
+            }
+
             $validated = $request->validate([
                 'group_name' => 'required|string|max:255',
                 'policy_holder_id' => 'required|integer',

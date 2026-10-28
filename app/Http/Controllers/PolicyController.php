@@ -680,10 +680,47 @@ class PolicyController extends Controller
     public function view($id)
     {
         $this->syncLegacySession();
-        $policy = Policy::with([
+
+        // Auto-ensure policy_members and policy_addons tables exist if migrations were not executed
+        if (!Schema::hasTable('policy_members')) {
+            try {
+                Schema::create('policy_members', function (\Illuminate\Database\Schema\Blueprint $table) {
+                    $table->id();
+                    $table->unsignedBigInteger('policy_id')->index();
+                    $table->string('name');
+                    $table->string('relation')->nullable();
+                    $table->date('dob')->nullable();
+                    $table->string('gender', 30)->nullable();
+                    $table->timestamps();
+                });
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Auto-create policy_members failed: ' . $e->getMessage());
+            }
+        }
+
+        if (!Schema::hasTable('policy_addons')) {
+            try {
+                Schema::create('policy_addons', function (\Illuminate\Database\Schema\Blueprint $table) {
+                    $table->id();
+                    $table->unsignedBigInteger('policy_id')->index();
+                    $table->string('cover_name');
+                    $table->decimal('premium_amount', 15, 2)->nullable();
+                    $table->timestamps();
+                });
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Auto-create policy_addons failed: ' . $e->getMessage());
+            }
+        }
+
+        $relations = [
             'holder', 'user', 'policyType', 'policySubType', 
-            'segment', 'company', 'branch', 'familyGroup', 'creator', 'members'
-        ])->findOrFail($id);
+            'segment', 'company', 'branch', 'familyGroup', 'creator'
+        ];
+        if (Schema::hasTable('policy_members')) {
+            $relations[] = 'members';
+        }
+
+        $policy = Policy::with($relations)->findOrFail($id);
 
         // Vehicle Details
         $storedVehicle = VehiclePolicyModel::where('policy_id', $policy->id)->first();

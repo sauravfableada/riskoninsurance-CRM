@@ -129,6 +129,28 @@
 .ai-filled { border-color: #93c5fd !important; background: #eff6ff !important; }
 .ai-filled:focus { border-color: var(--ai-navy) !important; background: #fff !important; }
 
+/* Small Add Icon Button next to dropdowns */
+.btn-ai-add {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    font-size: 13px;
+    flex-shrink: 0;
+    background: var(--ai-navy);
+    color: #fff;
+    border: none;
+    transition: all 0.2s ease;
+}
+.btn-ai-add:hover {
+    background: var(--ai-navy-mid);
+    color: #fff;
+}
+
 /* PDF panel */
 .ai-pdf-panel        { background: #fff; border: 1px solid var(--ai-border); border-radius: var(--ai-radius); box-shadow: var(--ai-shadow); position: sticky; top: 20px; }
 .ai-pdf-header       { padding: 14px 16px; border-bottom: 1px solid var(--ai-border); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
@@ -346,12 +368,19 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                                     <?php $s = session(); ?>
                                     <div class="ai-field-wrap">
                                         <div class="ai-field-label">SELF / SUB AGENT</div>
-                                        <select class="form-control select2-ai" name="staff_id" id="staff_id">
-                                            <option value="">-- Select Staff --</option>
-                                            <?php foreach ($staffs as $staff): ?>
-                                                <option value="<?= $staff['id'] ?>" <?= $staff['id'] == Auth::id() ? 'selected' : '' ?>><?= $staff['name'] ?? 'Unknown' ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <div class="flex-grow-1" style="min-width: 0;">
+                                                <select class="form-control select2-ai" name="staff_id" id="staff_id">
+                                                    <option value="">-- Select Staff --</option>
+                                                    <?php foreach ($staffs as $staff): ?>
+                                                        <option value="<?= $staff['id'] ?>" <?= $staff['id'] == Auth::id() ? 'selected' : '' ?>><?= $staff['name'] ?? 'Unknown' ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <button type="button" class="btn btn-dark-blue btn-ai-add" data-bs-toggle="modal" data-bs-target="#modalStaff" title="Add Sub Agent / Staff">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -365,24 +394,38 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                                 <div class="col-md-6">
                                     <div class="ai-field-wrap">
                                         <div class="ai-field-label">FAMILY GROUP <span class="text-muted">(Optional)</span></div>
-                                        <select class="form-control select2-ai" name="family_group_id" id="family_group_id">
-                                            <option value="">-- Select Family Group --</option>
-                                            <?php foreach ($familyGroups as $fg): ?>
-                                                <option value="<?= $fg['id'] ?>"><?= $fg['group_name'] ?? 'Unnamed' ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <div class="flex-grow-1" style="min-width: 0;">
+                                                <select class="form-control select2-ai" name="family_group_id" id="family_group_id">
+                                                    <option value="">-- Select Family Group --</option>
+                                                    <?php foreach ($familyGroups as $fg): ?>
+                                                        <option value="<?= $fg['id'] ?>"><?= $fg['group_name'] ?? 'Unnamed' ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <button type="button" class="btn btn-dark-blue btn-ai-add" data-bs-toggle="modal" data-bs-target="#modalFamilyGroup" title="Add Family Group">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div class="col-md-6">
                                     <div class="ai-field-wrap">
                                         <div class="ai-field-label">POLICY HOLDER NAME <span class="text-danger">*</span></div>
-                                        <select class="form-control select2-ai" name="user_id" id="user_id" required>
-                                            <option value="">-- Select Holder --</option>
-                                            <?php foreach ($customers as $c): ?>
-                                                <option value="<?= $c['id'] ?>"><?= $c['name'] ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <div class="flex-grow-1" style="min-width: 0;">
+                                                <select class="form-control select2-ai" name="user_id" id="user_id" required>
+                                                    <option value="">-- Select Holder --</option>
+                                                    <?php foreach ($customers as $c): ?>
+                                                        <option value="<?= $c['id'] ?>"><?= $c['name'] ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <button type="button" class="btn btn-dark-blue btn-ai-add" data-bs-toggle="modal" data-bs-target="#modalPolicyHolder" title="Add Policy Holder">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
@@ -407,24 +450,38 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                                 <div class="col-md-6">
                                     <div class="ai-field-wrap" id="wrap_policy_type_id">
                                         <div class="ai-field-label">POLICY TYPE <span class="text-danger">*</span> <span class="ai-conf-badge ai-conf-none" id="conf_policy_type"></span></div>
-                                        <select class="form-control select2-ai" name="policy_type_id" id="policy_type_id" required>
-                                            <option value="">-- Select Policy Type --</option>
-                                            <?php foreach ($policyTypes as $pt): ?>
-                                                <option value="<?= $pt['id'] ?>"><?= $pt['name'] ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <div class="flex-grow-1" style="min-width: 0;">
+                                                <select class="form-control select2-ai" name="policy_type_id" id="policy_type_id" required>
+                                                    <option value="">-- Select Policy Type --</option>
+                                                    <?php foreach ($policyTypes as $pt): ?>
+                                                        <option value="<?= $pt['id'] ?>"><?= $pt['name'] ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <button type="button" class="btn btn-dark-blue btn-ai-add" data-bs-toggle="modal" data-bs-target="#modalPolicyType" title="Add Policy Type">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div class="col-md-6">
                                     <div class="ai-field-wrap">
                                         <div class="ai-field-label">POLICY SUB TYPE <span class="text-muted">(Optional)</span></div>
-                                        <select class="form-control select2-ai" name="sub_type_id" id="sub_type_id">
-                                            <option value="">-- Select Sub Type --</option>
-                                            <?php foreach ($subTypes as $st): ?>
-                                                <option value="<?= $st['id'] ?>"><?= $st['name'] ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <div class="flex-grow-1" style="min-width: 0;">
+                                                <select class="form-control select2-ai" name="sub_type_id" id="sub_type_id">
+                                                    <option value="">-- Select Sub Type --</option>
+                                                    <?php foreach ($subTypes as $st): ?>
+                                                        <option value="<?= $st['id'] ?>"><?= $st['name'] ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <button type="button" class="btn btn-dark-blue btn-ai-add" data-bs-toggle="modal" data-bs-target="#modalPolicySubType" title="Add Policy Sub Type">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -465,36 +522,57 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                                 <div class="col-md-6">
                                     <div class="ai-field-wrap">
                                         <div class="ai-field-label">SEGMENT</div>
-                                        <select class="form-control select2-ai" name="segment_id" id="segment_id">
-                                            <option value="">-- Select Segment --</option>
-                                            <?php foreach ($segments as $seg): ?>
-                                                <option value="<?= $seg['id'] ?>"><?= $seg['name'] ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <div class="flex-grow-1" style="min-width: 0;">
+                                                <select class="form-control select2-ai" name="segment_id" id="segment_id">
+                                                    <option value="">-- Select Segment --</option>
+                                                    <?php foreach ($segments as $seg): ?>
+                                                        <option value="<?= $seg['id'] ?>"><?= $seg['name'] ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <button type="button" class="btn btn-dark-blue btn-ai-add" data-bs-toggle="modal" data-bs-target="#modalSegment" title="Add Segment">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div class="col-md-6">
                                     <div class="ai-field-wrap" id="wrap_company_id">
                                         <div class="ai-field-label">INSURANCE COMPANY <span class="text-danger">*</span> <span class="ai-conf-badge ai-conf-none" id="conf_company"></span></div>
-                                        <select class="form-control select2-ai" name="company_id" id="company_id" required>
-                                            <option value="">-- Select Company --</option>
-                                            <?php foreach ($companies as $c): ?>
-                                                <option value="<?= $c['id'] ?>"><?= $c['name'] ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <div class="flex-grow-1" style="min-width: 0;">
+                                                <select class="form-control select2-ai" name="company_id" id="company_id" required>
+                                                    <option value="">-- Select Company --</option>
+                                                    <?php foreach ($companies as $c): ?>
+                                                        <option value="<?= $c['id'] ?>"><?= $c['name'] ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <button type="button" class="btn btn-dark-blue btn-ai-add" data-bs-toggle="modal" data-bs-target="#modalInsuranceCompany" title="Add Insurance Company">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div class="col-md-6">
                                     <div class="ai-field-wrap">
                                         <div class="ai-field-label">BRANCH</div>
-                                        <select class="form-control select2-ai" name="branch_id" id="branch_id">
-                                            <option value="">-- Select Branch --</option>
-                                            <?php foreach ($branches as $b): ?>
-                                                <option value="<?= $b['id'] ?>"><?= $b['name'] ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <div class="flex-grow-1" style="min-width: 0;">
+                                                <select class="form-control select2-ai" name="branch_id" id="branch_id">
+                                                    <option value="">-- Select Branch --</option>
+                                                    <?php foreach ($branches as $b): ?>
+                                                        <option value="<?= $b['id'] ?>"><?= $b['name'] ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <button type="button" class="btn btn-dark-blue btn-ai-add" data-bs-toggle="modal" data-bs-target="#modalBranch" title="Add Branch">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -506,12 +584,19 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                                 <div class="col-md-12">
                                     <div class="ai-field-wrap">
                                         <div class="ai-field-label">MAP TO A SAVED BROKER</div>
-                                        <select class="form-control select2-ai" name="broker_id" id="broker_id">
-                                            <option value="">-- Select Broker --</option>
-                                            <?php foreach ($brokers as $br): ?>
-                                                <option value="<?= $br['id'] ?>"><?= $br['broker_name'] ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <div class="flex-grow-1" style="min-width: 0;">
+                                                <select class="form-control select2-ai" name="broker_id" id="broker_id">
+                                                    <option value="">-- Select Broker --</option>
+                                                    <?php foreach ($brokers as $br): ?>
+                                                        <option value="<?= $br['id'] ?>"><?= $br['broker_name'] ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <button type="button" class="btn btn-dark-blue btn-ai-add" data-bs-toggle="modal" data-bs-target="#modalBroker" title="Add Broker">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
@@ -960,6 +1045,335 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
     </div>
 </div>
 
+{{-- ===================== ADD MASTER MODALS ===================== --}}
+
+{{-- Modal: Add Family Group --}}
+<div class="modal fade" id="modalFamilyGroup" tabindex="-1" aria-labelledby="modalFamilyGroupLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#0a2540;">
+                <h5 class="modal-title text-white fw-bold" id="modalFamilyGroupLabel">Add Family Group</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formFamilyGroup">
+                @csrf
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Family Group Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="fg_group_name" name="group_name" placeholder="Enter group name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Policy Holder <span class="text-danger">*</span></label>
+                            <select class="form-control" id="fg_holder_id" name="policy_holder_id" required>
+                                <option value="">Select Policy Holder</option>
+                            </select>
+                        </div>
+                    </div>
+                    <h6 class="fw-bold mt-2">Members</h6>
+                    <div id="fg_members_container">
+                        <div class="fg-member-row d-flex gap-2 mb-2 align-items-center">
+                            <input type="text" class="form-control" name="member_name[]" placeholder="Member Name">
+                            <input type="text" class="form-control" name="member_relation[]" placeholder="Relation">
+                            <input type="text" class="form-control" name="member_contact[]" placeholder="Contact">
+                            <input type="date" class="form-control" name="member_dob[]" placeholder="DOB" max="{{ \Carbon\Carbon::yesterday()->format('Y-m-d') }}">
+                            <input type="date" class="form-control" name="member_anniversary[]" placeholder="Anniversary">
+                            <button type="button" class="btn btn-link text-danger p-0 fg-remove-member"><i class="fas fa-trash text-danger"></i></button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm mt-1" id="fg_add_member">Add More Members</button>
+                    <div class="mt-3">
+                        <label class="form-label fw-bold">Remarks</label>
+                        <textarea class="form-control" name="remarks" id="fg_remarks" rows="2" placeholder="Any remarks"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark-blue">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal: Add Policy Holder (Customer) --}}
+<div class="modal fade" id="modalPolicyHolder" tabindex="-1" aria-labelledby="modalPolicyHolderLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#0a2540;">
+                <h5 class="modal-title text-white fw-bold" id="modalPolicyHolderLabel">Add Policy Holder</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formPolicyHolder">
+                @csrf
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="name" placeholder="Full name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Email</label>
+                            <input type="email" class="form-control" name="email" placeholder="Email address">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Phone</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control flex-grow-0" name="country_code" value="+91" style="width:85px" readonly>
+                                <input type="tel" class="form-control" name="phone" placeholder="Phone number" maxlength="15">
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">WhatsApp</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control flex-grow-0" name="whatsapp_country_code" value="+91" style="width:85px" readonly>
+                                <input type="tel" class="form-control" name="whatsapp" placeholder="WhatsApp number" maxlength="15">
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Company Name</label>
+                            <input type="text" class="form-control" name="company_name" placeholder="Company name">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Address</label>
+                            <input type="text" class="form-control" name="address" placeholder="Address">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark-blue">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal: Add Policy Type --}}
+<div class="modal fade" id="modalPolicyType" tabindex="-1" aria-labelledby="modalPolicyTypeLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#0a2540;">
+                <h5 class="modal-title text-white fw-bold" id="modalPolicyTypeLabel">Add Policy Type</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formPolicyType">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Policy Type Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="policy_type_name" placeholder="Enter policy type name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Description</label>
+                        <textarea class="form-control" name="policy_description" rows="2" placeholder="Description (optional)"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark-blue">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal: Add Policy Sub Type --}}
+<div class="modal fade" id="modalPolicySubType" tabindex="-1" aria-labelledby="modalPolicySubTypeLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#0a2540;">
+                <h5 class="modal-title text-white fw-bold" id="modalPolicySubTypeLabel">Add Policy Sub Type</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formPolicySubType">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Policy Type <span class="text-danger">*</span></label>
+                        <select class="form-control" name="type_id" id="pst_type_id" required>
+                            <option value="">-- Select Policy Type --</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Sub Type Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" placeholder="Enter sub type name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Description</label>
+                        <textarea class="form-control" name="description" rows="2" placeholder="Description (optional)"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark-blue">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal: Add Segment --}}
+<div class="modal fade" id="modalSegment" tabindex="-1" aria-labelledby="modalSegmentLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#0a2540;">
+                <h5 class="modal-title text-white fw-bold" id="modalSegmentLabel">Add Segment</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formSegment">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Policy Type <span class="text-danger">*</span></label>
+                        <select class="form-control" name="insurance_type_id" id="seg_type_id" required>
+                            <option value="">-- Select Policy Type --</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Segment Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" placeholder="Enter segment name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Description</label>
+                        <textarea class="form-control" name="description" rows="2" placeholder="Description (optional)"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark-blue">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal: Add Insurance Company --}}
+<div class="modal fade" id="modalInsuranceCompany" tabindex="-1" aria-labelledby="modalInsuranceCompanyLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#0a2540;">
+                <h5 class="modal-title text-white fw-bold" id="modalInsuranceCompanyLabel">Add Insurance Company</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formInsuranceCompany">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Company Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" placeholder="Enter company name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Description</label>
+                        <textarea class="form-control" name="description" rows="2" placeholder="Description (optional)"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark-blue">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal: Add Branch --}}
+<div class="modal fade" id="modalBranch" tabindex="-1" aria-labelledby="modalBranchLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#0a2540;">
+                <h5 class="modal-title text-white fw-bold" id="modalBranchLabel">Add Branch</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formBranch">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Insurance Company <span class="text-danger">*</span></label>
+                        <select class="form-control" name="company_id" id="branch_company_id" required>
+                            <option value="">-- Select Company --</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Branch Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="branch_name" placeholder="Enter branch name" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark-blue">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal: Add Broker --}}
+<div class="modal fade" id="modalBroker" tabindex="-1" aria-labelledby="modalBrokerLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#0a2540;">
+                <h5 class="modal-title text-white fw-bold" id="modalBrokerLabel">Add Broker</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formBroker">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Broker Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="broker_name" placeholder="Enter broker name" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark-blue">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal: Add Staff / Sub Agent --}}
+<div class="modal fade" id="modalStaff" tabindex="-1" aria-labelledby="modalStaffLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#0a2540;">
+                <h5 class="modal-title text-white fw-bold" id="modalStaffLabel">Add Sub Agent / Staff</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formStaff">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="name" placeholder="Enter full name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Email <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" name="email" placeholder="Enter email address" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Phone Number <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="text" class="form-control flex-grow-0" name="country_code" value="+91" style="width:85px" readonly>
+                            <input type="tel" class="form-control" name="phone" placeholder="10-digit phone" maxlength="15" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Password <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" name="password" value="Staff@123" placeholder="Enter password" required>
+                        <div class="form-text text-muted">Default: Staff@123</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-dark-blue">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 {{-- ══════════════════════════════════════════════════════════════════════════ --}}
 {{-- SCRIPTS --}}
 {{-- ══════════════════════════════════════════════════════════════════════════ --}}
@@ -1056,6 +1470,202 @@ $(document).ready(function() {
         $('#amount').val(p.toFixed(2));
     }
     $('#premium').on('input', recalcTotal);
+
+    // ════════════════════════════════════════════════════════════════════════
+    // ADD MODALS LOGIC & HANDLERS
+    // ════════════════════════════════════════════════════════════════════════
+
+    function appendAndSelect(selectId, id, label, extraAttrs) {
+        var $sel = $(selectId);
+        $sel.find('option[value="' + id + '"]').remove();
+        var $opt = $('<option>', { value: id, text: label });
+        if (extraAttrs) {
+            $.each(extraAttrs, function (attr, val) {
+                $opt.attr('data-' + attr, val);
+            });
+        }
+        $sel.append($opt).val(id);
+        $sel.trigger('change');
+        if ($sel.data('select2')) {
+            $sel.trigger('change.select2');
+        }
+    }
+
+    function populateSelect(selectId, url, valueFn, labelFn, placeholder, selectedVal) {
+        var $sel = $(selectId);
+        $sel.html('<option value="">Loading...</option>');
+        $.getJSON(url, function (data) {
+            $sel.html('<option value="">' + (placeholder || '-- Select --') + '</option>');
+            $.each(data, function (i, row) {
+                var isSel = (selectedVal && selectedVal == valueFn(row)) ? ' selected' : '';
+                $sel.append('<option value="' + valueFn(row) + '"' + isSel + '>' + labelFn(row) + '</option>');
+            });
+            if (selectedVal) { $sel.val(selectedVal); }
+            if ($sel.data('select2')) { $sel.trigger('change.select2'); }
+        }).fail(function () {
+            $sel.html('<option value="">' + (placeholder || '-- Select --') + '</option>');
+            if ($sel.data('select2')) { $sel.trigger('change.select2'); }
+        });
+    }
+
+    function handleModalSubmit(formId, modalId, url, onSuccess) {
+        $(formId).on('submit', function (e) {
+            e.preventDefault();
+            var $btn = $(formId + ' [type=submit]').prop('disabled', true).text('Saving...');
+            $.ajax({
+                url: BASE_URL + url.replace(/^\/+/, ''),
+                type: 'POST',
+                data: $(this).serialize(),
+                headers: { 'X-CSRF-TOKEN': CSRF_TOKEN },
+                dataType: 'json',
+                success: function (res) {
+                    $btn.prop('disabled', false).text('Submit');
+                    var ok = res.status === 'success' || res.status === true || res.success === true;
+                    if (ok) {
+                        toastr.success(res.message || 'Saved successfully.');
+                        onSuccess(res);
+                        $(modalId).modal('hide');
+                    } else {
+                        toastr.error(res.message || 'Failed. Please try again.');
+                    }
+                },
+                error: function (xhr) {
+                    $btn.prop('disabled', false).text('Submit');
+                    var msg = 'Server error.';
+                    try { msg = JSON.parse(xhr.responseText).message || msg; } catch(e) {}
+                    toastr.error(msg);
+                }
+            });
+        });
+    }
+
+    // Modal Preloaders
+    $('#modalFamilyGroup').on('show.bs.modal', function () {
+        var currentUId = $('#user_id').val();
+        populateSelect('#fg_holder_id', BASE_URL + 'get-policy-customers-json',
+            function (r) { return r.id; },
+            function (r) { return r.name + (r.email ? ' (' + r.email + ')' : ''); },
+            'Select Policy Holder',
+            currentUId
+        );
+    });
+
+    $('#fg_add_member').on('click', function () {
+        $('#fg_members_container').append(
+            '<div class="fg-member-row d-flex gap-2 mb-2 align-items-center">' +
+            '<input type="text" class="form-control" name="member_name[]" placeholder="Member Name">' +
+            '<input type="text" class="form-control" name="member_relation[]" placeholder="Relation">' +
+            '<input type="text" class="form-control" name="member_contact[]" placeholder="Contact">' +
+            '<input type="date" class="form-control" name="member_dob[]">' +
+            '<input type="date" class="form-control" name="member_anniversary[]">' +
+            '<button type="button" class="btn btn-link text-danger p-0 fg-remove-member"><i class="fas fa-trash text-danger"></i></button>' +
+            '</div>'
+        );
+    });
+    $(document).on('click', '.fg-remove-member', function () {
+        if ($('.fg-member-row').length > 1) $(this).closest('.fg-member-row').remove();
+    });
+
+    $('#modalPolicySubType').on('show.bs.modal', function () {
+        var currentPtId = $('#policy_type_id').val();
+        populateSelect('#pst_type_id', BASE_URL + 'all-policy-type-json',
+            function (r) { return r.id; }, function (r) { return r.name; }, '-- Select Policy Type --', currentPtId);
+    });
+
+    $('#modalSegment').on('show.bs.modal', function () {
+        var currentPtId = $('#policy_type_id').val();
+        populateSelect('#seg_type_id', BASE_URL + 'all-policy-type-json',
+            function (r) { return r.id; }, function (r) { return r.name; }, '-- Select Policy Type --', currentPtId);
+    });
+
+    $('#modalBranch').on('show.bs.modal', function () {
+        var currentCId = $('#company_id').val();
+        populateSelect('#branch_company_id', BASE_URL + 'get-companies-json',
+            function (r) { return r.id; }, function (r) { return r.name; }, '-- Select Company --', currentCId);
+    });
+
+    // 1. Family Group
+    handleModalSubmit('#formFamilyGroup', '#modalFamilyGroup', 'family-groups/store', function (res) {
+        appendAndSelect('#family_group_id', res.id, res.group_name, { 'holder-id': res.holder_id || '' });
+        $('#formFamilyGroup')[0].reset();
+    });
+
+    // 2. Policy Holder (Customer)
+    handleModalSubmit('#formPolicyHolder', '#modalPolicyHolder', 'save-customer', function (res) {
+        var label = res.name || $('[name="name"]', '#formPolicyHolder').val();
+        appendAndSelect('#user_id', res.id, label);
+        if (res.email && !$('#customer_email').val()) { $('#customer_email').val(res.email); }
+        if (res.phone && !$('#customer_phone').val()) { $('#customer_phone').val(res.phone); }
+        if (res.address && !$('#customer_address').val()) { $('#customer_address').val(res.address); }
+        $('#formPolicyHolder')[0].reset();
+    });
+
+    // 3. Policy Type
+    handleModalSubmit('#formPolicyType', '#modalPolicyType', 'policy-type/store', function (res) {
+        var label = res.name || $('[name="policy_type_name"]', '#formPolicyType').val();
+        appendAndSelect('#policy_type_id', res.id, label);
+        populateSelect('#pst_type_id', BASE_URL + 'all-policy-type-json',
+            function (r) { return r.id; }, function (r) { return r.name; }, '-- Select Policy Type --');
+        populateSelect('#seg_type_id', BASE_URL + 'all-policy-type-json',
+            function (r) { return r.id; }, function (r) { return r.name; }, '-- Select Policy Type --');
+        $('#formPolicyType')[0].reset();
+    });
+
+    // 4. Policy Sub Type
+    handleModalSubmit('#formPolicySubType', '#modalPolicySubType', 'policy-sub-type/store', function (res) {
+        var label = res.name || $('[name="name"]', '#formPolicySubType').val();
+        var selectedType = $('#policy_type_id').val();
+        if (!selectedType || selectedType == res.type_id || selectedType == res.insurance_policy_types_id) {
+            appendAndSelect('#sub_type_id', res.id, label);
+        } else {
+            toastr.info('Sub type saved. Select the matching policy type to see it in the list.');
+        }
+        $('#formPolicySubType')[0].reset();
+    });
+
+    // 5. Segment
+    handleModalSubmit('#formSegment', '#modalSegment', 'store-segment', function (res) {
+        var label = res.name || $('[name="name"]', '#formSegment').val();
+        var selectedType = $('#policy_type_id').val();
+        if (!selectedType || selectedType == res.insurance_type_id) {
+            appendAndSelect('#segment_id', res.id, label);
+        } else {
+            toastr.info('Segment saved. Select the matching policy type to see it in the list.');
+        }
+        $('#formSegment')[0].reset();
+    });
+
+    // 6. Insurance Company
+    handleModalSubmit('#formInsuranceCompany', '#modalInsuranceCompany', 'store-company', function (res) {
+        var label = res.name || $('[name="name"]', '#formInsuranceCompany').val();
+        appendAndSelect('#company_id', res.id, label);
+        populateSelect('#branch_company_id', BASE_URL + 'get-companies-json',
+            function (r) { return r.id; }, function (r) { return r.name; }, '-- Select Company --');
+        $('#formInsuranceCompany')[0].reset();
+    });
+
+    // 7. Branch
+    handleModalSubmit('#formBranch', '#modalBranch', 'branch/store', function (res) {
+        var label = res.name || $('[name="branch_name"]', '#formBranch').val();
+        appendAndSelect('#branch_id', res.id, label);
+        $('#formBranch')[0].reset();
+    });
+
+    // 8. Broker
+    handleModalSubmit('#formBroker', '#modalBroker', 'api/masters/brokers', function (res) {
+        var broker = res.data || res;
+        var label = broker.broker_name || broker.name || $('[name="broker_name"]', '#formBroker').val();
+        appendAndSelect('#broker_id', broker.id, label);
+        $('#formBroker')[0].reset();
+    });
+
+    // 9. Staff / Sub Agent
+    handleModalSubmit('#formStaff', '#modalStaff', 'api/users', function (res) {
+        var user = res.data || res.user || res;
+        var label = user.name || $('[name="name"]', '#formStaff').val();
+        appendAndSelect('#staff_id', user.id, label);
+        $('#formStaff')[0].reset();
+    });
 });
 
 // ── Drag & Drop ────────────────────────────────────────────────────────────
