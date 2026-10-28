@@ -10,6 +10,7 @@
         <link rel="stylesheet"
             href="{{ (env('PUBLIC_PATH') ? '/' . trim(env('PUBLIC_PATH'), '/') . '/css/users.css' : '/css/users.css') }}?v={{ filemtime(public_path('css/users.css')) }}">
         <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
         <style>
             .stat-badge {
                 border-radius: 12px;
@@ -98,6 +99,59 @@
                 background: linear-gradient(135deg, #0d6efd, #0b5ed7);
                 color: #ffffff !important;
                 box-shadow: 0 2px 8px rgba(13, 110, 253, 0.35) !important;
+            }
+
+            #commissionEntriesTable {
+                width: 100% !important;
+                table-layout: auto;
+            }
+            #commissionEntriesTable th, 
+            #commissionEntriesTable td {
+                white-space: nowrap;
+                vertical-align: middle;
+            }
+            #commissionEntriesTable th:nth-child(2),
+            #commissionEntriesTable td:nth-child(2) {
+                max-width: 180px;
+                white-space: normal;
+                word-break: break-word;
+            }
+            #commissionEntriesTable th:nth-child(3),
+            #commissionEntriesTable td:nth-child(3) {
+                max-width: 170px;
+                white-space: normal;
+                word-break: break-word;
+            }
+
+            /* Select2 inside modal styling */
+            .select2-container {
+                width: 100% !important;
+            }
+            .select2-container .select2-selection--single {
+                height: 38px !important;
+                border: 1px solid #dee2e6 !important;
+                border-radius: 0.375rem !important;
+                padding: 5px 8px !important;
+            }
+            .select2-container .select2-selection--single .select2-selection__rendered {
+                line-height: 26px !important;
+                padding-left: 0 !important;
+                color: #212529 !important;
+            }
+            .select2-container .select2-selection--single .select2-selection__arrow {
+                height: 36px !important;
+                right: 6px !important;
+            }
+            .select2-dropdown {
+                border-radius: 0.5rem !important;
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+                border: 1px solid #cbd5e1 !important;
+                z-index: 1065 !important;
+            }
+            .select2-search--dropdown .select2-search__field {
+                border-radius: 0.375rem !important;
+                border: 1px solid #cbd5e1 !important;
+                padding: 6px 10px !important;
             }
 
             .commission-status {
@@ -367,7 +421,16 @@
                                     data-premium="{{ (float)$entry->premium_amount }}">
                                     <td class="ps-4 text-muted fw-semibold">{{ $index + 1 }}</td>
                                     <td>
-                                        <strong class="text-dark d-block">{{ $entry->commissionRule->rule_name ?? 'Policy Commission' }}</strong>
+                                        @php
+                                            $ruleName = $entry->commissionRule->rule_name ?? 'Policy Commission';
+                                            // If rule name is something like "Policy #POL-xxx Custom Commission", show clean "Custom Commission"
+                                            if (preg_match('/Policy\s*#[^\s]+\s*(.*)/i', $ruleName, $m)) {
+                                                $displayRuleName = trim($m[1]) ?: 'Custom Commission';
+                                            } else {
+                                                $displayRuleName = $ruleName;
+                                            }
+                                        @endphp
+                                        <strong class="text-dark d-block">{{ $displayRuleName }}</strong>
                                         <small class="text-muted">{{ $entry->commissionRule?->company?->name ?? 'Direct Insurance' }}</small>
                                     </td>
                                     <td>
@@ -590,9 +653,14 @@
                                 <select name="policy_id" id="entry_policy_id" class="form-select" required>
                                     <option value="">-- Select Policy --</option>
                                     @foreach($availablePolicies ?? [] as $pol)
+                                        @php
+                                            $assignedUserId = $pol->user_id ?: ($pol->created_by ?: null);
+                                            $assignedUserName = $pol->user?->name ?: ($pol->creator?->name ?: '');
+                                        @endphp
                                         <option value="{{ $pol->id }}" 
                                             data-premium="{{ (float) ($pol->premium_amount ?? 0) }}"
-                                            data-user-id="{{ $pol->user_id }}"
+                                            data-user-id="{{ $assignedUserId }}"
+                                            data-user-name="{{ $assignedUserName }}"
                                             data-policy-number="{{ $pol->policy_number }}"
                                             data-holder="{{ $pol->holder?->name ?? 'Unknown Holder' }}"
                                             data-company="{{ $pol->company?->name ?? 'Direct Insurance' }}">
@@ -610,9 +678,12 @@
                                 </label>
                                 <select name="user_id" id="entry_user_id" class="form-select" required>
                                     <option value="">-- Select Member --</option>
-                                    @foreach($agentsList ?? [] as $ag)
+                                    @php
+                                        $dropdownMembers = ($allMembers ?? collect([]))->isNotEmpty() ? $allMembers : ($agentsList ?? collect([]));
+                                    @endphp
+                                    @foreach($dropdownMembers as $ag)
                                         <option value="{{ $ag->id }}">
-                                            {{ $ag->name }} ({{ $ag->type === 'sub_agents' ? 'Sub-Agent' : 'Staff' }})
+                                            {{ $ag->name }} ({{ $ag->type === 'sub_agents' ? 'Sub-Agent' : ($ag->type === 'staff' ? 'Staff' : ($ag->name ?? 'User')) }})
                                         </option>
                                     @endforeach
                                 </select>
@@ -903,9 +974,14 @@
                                 <select name="policy_id" id="edit_entry_policy_id" class="form-select" required>
                                     <option value="">-- Select Policy --</option>
                                     @foreach($availablePolicies ?? [] as $pol)
+                                        @php
+                                            $assignedUserId = $pol->user_id ?: ($pol->created_by ?: null);
+                                            $assignedUserName = $pol->user?->name ?: ($pol->creator?->name ?: '');
+                                        @endphp
                                         <option value="{{ $pol->id }}" 
                                             data-premium="{{ (float) ($pol->premium_amount ?? 0) }}"
-                                            data-user-id="{{ $pol->user_id }}"
+                                            data-user-id="{{ $assignedUserId }}"
+                                            data-user-name="{{ $assignedUserName }}"
                                             data-policy-number="{{ $pol->policy_number }}"
                                             data-holder="{{ $pol->holder?->name ?? 'Unknown Holder' }}"
                                             data-company="{{ $pol->company?->name ?? 'Direct Insurance' }}">
@@ -922,9 +998,9 @@
                                 </label>
                                 <select name="user_id" id="edit_entry_user_id" class="form-select" required>
                                     <option value="">-- Select Member --</option>
-                                    @foreach($agentsList ?? [] as $ag)
+                                    @foreach($dropdownMembers as $ag)
                                         <option value="{{ $ag->id }}">
-                                            {{ $ag->name }} ({{ $ag->type === 'sub_agents' ? 'Sub-Agent' : 'Staff' }})
+                                            {{ $ag->name }} ({{ $ag->type === 'sub_agents' ? 'Sub-Agent' : ($ag->type === 'staff' ? 'Staff' : ($ag->name ?? 'User')) }})
                                         </option>
                                     @endforeach
                                 </select>
@@ -1070,6 +1146,7 @@
     @push('scripts')
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         $(document).ready(function() {
             // Tab 1: Member commission rates table
@@ -1110,6 +1187,29 @@
                     }
                 },
                 "ordering": false
+            });
+
+            // Initialize Select2 on modals
+            $('#entry_policy_id').select2({
+                dropdownParent: $('#createCommissionEntryModal'),
+                width: '100%',
+                placeholder: '-- Search or Select Policy --'
+            });
+            $('#entry_user_id').select2({
+                dropdownParent: $('#createCommissionEntryModal'),
+                width: '100%',
+                placeholder: '-- Search or Select Member --'
+            });
+
+            $('#edit_entry_policy_id').select2({
+                dropdownParent: $('#editCommissionEntryModal'),
+                width: '100%',
+                placeholder: '-- Search or Select Policy --'
+            });
+            $('#edit_entry_user_id').select2({
+                dropdownParent: $('#editCommissionEntryModal'),
+                width: '100%',
+                placeholder: '-- Search or Select Member --'
             });
 
             // Function to update Paid & Pending badges dynamically based on filtered rows
@@ -1380,6 +1480,7 @@
                 const selected = $(this).find('option:selected');
                 const premium = parseFloat(selected.data('premium')) || 0;
                 const userId = selected.data('user-id');
+                const userName = selected.data('user-name');
                 const holder = selected.data('holder');
                 const company = selected.data('company');
 
@@ -1387,7 +1488,12 @@
                     $('#entry_premium_amount').val(premium);
                 }
                 if (userId) {
-                    $('#entry_user_id').val(userId);
+                    // Check if option already exists in dropdown
+                    if (!$(`#entry_user_id option[value="${userId}"]`).length && userName) {
+                        const newOption = new Option(userName, userId, true, true);
+                        $('#entry_user_id').append(newOption);
+                    }
+                    $('#entry_user_id').val(userId).trigger('change.select2');
                 }
                 if (holder) {
                     $('#entry_policy_detail_hint').html(`<strong>Policy:</strong> ${selected.data('policy-number')} | <strong>Holder:</strong> ${holder} | <strong>Insurer:</strong> ${company}`);
@@ -1596,12 +1702,17 @@
                 const selected = $(this).find('option:selected');
                 const premium = parseFloat(selected.data('premium')) || 0;
                 const userId = selected.data('user-id');
+                const userName = selected.data('user-name');
 
                 if (premium > 0) {
                     $('#edit_entry_premium_amount').val(premium);
                 }
                 if (userId) {
-                    $('#edit_entry_user_id').val(userId);
+                    if (!$(`#edit_entry_user_id option[value="${userId}"]`).length && userName) {
+                        const newOption = new Option(userName, userId, true, true);
+                        $('#edit_entry_user_id').append(newOption);
+                    }
+                    $('#edit_entry_user_id').val(userId).trigger('change.select2');
                 }
                 fetchRatesByMethod('edit_entry');
             });
@@ -1631,10 +1742,10 @@
                                 $('#edit_entry_calculation_method').val('company_wise');
                             }
                             if (d.policy_id) {
-                                $('#edit_entry_policy_id').val(d.policy_id);
+                                $('#edit_entry_policy_id').val(d.policy_id).trigger('change.select2');
                             }
                             if (d.user_id) {
-                                $('#edit_entry_user_id').val(d.user_id);
+                                $('#edit_entry_user_id').val(d.user_id).trigger('change.select2');
                             }
                             $('#edit_entry_premium_amount').val(d.premium_amount);
                             $('#edit_entry_payment_status').val(d.payment_status);

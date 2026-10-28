@@ -122,12 +122,14 @@ class CommissionRulesController extends Controller
             ]);
         }
 
-        // Load all Sub-Agents and Staff members
+        // Load all Sub-Agents and Staff members (or all system users excluding Super Admin id=1)
         $agentsQuery = User::query()
-            ->whereIn('type', ['sub_agents', 'staff'])
-            ->orWhere(function ($q) {
-                $q->whereNull('type')->where('id', '!=', 1);
+            ->where(function ($q) {
+                $q->whereIn('type', ['sub_agents', 'staff'])
+                  ->orWhereNull('type')
+                  ->orWhereNotIn('type', ['customer', 'client']);
             })
+            ->where('id', '!=', 1)
             ->orderBy('name');
 
         if ($request->filled('member_type')) {
@@ -218,8 +220,19 @@ class CommissionRulesController extends Controller
         $paidCommission = (float) $commissionEntries->where('payment_status', 'paid')->sum('commission_amount');
 
         // Load policies for manual transaction entry dropdown
-        $availablePolicies = \App\Models\Policy::with(['holder', 'company', 'user', 'policyType', 'policySubType'])
+        $availablePolicies = \App\Models\Policy::with(['holder', 'company', 'user', 'creator', 'policyType', 'policySubType'])
             ->latest('id')
+            ->get();
+
+        // Also fetch all staff and subagents available in system for commission assignment
+        $allMembers = User::query()
+            ->where(function ($q) {
+                $q->whereIn('type', ['sub_agents', 'staff'])
+                  ->orWhereNull('type')
+                  ->orWhereNotIn('type', ['customer', 'client']);
+            })
+            ->where('id', '!=', 1)
+            ->orderBy('name')
             ->get();
 
         return view('commission.index', compact(
@@ -234,7 +247,8 @@ class CommissionRulesController extends Controller
             'pendingCommission',
             'paidCommission',
             'availablePolicies',
-            'agentsList'
+            'agentsList',
+            'allMembers'
         ));
     }
 
@@ -1116,7 +1130,7 @@ class CommissionRulesController extends Controller
             [
                 'company_id'       => $insuranceCompany->id,
                 'policy_type_id'   => $policy->policy_type_id,
-                'rule_name'        => 'Policy #' . ($policy->policy_number ?: $policy->id) . ' Custom Commission',
+                'rule_name'        => 'Custom Commission',
                 'pay_in_type'      => $validated['pay_in_type'],
                 'pay_in_value'     => $validated['pay_in_value'],
                 'pay_out_type'     => $validated['pay_out_type'],
