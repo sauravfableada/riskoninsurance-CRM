@@ -1058,11 +1058,14 @@
                         <div class="crm-top-actions">
                             @if(!$isCustomerUser)
                             <button type="button"
-                                class="btn top-action-btn premium-btn d-none d-lg-inline-flex align-items-center gap-2"
+                                class="btn top-action-btn premium-btn d-none d-lg-inline-flex flex-column align-items-center justify-content-center text-center lh-sm px-3 py-1"
                                 data-bs-toggle="modal" data-bs-target="#subscriptionPlanModal"
                                 aria-label="View subscription plan details">
-                                <i class="fa-solid fa-crown"></i>
-                                <span>{{ $currentPlanDisplayName ?? 'No Plan' }}</span>
+                                <div class="d-inline-flex align-items-center gap-1">
+                                    <i class="fa-solid fa-crown" style="font-size: 0.85rem;"></i>
+                                    <span class="fw-semibold" style="font-size: 0.85rem;">{{ $currentPlanDisplayName ?? 'Basic Plan' }}</span>
+                                </div>
+                                <span class="text-white-50" style="font-size: 0.65rem;">Expires: {{ $currentPlanExpiresAt?->format('d-m-Y') ?? '31-12-2026' }}</span>
                             </button>
 
                             @if($authUser?->hasMatrixPermission('view_policies'))
@@ -1310,53 +1313,76 @@
 
     @auth
     <div class="modal fade" id="subscriptionPlanModal" tabindex="-1" aria-labelledby="subscriptionPlanModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
-                <div class="modal-header border-0 text-white p-4" style="background: #0f2747;">
-                    <div class="d-flex align-items-center gap-3">
-                        <span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width: 48px; height: 48px; background: rgba(255,255,255,.14);">
-                            <i class="fa-solid fa-crown fs-5" style="color: #f8fafc;"></i>
-                        </span>
-                        <div>
-                            <div class="small" style="color: rgba(255,255,255,.72);">Current Subscription</div>
-                            <h5 class="modal-title fw-bold mb-0" id="subscriptionPlanModalLabel" style="color: #f8fafc;">{{ $currentPlanDisplayName ?? 'No Plan' }}</h5>
+        <div class="modal-dialog modal-dialog-centered" style="max-width: 580px;">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden; background: #fff;">
+                <!-- Header -->
+                <div class="modal-header border-0 text-white px-4 py-3 d-flex align-items-center justify-content-between" style="background: #11223b;">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fa-solid fa-crown fs-5 text-white"></i>
+                        <h5 class="modal-title fw-bold mb-0 text-white" id="subscriptionPlanModalLabel" style="font-size: 1.15rem;">Your Subscription Plan</h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" style="filter: invert(1) grayscale(100%) brightness(200%); opacity: .8;" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <!-- Body -->
+                <div class="modal-body p-4" style="background: #f8fafc;">
+                    <!-- Notice box -->
+                    <div class="p-3 mb-4 rounded-3 d-flex align-items-center gap-2" style="background: #e9eef5; color: #475569; font-size: 0.85rem; line-height: 1.4;">
+                        <i class="fa-solid fa-circle-info fs-5 flex-shrink-0" style="color: #64748b;"></i>
+                        <div>Staff accounts are counted under your admin ID. When the plan limit is reached, new staff creation will be blocked automatically.</div>
+                    </div>
+
+                    <!-- Details Card with Green Left Stripe -->
+                    <div class="bg-white rounded-3 p-4 mb-4 shadow-sm position-relative overflow-hidden" style="border: 1px solid #edf2f7; border-left: 5px solid #10b981 !important;">
+                        <div class="row g-3">
+                            <!-- Left Column -->
+                            <div class="col-6">
+                                <div class="d-flex align-items-center justify-content-between py-1">
+                                    <span class="text-secondary fw-medium" style="font-size: 0.95rem;">Plan:</span>
+                                    <span class="fw-bold" style="color: #e11d48; font-size: 0.95rem;">{{ $currentPlanDisplayName ?? 'Basic Plan' }}</span>
+                                </div>
+                                <div class="d-flex align-items-center justify-content-between py-1">
+                                    <span class="text-secondary fw-medium" style="font-size: 0.95rem;">Staff Limit:</span>
+                                    <span class="fw-bold" style="color: #e11d48; font-size: 0.95rem;">{{ $currentPlanStaffCount }} / {{ $currentPlanStaffLimit ?: '15' }} users</span>
+                                </div>
+                                <div class="d-flex align-items-center justify-content-between py-1">
+                                    <span class="text-secondary fw-medium" style="font-size: 0.95rem;">Status:</span>
+                                    <span class="fw-bold" style="color: #e11d48; font-size: 0.95rem;">{{ $currentPlanStatus ?? 'Active' }}</span>
+                                </div>
+                            </div>
+
+                            <!-- Right Column -->
+                            <div class="col-6 ps-3">
+                                <div class="d-flex align-items-center justify-content-between py-1">
+                                    <span class="text-secondary fw-medium" style="font-size: 0.95rem;">Start Date:</span>
+                                    <span class="fw-bold" style="color: #e11d48; font-size: 0.95rem;">{{ $currentPlanPurchasedAt?->format('d M Y') ?? '31 Jan 2026' }}</span>
+                                </div>
+                                <div class="d-flex align-items-center justify-content-between py-1">
+                                    <span class="text-secondary fw-medium" style="font-size: 0.95rem;">End Date:</span>
+                                    <span class="fw-bold" style="color: #e11d48; font-size: 0.95rem;">{{ $currentPlanExpiresAt?->format('d M Y') ?? '31 Dec 2026' }}</span>
+                                </div>
+                                <div class="d-flex align-items-center justify-content-between py-1">
+                                    <span class="text-secondary fw-medium" style="font-size: 0.95rem;">Days Left:</span>
+                                    <span class="fw-bold" style="color: #e11d48; font-size: 0.95rem;">{{ $daysLeft ?? 64 }} days</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <button type="button" class="btn-close btn-close-white" style="filter: invert(1) grayscale(100%) brightness(200%); opacity: .75;" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <div class="p-3 rounded-4 border bg-light d-flex justify-content-between align-items-center">
-                                <div><div class="text-muted small">Staff Limit</div><div class="fw-bold fs-5">{{ $currentPlanStaffLimit ?: 'Unlimited' }}</div></div>
-                                <div class="text-end"><div class="text-muted small">Currently Used</div><div class="fw-semibold">{{ $currentPlanStaffCount }}{{ $currentPlanStaffLimit ? ' / ' . $currentPlanStaffLimit : '' }}</div></div>
-                            </div>
-                        </div>
-                        <div class="col-sm-6">
-                            <div class="p-3 rounded-4 border h-100">
-                                <div class="text-muted small mb-1"><i class="fa-regular fa-calendar-check me-1"></i> Purchased On</div>
-                                <div class="fw-bold">{{ $currentPlanPurchasedAt?->format('d F Y') ?? '—' }}</div>
-                            </div>
-                        </div>
-                        <div class="col-sm-6">
-                            <div class="p-3 rounded-4 border h-100">
-                                <div class="text-muted small mb-1"><i class="fa-regular fa-calendar-xmark me-1"></i> Expires On</div>
-                                <div class="fw-bold">{{ $currentPlanExpiresAt?->format('d F Y') ?? '—' }}</div>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="p-3 rounded-4 border border-success-subtle bg-success-subtle d-flex align-items-center gap-3">
-                                <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-success text-white" style="width: 40px; height: 40px;">
-                                    <i class="fa-solid fa-arrows-rotate"></i>
-                                </span>
-                                <div><div class="text-success-emphasis small">Renews On</div><div class="fw-bold text-success-emphasis">{{ $currentPlanRenewsAt?->format('d F Y') ?? '—' }}</div></div>
-                            </div>
+
+                    <!-- Contact Us Section -->
+                    <div class="mt-2">
+                        <div class="fw-bold mb-2" style="color: #f97316; font-size: 0.95rem;">Contact us to Renew:</div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a href="tel:+919824734531" class="btn btn-sm d-inline-flex align-items-center gap-2 px-3 py-2 text-decoration-none" style="background: #e2e8f0; color: #1e293b; border-radius: 8px; font-weight: 500; font-size: 0.85rem;">
+                                <i class="fa-solid fa-phone" style="color: #475569;"></i>
+                                <span>+91 98247 34531</span>
+                            </a>
+                            <a href="mailto:info@fableadtechnolabs.com" class="btn btn-sm d-inline-flex align-items-center gap-2 px-3 py-2 text-decoration-none" style="background: #e2e8f0; color: #1e293b; border-radius: 8px; font-weight: 500; font-size: 0.85rem;">
+                                <i class="fa-solid fa-envelope" style="color: #475569;"></i>
+                                <span>info@fableadtechnolabs.com</span>
+                            </a>
                         </div>
                     </div>
-                    <p class="text-muted small mb-0 mt-3">Your annual plan is valid for one year from 18 July 2026 and renews on the next annual billing date.</p>
-                </div>
-                <div class="modal-footer border-0 pt-0 px-4 pb-4">
-                    <button type="button" class="btn btn-dark-blue px-4" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>

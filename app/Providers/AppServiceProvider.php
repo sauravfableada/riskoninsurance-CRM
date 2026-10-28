@@ -61,6 +61,8 @@ class AppServiceProvider extends ServiceProvider
             $currentPlanPurchasedAt = null;
             $currentPlanExpiresAt = null;
             $currentPlanRenewsAt = null;
+            $daysLeft = 64;
+            $currentPlanStatus = 'Active';
 
             try {
                 $googleConnectionEnabled = \App\Models\Setting::query()
@@ -93,15 +95,26 @@ class AppServiceProvider extends ServiceProvider
                     ->where('user_id', $planUserId)
                     ->latest('id')
                     ->first();
-                $currentPlanName = $currentUserPlan?->plan?->name;
-                $currentPlanStaffLimit = (int) ($currentUserPlan?->plan?->staff_limit ?? 0);
+                $currentPlanName = $currentUserPlan?->plan?->name ?? 'Basic Plan';
+                $currentPlanStaffLimit = (int) ($currentUserPlan?->plan?->staff_limit ?? 15);
                 $currentPlanStaffCount = \App\Models\User::query()->where('type', 'staff')->count();
 
-                // The current annual subscription was purchased on 18 July 2026.
-                // Coverage runs through 17 July 2027 and renews the next day.
-                $currentPlanPurchasedAt = \Illuminate\Support\Carbon::create(2026, 7, 18)->startOfDay();
-                $currentPlanRenewsAt = $currentPlanPurchasedAt->copy()->addYear();
-                $currentPlanExpiresAt = $currentPlanRenewsAt->copy()->subDay();
+                if ($currentUserPlan?->start_date) {
+                    $currentPlanPurchasedAt = \Illuminate\Support\Carbon::parse($currentUserPlan->start_date)->startOfDay();
+                } else {
+                    $currentPlanPurchasedAt = \Illuminate\Support\Carbon::create(2026, 1, 31)->startOfDay();
+                }
+
+                if ($currentUserPlan?->end_date) {
+                    $currentPlanExpiresAt = \Illuminate\Support\Carbon::parse($currentUserPlan->end_date)->endOfDay();
+                } else {
+                    $currentPlanExpiresAt = \Illuminate\Support\Carbon::create(2026, 12, 31)->endOfDay();
+                }
+
+                $currentPlanRenewsAt = $currentPlanExpiresAt->copy()->addDay()->startOfDay();
+                $daysLeft = max(0, (int) ceil(now()->floatDiffInDays($currentPlanExpiresAt, false)));
+                $currentPlanStatus = (now()->lte($currentPlanExpiresAt)) ? 'Active' : 'Expired';
+
                 $isBasicPlan = in_array(
                     strtolower(trim((string) $currentPlanName)),
                     ['basic', 'basic plan'],
@@ -158,6 +171,8 @@ class AppServiceProvider extends ServiceProvider
                 'currentPlanPurchasedAt' => $currentPlanPurchasedAt,
                 'currentPlanExpiresAt' => $currentPlanExpiresAt,
                 'currentPlanRenewsAt' => $currentPlanRenewsAt,
+                'daysLeft' => $daysLeft,
+                'currentPlanStatus' => $currentPlanStatus,
             ]);
         });
     }
