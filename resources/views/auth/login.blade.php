@@ -60,7 +60,7 @@
                                     <label for="password" class="form-label fw-medium ps-2">Password</label>
                                     <div class="position-relative">
                                         <input id="password" type="password" class="form-control form-control-lg pe-5"
-                                            name="password" required>
+                                            name="password" placeholder="Enter password" required>
                                         <button
                                             class="btn border-0 position-absolute end-0 top-50 translate-middle-y text-muted"
                                             type="button" id="togglePassword" style="background: transparent;">
