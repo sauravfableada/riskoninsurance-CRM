@@ -995,6 +995,13 @@ $(document).ready(function () {
         $("#modal_sub_type_policy_type_id").val(typeId);
     });
 
+    $(document).on("click", '[data-bs-target="#modalAddPolicySubType"]', function () {
+        const currentTypeId = $("#policy_type_id").val();
+        if (currentTypeId) {
+            $("#modal_sub_type_policy_type_id").val(currentTypeId);
+        }
+    });
+
     $(document).on("show.bs.modal", "#modalAddPolicySubType", function () {
         const currentTypeId = $("#policy_type_id").val();
         if (currentTypeId) {
@@ -1003,11 +1010,15 @@ $(document).ready(function () {
     });
 
     // Handle Add Policy Type Modal Submit
-    $("#formAddPolicyType").on("submit", function (e) {
+    $(document).on("click", "#btnSavePolicyType", function () {
+        $("#formAddPolicyType").trigger("submit");
+    });
+
+    $(document).on("submit", "#formAddPolicyType", function (e) {
         e.preventDefault();
         const $form = $(this);
-        const url = $form.attr("action");
-        const btn = $form.find('button[type="submit"]');
+        const url = $form.attr("action") || "/policy-type/store";
+        const btn = $form.find('#btnSavePolicyType, button[type="submit"]');
         const spinner = btn.find('.spinner-border');
 
         btn.prop('disabled', true);
@@ -1018,6 +1029,7 @@ $(document).ready(function () {
             url: url,
             type: "POST",
             data: $form.serialize(),
+            dataType: "json",
             headers: (typeof window.crmApplyAuthHeaders === "function" ? window.crmApplyAuthHeaders({
                 "X-Requested-With": "XMLHttpRequest",
                 "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
@@ -1033,11 +1045,15 @@ $(document).ready(function () {
 
                 if (response.status && response.id) {
                     const newOpt = new Option(response.name, response.id, true, true);
-                    $("#policy_type_id").append(newOpt).trigger("change");
+                    $("#policy_type_id").append(newOpt).val(response.id).trigger("change");
 
                     $("#modal_sub_type_policy_type_id").append(new Option(response.name, response.id, true, true));
 
-                    bootstrap.Modal.getOrCreateInstance(document.getElementById("modalAddPolicyType")).hide();
+                    const modalEl = document.getElementById("modalAddPolicyType");
+                    if (modalEl) {
+                        const bsModal = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+                        bsModal.hide();
+                    }
                     $form[0].reset();
                     if (typeof window.showAlert === "function") {
                         window.showAlert("success", response.message || "Policy type added successfully.");
@@ -1058,11 +1074,15 @@ $(document).ready(function () {
     });
 
     // Handle Add Policy Sub Type Modal Submit
-    $("#formAddPolicySubType").on("submit", function (e) {
+    $(document).on("click", "#btnSavePolicySubType", function () {
+        $("#formAddPolicySubType").trigger("submit");
+    });
+
+    $(document).on("submit", "#formAddPolicySubType", function (e) {
         e.preventDefault();
         const $form = $(this);
-        const url = $form.attr("action");
-        const btn = $form.find('button[type="submit"]');
+        const url = $form.attr("action") || "/policy-sub-type/store";
+        const btn = $form.find('#btnSavePolicySubType, button[type="submit"]');
         const spinner = btn.find('.spinner-border');
 
         btn.prop('disabled', true);
@@ -1073,6 +1093,7 @@ $(document).ready(function () {
             url: url,
             type: "POST",
             data: $form.serialize(),
+            dataType: "json",
             headers: (typeof window.crmApplyAuthHeaders === "function" ? window.crmApplyAuthHeaders({
                 "X-Requested-With": "XMLHttpRequest",
                 "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
@@ -1090,11 +1111,25 @@ $(document).ready(function () {
                     const currentTypeId = $("#policy_type_id").val();
                     const submittedTypeId = $form.find('[name="type_id"]').val();
 
-                    if (String(currentTypeId) === String(submittedTypeId)) {
-                        $("#policy_sub_type_id").append(new Option(response.name, response.id, true, true));
+                    if (!currentTypeId) {
+                        $("#policy_type_id").val(submittedTypeId);
+                        loadPolicySubTypes(submittedTypeId, response.id);
+                    } else if (String(currentTypeId) === String(submittedTypeId)) {
+                        let exists = false;
+                        $("#policy_sub_type_id option").each(function () {
+                            if (String(this.value) === String(response.id)) exists = true;
+                        });
+                        if (!exists) {
+                            $("#policy_sub_type_id").append(new Option(response.name, response.id, true, true));
+                        }
+                        $("#policy_sub_type_id").val(response.id);
                     }
 
-                    bootstrap.Modal.getOrCreateInstance(document.getElementById("modalAddPolicySubType")).hide();
+                    const modalEl = document.getElementById("modalAddPolicySubType");
+                    if (modalEl) {
+                        const bsModal = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+                        bsModal.hide();
+                    }
                     $form[0].reset();
                     if (typeof window.showAlert === "function") {
                         window.showAlert("success", response.message || "Policy sub-type added successfully.");
