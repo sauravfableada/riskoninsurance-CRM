@@ -48,6 +48,7 @@
                             <div class="d-flex gap-2">
                                 <div class="flex-grow-1">
                                     <select name="policy_sub_type_id" id="policy_sub_type_id"
+                                        data-selected="{{ old('policy_sub_type_id') }}"
                                         class="form-select @error('policy_sub_type_id') is-invalid @enderror">
                                         <option value="">-- Select Policy Sub Type --</option>
                                     </select>

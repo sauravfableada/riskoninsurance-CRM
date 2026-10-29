@@ -1376,10 +1376,18 @@ class PolicyController extends Controller
     public function getSubTypes($policyTypeId): JsonResponse
     {
         $query = InsurancePolicySubType::query();
+
+        $policyType = InsurancePolicyType::find($policyTypeId);
+        if ($policyType) {
+            $matchingTypeIds = InsurancePolicyType::whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim($policyType->name))])->pluck('id')->all();
+        } else {
+            $matchingTypeIds = [$policyTypeId];
+        }
+
         if (Schema::hasColumn('insurance_policy_sub_types', 'insurance_policy_types_id')) {
-            $query->where('insurance_policy_types_id', $policyTypeId);
+            $query->whereIn('insurance_policy_types_id', $matchingTypeIds);
         } elseif (Schema::hasColumn('insurance_policy_sub_types', 'type_id')) {
-            $query->where('type_id', $policyTypeId);
+            $query->whereIn('type_id', $matchingTypeIds);
         }
 
         $subTypes = $query->orderBy('name')->get(['id', 'name'])
@@ -1640,7 +1648,13 @@ class PolicyController extends Controller
             : 'type_id';
 
         $subTypeName = trim($validated['name']);
-        $existing = InsurancePolicySubType::where($column, $validated['type_id'])
+
+        $policyType = InsurancePolicyType::find($validated['type_id']);
+        $matchingTypeIds = $policyType
+            ? InsurancePolicyType::whereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim($policyType->name))])->pluck('id')->all()
+            : [$validated['type_id']];
+
+        $existing = InsurancePolicySubType::whereIn($column, $matchingTypeIds)
             ->whereRaw('LOWER(TRIM(name)) = ?', [strtolower($subTypeName)])
             ->first();
 
