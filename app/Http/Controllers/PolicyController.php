@@ -1382,7 +1382,11 @@ class PolicyController extends Controller
             $query->where('type_id', $policyTypeId);
         }
 
-        return response()->json($query->orderBy('name')->get(['id', 'name']));
+        $subTypes = $query->orderBy('name')->get(['id', 'name'])
+            ->unique(fn($item) => strtolower(trim($item->name)))
+            ->values();
+
+        return response()->json($subTypes);
     }
 
     public function getSegments($policyTypeId): JsonResponse
@@ -1596,8 +1600,19 @@ class PolicyController extends Controller
             'policy_description' => 'nullable|string',
         ]);
 
+        $typeName = trim($validated['policy_type_name']);
+        $existing = InsurancePolicyType::whereRaw('LOWER(TRIM(name)) = ?', [strtolower($typeName)])->first();
+        if ($existing) {
+            return response()->json([
+                'status' => true,
+                'id' => $existing->id,
+                'name' => $existing->name,
+                'message' => 'Policy type already exists.',
+            ]);
+        }
+
         $policyType = InsurancePolicyType::create([
-            'name' => $validated['policy_type_name'],
+            'name' => $typeName,
             'description' => $validated['policy_description'] ?? null,
             'created_by' => Auth::id(),
             'modified_by' => Auth::id(),
@@ -1620,18 +1635,32 @@ class PolicyController extends Controller
             'description' => 'nullable|string',
         ]);
 
+        $column = Schema::hasColumn('insurance_policy_sub_types', 'insurance_policy_types_id')
+            ? 'insurance_policy_types_id'
+            : 'type_id';
+
+        $subTypeName = trim($validated['name']);
+        $existing = InsurancePolicySubType::where($column, $validated['type_id'])
+            ->whereRaw('LOWER(TRIM(name)) = ?', [strtolower($subTypeName)])
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'status' => true,
+                'id' => $existing->id,
+                'name' => $existing->name,
+                'type_id' => $validated['type_id'],
+                'message' => 'Policy sub type already exists.',
+            ]);
+        }
+
         $data = [
-            'name' => $validated['name'],
+            'name' => $subTypeName,
             'description' => $validated['description'] ?? null,
             'created_by' => Auth::id(),
             'modified_by' => Auth::id(),
+            $column => $validated['type_id'],
         ];
-
-        if (Schema::hasColumn('insurance_policy_sub_types', 'insurance_policy_types_id')) {
-            $data['insurance_policy_types_id'] = $validated['type_id'];
-        } else {
-            $data['type_id'] = $validated['type_id'];
-        }
 
         $subType = InsurancePolicySubType::create($data);
 

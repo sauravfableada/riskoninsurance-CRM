@@ -21,7 +21,7 @@ class TaskController extends Controller
     {
         $users = $this->selectableUsers();
         $projects = $this->scopeOwnedRecords(Project::query())->orderBy('name')->get();
-        $policyTypes = InsurancePolicyType::orderBy('name')->get();
+        $policyTypes = InsurancePolicyType::orderBy('name')->get()->unique(fn($t) => strtolower(trim($t->name)))->values();
         $customers = $this->visibleCustomers();
         return view('crm.tasks.create', compact('users', 'projects', 'policyTypes', 'customers'));
     }
@@ -32,9 +32,9 @@ class TaskController extends Controller
         $this->authorize('update', $task);
         $users = $this->selectableUsers();
         $projects = $this->scopeOwnedRecords(Project::query())->orderBy('name')->get();
-        $policyTypes = InsurancePolicyType::orderBy('name')->get();
+        $policyTypes = InsurancePolicyType::orderBy('name')->get()->unique(fn($t) => strtolower(trim($t->name)))->values();
         $policySubTypes = $task->policy_type_id
-            ? InsurancePolicySubType::where('insurance_policy_types_id', $task->policy_type_id)->orderBy('name')->get()
+            ? InsurancePolicySubType::where('insurance_policy_types_id', $task->policy_type_id)->orderBy('name')->get()->unique(fn($st) => strtolower(trim($st->name)))->values()
             : collect();
         $customers = $this->visibleCustomers();
         return view('crm.tasks.edit', compact('task', 'users', 'projects', 'policyTypes', 'policySubTypes', 'customers'));

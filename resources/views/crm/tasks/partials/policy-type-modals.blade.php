@@ -75,8 +75,9 @@
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    if (typeof jQuery === "undefined") return;
+(function () {
+    if (window.__crmPolicyModalsInitialized) return;
+    window.__crmPolicyModalsInitialized = true;
 
     function getAuthHeaders(extra = {}) {
         if (typeof window.crmApplyAuthHeaders === "function") {
@@ -99,27 +100,50 @@ document.addEventListener("DOMContentLoaded", function () {
     $(document).on("click", '[data-bs-target="#modalAddPolicySubType"]', syncSubTypeModalPolicyType);
     $(document).on("show.bs.modal", "#modalAddPolicySubType", syncSubTypeModalPolicyType);
 
+    var inFlightSubTypesXhr = null;
+
     function fetchAndPopulateSubTypes(policyTypeId, selectId) {
         var $subSelect = $("#policy_sub_type_id");
         if (!$subSelect.length) return;
 
-        $subSelect.empty().append('<option value="">-- Select Policy Sub Type --</option>');
-        if (!policyTypeId) return;
+        if (inFlightSubTypesXhr && inFlightSubTypesXhr.readyState !== 4) {
+            inFlightSubTypesXhr.abort();
+        }
 
-        $.ajax({
-            url: "/policy-sub-types/" + policyTypeId,
+        if (!policyTypeId) {
+            $subSelect.html('<option value="">-- Select Policy Sub Type --</option>');
+            return;
+        }
+
+        $subSelect.html('<option value="">Loading sub-types...</option>');
+
+        inFlightSubTypesXhr = $.ajax({
+            url: "/policy-sub-types/" + encodeURIComponent(policyTypeId),
             type: "GET",
             dataType: "json",
             headers: getAuthHeaders(),
             success: function (data) {
+                var html = '<option value="">-- Select Policy Sub Type --</option>';
+                var seenNames = {};
                 if (Array.isArray(data)) {
                     data.forEach(function (st) {
-                        var isSel = selectId && String(st.id) === String(selectId);
-                        $subSelect.append(new Option(st.name, st.id, isSel, isSel));
+                        var normalizedName = (st.name || "").trim().toLowerCase();
+                        if (normalizedName && !seenNames[normalizedName]) {
+                            seenNames[normalizedName] = true;
+                            var isSel = selectId && (String(st.id) === String(selectId) || normalizedName === String(selectId).toLowerCase());
+                            var escapedName = $("<div>").text(st.name).html();
+                            html += '<option value="' + st.id + '"' + (isSel ? ' selected' : '') + '>' + escapedName + '</option>';
+                        }
                     });
-                    if (selectId) {
-                        $subSelect.val(selectId);
-                    }
+                }
+                $subSelect.html(html);
+                if (selectId) {
+                    $subSelect.val(selectId);
+                }
+            },
+            error: function (xhr, status) {
+                if (status !== 'abort') {
+                    $subSelect.html('<option value="">-- Select Policy Sub Type --</option>');
                 }
             }
         });
@@ -160,9 +184,30 @@ document.addEventListener("DOMContentLoaded", function () {
                 $spinner.addClass("d-none");
 
                 if (res.status && res.id) {
-                    var newOpt = new Option(res.name, res.id, true, true);
-                    $("#policy_type_id").append(newOpt).val(res.id).trigger("change");
-                    $("#modal_sub_type_policy_type_id").append(new Option(res.name, res.id, true, true));
+                    var resNameLower = (res.name || "").trim().toLowerCase();
+                    var exists = false;
+                    $("#policy_type_id option").each(function () {
+                        if (String(this.value) === String(res.id) || $(this).text().trim().toLowerCase() === resNameLower) {
+                            exists = true;
+                            this.value = res.id;
+                        }
+                    });
+                    if (!exists) {
+                        $("#policy_type_id").append(new Option(res.name, res.id, true, true));
+                    }
+                    $("#policy_type_id").val(res.id).trigger("change");
+
+                    var modalSubExists = false;
+                    $("#modal_sub_type_policy_type_id option").each(function () {
+                        if (String(this.value) === String(res.id) || $(this).text().trim().toLowerCase() === resNameLower) {
+                            modalSubExists = true;
+                            this.value = res.id;
+                        }
+                    });
+                    if (!modalSubExists) {
+                        $("#modal_sub_type_policy_type_id").append(new Option(res.name, res.id, true, true));
+                    }
+                    $("#modal_sub_type_policy_type_id").val(res.id);
 
                     var modal = bootstrap.Modal.getInstance(document.getElementById("modalAddPolicyType")) ||
                                 bootstrap.Modal.getOrCreateInstance(document.getElementById("modalAddPolicyType"));
@@ -247,9 +292,13 @@ document.addEventListener("DOMContentLoaded", function () {
                         $("#policy_type_id").val(typeId);
                         fetchAndPopulateSubTypes(typeId, res.id);
                     } else if (String(currentMainTypeId) === String(typeId)) {
+                        var resNameLower = (res.name || "").trim().toLowerCase();
                         var exists = false;
                         $("#policy_sub_type_id option").each(function () {
-                            if (String(this.value) === String(res.id)) exists = true;
+                            if (String(this.value) === String(res.id) || $(this).text().trim().toLowerCase() === resNameLower) {
+                                exists = true;
+                                this.value = res.id;
+                            }
                         });
                         if (!exists) {
                             $("#policy_sub_type_id").append(new Option(res.name, res.id, true, true));
@@ -297,6 +346,6 @@ document.addEventListener("DOMContentLoaded", function () {
         e.preventDefault();
         handleSavePolicySubType();
     });
-});
+})();
 </script>
 
