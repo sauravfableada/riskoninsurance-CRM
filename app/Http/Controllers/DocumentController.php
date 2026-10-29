@@ -109,6 +109,10 @@ class DocumentController extends Controller
 
         $customers = $customersQuery->orderBy('name')->paginate(15)->withQueryString();
 
+        if ($request->ajax() || $request->input('ajax') == 1) {
+            return view('crm.documents.table_partial', compact('customers'))->render();
+        }
+
         return view('crm.documents.index', compact(
             'customers',
             'allCustomers',

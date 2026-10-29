@@ -98,7 +98,7 @@
 
     {{-- Filters: Customer Dropdown & Search --}}
     <div class="px-4 pt-2 pb-3 border-bottom bg-light bg-opacity-50">
-        <form method="GET" action="{{ route('documents.index') }}" class="row g-2 align-items-center">
+        <form method="GET" action="{{ route('documents.index') }}" id="docFilterForm" class="row g-2 align-items-center">
             <div class="col-md-5">
                 <label for="customer_id" class="form-label small fw-semibold text-muted mb-1">Filter by Customer</label>
                 <select name="customer_id" id="customer_id" class="form-select form-select-sm select2-customer">
@@ -114,16 +114,14 @@
                 <label for="search" class="form-label small fw-semibold text-muted mb-1">Search Customer or Document Title</label>
                 <div class="input-group input-group-sm">
                     <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
-                    <input type="text" name="search" id="search" class="form-control border-start-0" placeholder="Search by customer name, phone, email, or document..." value="{{ $search }}">
+                    <input type="text" name="search" id="search" class="form-control border-start-0" placeholder="Search by customer name, phone, email, or document..." value="{{ $search }}" autocomplete="off">
                 </div>
             </div>
             <div class="col-md-2 d-flex align-items-end gap-1 mt-auto">
-                <button type="submit" class="btn btn-dark-blue btn-sm flex-grow-1">Filter</button>
-                @if($selectedCustomerId || $search)
-                    <a href="{{ route('documents.index') }}" class="btn btn-outline-secondary btn-sm" title="Clear Filters">
-                        <i class="bi bi-x-lg"></i>
-                    </a>
-                @endif
+                <button type="submit" class="btn btn-dark-blue btn-sm flex-grow-1" id="btnSubmitFilter">Filter</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnClearFilters" title="Clear Filters" style="{{ ($selectedCustomerId || $search) ? '' : 'display:none;' }}">
+                    <i class="bi bi-x-lg"></i>
+                </button>
             </div>
         </form>
     </div>
@@ -141,138 +139,9 @@
         </div>
     @endif
 
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" id="documentsTable">
-                <thead class="bg-light">
-                    <tr>
-                        <th class="ps-4" style="width: 60px;">#</th>
-                        <th>Customer Details</th>
-                        <th>Total Documents</th>
-                        <th>Latest Document Uploaded</th>
-                        <th class="pe-4 text-end" style="width: 220px;">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($customers as $index => $customer)
-                        @php
-                            $latestDoc = $customer->documents->first();
-                            $policyCount = $customer->policy_docs_count ?? 0;
-                            $kycCount = $customer->kyc_docs_count ?? 0;
-                            $imageCount = $customer->image_docs_count ?? 0;
-                        @endphp
-                        <tr>
-                            <td class="ps-4 text-muted fw-semibold">
-                                {{ ($customers->currentPage() - 1) * $customers->perPage() + $index + 1 }}
-                            </td>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="avatar avatar-md bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center me-3 flex-shrink-0" style="width: 42px; height: 42px; font-weight: 700; font-size: 16px;">
-                                        {{ strtoupper(substr($customer->name, 0, 1)) }}
-                                    </div>
-                                    <div>
-                                        <a href="{{ route('documents.customer', $customer->id) }}" class="fw-bold text-dark text-decoration-none hover-primary fs-6">
-                                            {{ $customer->name }}
-                                        </a>
-                                        <div class="small text-muted d-flex align-items-center gap-2 mt-1">
-                                            @if($customer->phone)
-                                                <span><i class="bi bi-telephone me-1"></i>{{ $customer->phone }}</span>
-                                            @endif
-                                            @if($customer->email)
-                                                <span><i class="bi bi-envelope me-1"></i>{{ $customer->email }}</span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="d-flex flex-column align-items-start gap-1">
-                                    <span class="badge bg-primary px-3 py-2 rounded-pill fs-7 fw-semibold">
-                                        <i class="bi bi-file-earmark-text me-1"></i> {{ $customer->documents_count }} {{ Str::plural('Document', $customer->documents_count) }}
-                                    </span>
-                                    <div class="d-flex flex-wrap gap-1 mt-1">
-                                        @if($policyCount > 0)
-                                            <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle" style="font-size: 11px;">
-                                                <i class="bi bi-shield-check me-1"></i>{{ $policyCount }} Policy
-                                            </span>
-                                        @endif
-                                        @if($kycCount > 0)
-                                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" style="font-size: 11px;">
-                                                <i class="bi bi-person-vcard me-1"></i>{{ $kycCount }} KYC
-                                            </span>
-                                        @endif
-                                        @if($imageCount > 0)
-                                            <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle" style="font-size: 11px;">
-                                                <i class="bi bi-image me-1"></i>{{ $imageCount }} Images
-                                            </span>
-                                        @endif
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                @if($latestDoc)
-                                    @php
-                                        $isImg = $latestDoc->isImage();
-                                        $isPdf = $latestDoc->isPdf();
-                                        $iconClass = $isPdf ? 'bi-file-earmark-pdf text-danger' : ($isImg ? 'bi-file-earmark-image text-success' : 'bi-file-earmark-text text-primary');
-                                    @endphp
-                                    <div class="d-flex align-items-center">
-                                        <i class="bi {{ $iconClass }} fs-4 me-2"></i>
-                                        <div style="max-width: 320px;">
-                                            <div class="fw-semibold text-truncate text-dark" title="{{ $latestDoc->title }}">
-                                                {{ $latestDoc->title }}
-                                            </div>
-                                            <div class="small text-muted">
-                                                <span>{{ $latestDoc->created_at ? $latestDoc->created_at->format('M d, Y') : '--' }}</span>
-                                                @if($latestDoc->user)
-                                                    <span> • by {{ $latestDoc->user->name }}</span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                    </div>
-                                @else
-                                    <span class="text-muted small">No recent upload</span>
-                                @endif
-                            </td>
-                            <td class="pe-4 text-end text-nowrap">
-                                <a href="{{ route('documents.customer', $customer->id) }}" class="btn btn-sm btn-dark-blue rounded-pill px-3 me-1" title="View all documents for {{ $customer->name }}">
-                                    <i class="bi bi-eye me-1"></i> View Documents
-                                </a>
-                                <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle btn-row-quick-upload" 
-                                    data-customer-id="{{ $customer->id }}" 
-                                    data-customer-name="{{ $customer->name }}" 
-                                    title="Quick Upload Document for {{ $customer->name }}">
-                                    <i class="bi bi-plus-lg"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="text-center py-5 text-muted">
-                                <i class="bi bi-folder2-open fs-1 d-block mb-3 opacity-50"></i>
-                                <h6 class="fw-semibold text-dark">No customer documents found</h6>
-                                <p class="small text-muted mb-3">No documents match the selected filters. Upload new documents or clear filters.</p>
-                                <button type="button" class="btn btn-dark-blue btn-sm rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#quickUploadModal">
-                                    <i class="bi bi-cloud-upload me-1"></i> Upload First Document
-                                </button>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+    <div id="documentsTableContainer">
+        @include('crm.documents.table_partial')
     </div>
-
-    @if ($customers->hasPages())
-        <div class="card-footer bg-white border-top-0 py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div class="text-muted small">
-                Showing <strong>{{ $customers->firstItem() ?? 0 }}</strong> to <strong>{{ $customers->lastItem() ?? 0 }}</strong> of <strong>{{ $customers->total() }}</strong> customers
-            </div>
-            <div>
-                {{ $customers->links() }}
-            </div>
-        </div>
-    @endif
 </div>
 
 {{-- Quick Upload Document / Image Modal --}}
@@ -379,6 +248,117 @@ $(document).ready(function() {
             reader.readAsDataURL(file);
         } else {
             $('#modal_image_preview_wrapper').slideUp();
+        }
+    });
+
+    // ── Instant Filter without page reload (AJAX + Client-side Instant Filter) ──
+    function filterDocumentsAjax(pageUrl) {
+        const custId = $('#customer_id').val() || '';
+        const searchVal = $('#search').val() || '';
+        const url = pageUrl || "{{ route('documents.index') }}";
+
+        $('#documentsTableContainer').css('opacity', '0.5');
+
+        // Instant client-side row filtering first for 0ms feedback
+        if (!pageUrl) {
+            applyClientSideRowFilters(custId, searchVal);
+        }
+
+        $.ajax({
+            url: url,
+            type: 'GET',
+            data: {
+                customer_id: custId,
+                search: searchVal,
+                ajax: 1
+            },
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(html) {
+                $('#documentsTableContainer').html(html).css('opacity', '1');
+
+                // Update browser URL query string without reloading page
+                const newUrl = new URL(window.location.href);
+                if (custId) {
+                    newUrl.searchParams.set('customer_id', custId);
+                } else {
+                    newUrl.searchParams.delete('customer_id');
+                }
+                if (searchVal) {
+                    newUrl.searchParams.set('search', searchVal);
+                } else {
+                    newUrl.searchParams.delete('search');
+                }
+                newUrl.searchParams.delete('ajax');
+                window.history.replaceState({}, '', newUrl.toString());
+
+                // Update clear button visibility
+                if (custId || searchVal) {
+                    $('#btnClearFilters').show();
+                } else {
+                    $('#btnClearFilters').hide();
+                }
+            },
+            error: function() {
+                $('#documentsTableContainer').css('opacity', '1');
+            }
+        });
+    }
+
+    function applyClientSideRowFilters(custId, searchVal) {
+        const sTerm = (searchVal || '').toLowerCase().trim();
+        $('.customer-row').each(function() {
+            const $row = $(this);
+            const rowCustId = $row.data('customer-id') ? $row.data('customer-id').toString() : '';
+            const rowSearch = ($row.data('search-text') || '').toString().toLowerCase();
+
+            const matchCust = !custId || (rowCustId === custId.toString());
+            const matchSearch = !sTerm || rowSearch.includes(sTerm);
+
+            if (matchCust && matchSearch) {
+                $row.show();
+            } else {
+                $row.hide();
+            }
+        });
+    }
+
+    // Trigger filter on customer dropdown onchange
+    $('#customer_id').on('change select2:select select2:clear', function() {
+        filterDocumentsAjax();
+    });
+
+    // Trigger filter on search input typing (debounced)
+    let searchDebounceTimer = null;
+    $('#search').on('keyup input', function() {
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(function() {
+            filterDocumentsAjax();
+        }, 300);
+    });
+
+    // Form submit blocker -> triggers AJAX filter
+    $('#docFilterForm').on('submit', function(e) {
+        e.preventDefault();
+        filterDocumentsAjax();
+        return false;
+    });
+
+    // Clear filters button without page reload
+    $('#btnClearFilters').on('click', function(e) {
+        e.preventDefault();
+        $('#customer_id').val('').trigger('change.select2');
+        $('#search').val('');
+        filterDocumentsAjax();
+    });
+
+    // AJAX pagination links
+    $(document).on('click', '#documentsTableContainer .pagination a', function(e) {
+        e.preventDefault();
+        const targetUrl = $(this).attr('href');
+        if (targetUrl) {
+            filterDocumentsAjax(targetUrl);
         }
     });
 });

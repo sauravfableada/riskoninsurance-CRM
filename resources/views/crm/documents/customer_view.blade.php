@@ -172,20 +172,32 @@
                         @php
                             $isImg = $doc->isImage();
                             $isPdf = $doc->isPdf();
-                            $isKyc = $doc->is_kyc;
-                            $isPolicy = str_contains($doc->documentable_type ?? '', 'Policy')
-                                     || str_contains($doc->meta ?? '', 'policy')
-                                     || str_starts_with($doc->file_path, 'policies/');
+                            $isKyc = (bool)$doc->is_kyc;
+                            $isPolicy = !$isKyc && (
+                                str_contains($doc->documentable_type ?? '', 'Policy')
+                                || str_contains($doc->meta ?? '', 'policy')
+                                || str_starts_with($doc->file_path, 'policies/')
+                            );
                             
                             $categoryFilter = 'other';
-                            if ($isPolicy) $categoryFilter = 'policy';
-                            elseif ($isKyc) $categoryFilter = 'kyc';
-                            elseif ($isImg) $categoryFilter = 'image';
+                            if ($isKyc) {
+                                $categoryFilter = 'kyc';
+                            } elseif ($isPolicy) {
+                                $categoryFilter = 'policy';
+                            } elseif ($isImg) {
+                                $categoryFilter = 'image';
+                            }
 
                             $badge = $doc->category_badge;
                             $fileUrl = route('documents.view', $doc->id);
                         @endphp
-                        <tr class="doc-row" data-category="{{ $categoryFilter }}" data-is-image="{{ $isImg ? '1' : '0' }}" data-title="{{ strtolower($doc->title) }}" id="doc-row-{{ $doc->id }}">
+                        <tr class="doc-row" 
+                            data-category="{{ $categoryFilter }}" 
+                            data-is-kyc="{{ $isKyc ? '1' : '0' }}" 
+                            data-is-policy="{{ $isPolicy ? '1' : '0' }}" 
+                            data-is-image="{{ $isImg ? '1' : '0' }}" 
+                            data-title="{{ strtolower($doc->title . ' ' . basename($doc->file_path)) }}" 
+                            id="doc-row-{{ $doc->id }}">
                             <td class="ps-4 text-muted fw-semibold">{{ $index + 1 }}</td>
                             
                             {{-- Visual Preview Thumbnail --}}
@@ -309,6 +321,13 @@
                             </td>
                         </tr>
                     @endforelse
+                    <tr id="empty-filter-placeholder" style="display: none;">
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-funnel fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                            <h6 class="fw-semibold text-dark">No documents found in this tab</h6>
+                            <p class="small text-muted mb-0">No documents match the active filter or search keywords.</p>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -644,15 +663,23 @@ $(document).ready(function() {
         const activeFilter = $('.tab-btn.active').data('filter') || 'all';
         const searchKeyword = ($('#docSearchInput').val() || '').toLowerCase().trim();
 
+        let visibleRows = 0;
+
         $('.doc-row').each(function() {
             const $row = $(this);
             const rowCat = $row.data('category');
-            const rowTitle = $row.data('title');
-            const isImg = $row.data('is-image') == '1';
+            const rowTitle = ($row.data('title') || '').toString().toLowerCase();
+            const isKyc = $row.data('is-kyc') == '1' || rowCat === 'kyc';
+            const isPolicy = $row.data('is-policy') == '1' || rowCat === 'policy';
+            const isImg = $row.data('is-image') == '1' || rowCat === 'image';
 
             let matchesCat = false;
             if (activeFilter === 'all') {
                 matchesCat = true;
+            } else if (activeFilter === 'kyc') {
+                matchesCat = isKyc;
+            } else if (activeFilter === 'policy') {
+                matchesCat = isPolicy;
             } else if (activeFilter === 'image') {
                 matchesCat = isImg;
             } else {
@@ -666,10 +693,17 @@ $(document).ready(function() {
 
             if (matchesCat && matchesSearch) {
                 $row.show();
+                visibleRows++;
             } else {
                 $row.hide();
             }
         });
+
+        if (visibleRows === 0 && $('.doc-row').length > 0) {
+            $('#empty-filter-placeholder').show();
+        } else {
+            $('#empty-filter-placeholder').hide();
+        }
     }
 });
 </script>
