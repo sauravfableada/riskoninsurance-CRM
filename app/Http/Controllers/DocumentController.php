@@ -345,18 +345,35 @@ class DocumentController extends Controller
      */
     private function resolveFilePath(Document $document): ?string
     {
-        $cleanPath = ltrim($document->file_path, '/\\');
+        $cleanPath = ltrim(str_replace('\\', '/', $document->file_path), '/');
         $baseName = basename($cleanPath);
+        $policyId = $document->meta_array['policy_id'] ?? $document->documentable_id ?? null;
 
         $candidates = [
             Storage::disk('public')->path($cleanPath),
+            Storage::disk('public')->path('policies/' . $baseName),
             public_path($cleanPath),
             public_path('uploads/kyc/' . $baseName),
             public_path('uploads/policies/' . $baseName),
+            public_path('policies/' . $baseName),
+            public_path('storage/policies/' . $baseName),
             storage_path('app/public/' . $cleanPath),
             storage_path('app/public/policies/' . $baseName),
             storage_path('app/' . $cleanPath),
+            $policyId ? storage_path("app/policy_pdfs/{$policyId}/" . $baseName) : null,
+            $policyId ? Storage::disk('local')->path("policy_pdfs/{$policyId}/" . $baseName) : null,
         ];
+
+        if (!empty($baseName)) {
+            $globPolicyPdfs = glob(storage_path('app/policy_pdfs/*/' . $baseName));
+            if (!empty($globPolicyPdfs)) {
+                $candidates = array_merge($candidates, $globPolicyPdfs);
+            }
+            $globPublic = glob(storage_path('app/public/*/' . $baseName));
+            if (!empty($globPublic)) {
+                $candidates = array_merge($candidates, $globPublic);
+            }
+        }
 
         foreach ($candidates as $cand) {
             if ($cand && file_exists($cand) && !is_dir($cand)) {

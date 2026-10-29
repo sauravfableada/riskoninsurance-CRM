@@ -1119,14 +1119,111 @@ class PolicyController extends Controller
         return $history;
     }
 
-    public function viewPolicyHistoryDocument(PolicyPdfHistory $document)
+    /**
+     * Resolve the absolute path of a policy PDF across public, local, subdirectories, and legacy paths.
+     */
+    private function resolvePolicyPdfPath(?string $fileName, ?int $policyId = null): ?string
     {
-        $filePath = 'policies/' . basename($document->file_name);
-        abort_unless(Storage::disk('public')->exists($filePath), 404, 'File missing');
+        if (empty($fileName)) {
+            return null;
+        }
 
-        return response()->file(Storage::disk('public')->path($filePath), [
-            'Content-Type' => Storage::disk('public')->mimeType($filePath),
-            'Content-Disposition' => 'inline; filename="' . basename($document->original_file_name ?: $document->file_name) . '"',
+        $clean = ltrim(str_replace('\\', '/', $fileName), '/');
+        $base = basename($clean);
+
+        $candidates = [
+            // Standard public storage: storage/app/public/policies/...
+            Storage::disk('public')->path('policies/' . $base),
+            Storage::disk('public')->path($clean),
+            storage_path('app/public/policies/' . $base),
+            storage_path('app/public/' . $clean),
+
+            // Local storage: storage/app/policy_pdfs/{id}/...
+            $policyId ? storage_path("app/policy_pdfs/{$policyId}/" . $base) : null,
+            $policyId ? Storage::disk('local')->path("policy_pdfs/{$policyId}/" . $base) : null,
+            Storage::disk('local')->path($clean),
+            Storage::disk('local')->path('policies/' . $base),
+            storage_path('app/' . $clean),
+
+            // Web public folder: public/policies/..., public/uploads/policies/...
+            public_path('policies/' . $base),
+            public_path('uploads/policies/' . $base),
+            public_path('storage/policies/' . $base),
+            public_path($clean),
+
+            // Absolute path
+            (file_exists($fileName) && !is_dir($fileName)) ? $fileName : null,
+        ];
+
+        // Search for subfolder pattern in storage/app/policy_pdfs/*/filename
+        if (!empty($base)) {
+            $globPolicyPdfs = glob(storage_path('app/policy_pdfs/*/' . $base));
+            if (!empty($globPolicyPdfs)) {
+                $candidates = array_merge($candidates, $globPolicyPdfs);
+            }
+            $globPublic = glob(storage_path('app/public/*/' . $base));
+            if (!empty($globPublic)) {
+                $candidates = array_merge($candidates, $globPublic);
+            }
+        }
+
+        foreach ($candidates as $cand) {
+            if ($cand && file_exists($cand) && !is_dir($cand)) {
+                return $cand;
+            }
+        }
+
+        return null;
+    }
+
+    public function viewPolicyHistoryDocument($document)
+    {
+        $history = null;
+        if ($document instanceof PolicyPdfHistory) {
+            $history = $document;
+        } elseif (is_numeric($document)) {
+            $history = PolicyPdfHistory::find($document);
+        }
+
+        $realPath = null;
+        $fileName = null;
+        $origName = null;
+
+        if ($history) {
+            $realPath = $this->resolvePolicyPdfPath($history->file_name, $history->policy_id);
+            $fileName = $history->file_name;
+            $origName = $history->original_file_name ?: $history->file_name;
+        }
+
+        // Fallback 1: check if ID was a Document model ID
+        if (!$realPath && is_numeric($document)) {
+            $doc = \App\Models\Document::find($document);
+            if ($doc) {
+                $realPath = $this->resolvePolicyPdfPath($doc->file_path, $doc->documentable_id);
+                $fileName = $doc->file_path;
+                $origName = basename($doc->file_path);
+            }
+        }
+
+        // Fallback 2: check if ID was a Policy ID
+        if (!$realPath && is_numeric($document)) {
+            $policy = Policy::find($document);
+            if ($policy && !empty($policy->policy_pdf)) {
+                $realPath = $this->resolvePolicyPdfPath($policy->policy_pdf, $policy->id);
+                $fileName = $policy->policy_pdf;
+                $origName = basename($policy->policy_pdf);
+            }
+        }
+
+        if (!$realPath || !file_exists($realPath) || is_dir($realPath)) {
+            abort(404, 'Policy document file not found on server.');
+        }
+
+        $mimeType = mime_content_type($realPath) ?: 'application/pdf';
+
+        return response()->file($realPath, [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline; filename="' . basename($origName ?: $fileName) . '"',
         ]);
     }
 
@@ -1167,21 +1264,23 @@ class PolicyController extends Controller
     {
         $policy = Policy::findOrFail($id);
 
-        if (empty($policy->policy_pdf)) {
-            abort(404, 'Document not found');
+        $realPath = $this->resolvePolicyPdfPath($policy->policy_pdf, $policy->id);
+        if (!$realPath || !file_exists($realPath)) {
+            $latestHist = PolicyPdfHistory::where('policy_id', $policy->id)->latest()->first();
+            if ($latestHist) {
+                $realPath = $this->resolvePolicyPdfPath($latestHist->file_name, $policy->id);
+            }
         }
 
-        $filePath = 'policies/' . basename($policy->policy_pdf);
-        
-        if (!Storage::disk('public')->exists($filePath)) {
-            abort(404, 'File missing');
+        if (!$realPath || !file_exists($realPath) || is_dir($realPath)) {
+            abort(404, 'Policy document file not found on server.');
         }
 
-        $mimeType = Storage::disk('public')->mimeType($filePath);
+        $mimeType = mime_content_type($realPath) ?: 'application/pdf';
 
-        return response()->file(Storage::disk('public')->path($filePath), [
+        return response()->file($realPath, [
             'Content-Type' => $mimeType,
-            'Content-Disposition' => 'inline; filename="' . basename($filePath) . '"'
+            'Content-Disposition' => 'inline; filename="' . basename($realPath) . '"'
         ]);
     }
 

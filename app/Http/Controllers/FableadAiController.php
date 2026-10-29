@@ -439,19 +439,48 @@ class FableadAiController extends Controller
             if (file_exists($pdfPath)) {
                 $destDir  = "policy_pdfs/{$policy->id}";
                 $destName = 'ai_extracted_' . date('Ymd_His') . '.pdf';
+                $pdfContent = file_get_contents($pdfPath);
+
+                // 1. Store in public disk under policies/ (Standard accessible location)
+                Storage::disk('public')->makeDirectory('policies');
+                Storage::disk('public')->put("policies/{$destName}", $pdfContent);
+
+                // 2. Also store in local disk for backup
                 Storage::disk('local')->makeDirectory($destDir);
-                Storage::disk('local')->put("{$destDir}/{$destName}", file_get_contents($pdfPath));
+                Storage::disk('local')->put("{$destDir}/{$destName}", $pdfContent);
 
-                $policy->update(['policy_pdf' => "{$destDir}/{$destName}"]);
+                $policy->update(['policy_pdf' => "policies/{$destName}"]);
 
-                PolicyPdfHistory::create([
+                $pdfHist = PolicyPdfHistory::create([
                     'policy_id'          => $policy->id,
-                    'file_name'          => "{$destDir}/{$destName}",
+                    'file_name'          => $destName,
                     'original_file_name' => 'ai_extracted_policy.pdf',
                     'document_type'      => 'policy',
                     'label'              => 'Original Policy PDF (Fablead AI)',
                     'uploaded_by'        => $userId,
                 ]);
+
+                // Sync into Customer Documents Repository
+                try {
+                    \App\Models\Document::create([
+                        'customer_id'       => $policy->holder_id ?: null,
+                        'title'             => 'Original Policy PDF (Fablead AI) - Policy ' . $policyNum . ' (ai_extracted_policy.pdf)',
+                        'file_path'         => 'policies/' . $destName,
+                        'file_type'         => 'pdf',
+                        'is_kyc'            => false,
+                        'meta'              => json_encode([
+                            'source'        => 'fablead_ai_upload',
+                            'history_id'    => $pdfHist->id,
+                            'policy_id'     => $policy->id,
+                            'policy_number' => $policyNum,
+                        ]),
+                        'documentable_id'   => $policy->id,
+                        'documentable_type' => Policy::class,
+                        'user_id'           => $userId,
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::warning('Document record creation failed in FableadAiController: ' . $e->getMessage());
+                }
 
                 // Clean up temp file
                 @unlink($pdfPath);
