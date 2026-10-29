@@ -667,7 +667,7 @@ class LifeInsuranceController extends Controller
                 'modified_by' => auth()->id(),
             ]);
 
-            // Handle members if provided
+            // Handle members if provided as array of objects
             if (!empty($validated['members'])) {
                 foreach ($validated['members'] as $memberData) {
                     if (!empty($memberData['name'])) {
@@ -685,12 +685,37 @@ class LifeInsuranceController extends Controller
                 }
             }
 
+            // Also handle members if provided as parallel arrays (member_name[], member_relation[], etc.)
+            if ($request->has('member_name') && is_array($request->input('member_name'))) {
+                $names = $request->input('member_name');
+                $relations = $request->input('member_relation', []);
+                $contacts = $request->input('member_contact', []);
+                $dobs = $request->input('member_dob', []);
+                $anniversaries = $request->input('member_anniversary', []);
+
+                foreach ($names as $idx => $mName) {
+                    if (!empty(trim((string)$mName))) {
+                        \App\Models\FamilyGroupMember::create([
+                            'family_group_id' => $group->id,
+                            'member_name' => trim((string)$mName),
+                            'relation' => $relations[$idx] ?? null,
+                            'contact' => $contacts[$idx] ?? null,
+                            'dob' => !empty($dobs[$idx]) ? $dobs[$idx] : null,
+                            'anniversary' => !empty($anniversaries[$idx]) ? $anniversaries[$idx] : null,
+                            'created_by' => auth()->id(),
+                            'modified_by' => auth()->id(),
+                        ]);
+                    }
+                }
+            }
+
             \DB::commit();
 
             return response()->json([
                 'status' => 'success',
                 'id' => $group->id,
                 'group_name' => $group->group_name,
+                'holder_id' => $group->holder_id,
                 'message' => 'Family group saved successfully'
             ]);
         } catch (\Exception $e) {

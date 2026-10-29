@@ -343,7 +343,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
 
                     <form id="policy_ai_form" action="javascript:void(0);" method="POST" onsubmit="return false;">
                         @csrf
-                        <input type="hidden" name="base_url" id="base_url" value="<?= base_url(); ?>">
+                        <input type="hidden" name="base_url" id="base_url" value="{{ url('/') }}/">
                         <input type="hidden" name="upload_id" id="upload_id_input">
 
                         <div class="ai-form-body">
@@ -1067,6 +1067,11 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                             <label class="form-label fw-bold">Policy Holder <span class="text-danger">*</span></label>
                             <select class="form-control" id="fg_holder_id" name="policy_holder_id" required>
                                 <option value="">Select Policy Holder</option>
+                                @if(isset($customers) && count($customers) > 0)
+                                    @foreach($customers as $c)
+                                        <option value="{{ $c->id }}">{{ $c->name }}</option>
+                                    @endforeach
+                                @endif
                             </select>
                         </div>
                     </div>
@@ -1193,6 +1198,11 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                         <label class="form-label fw-bold">Policy Type <span class="text-danger">*</span></label>
                         <select class="form-control" name="type_id" id="pst_type_id" required>
                             <option value="">-- Select Policy Type --</option>
+                            @if(isset($policyTypes) && count($policyTypes) > 0)
+                                @foreach($policyTypes as $pt)
+                                    <option value="{{ $pt->id }}">{{ $pt->name }}</option>
+                                @endforeach
+                            @endif
                         </select>
                     </div>
                     <div class="mb-3">
@@ -1228,6 +1238,11 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                         <label class="form-label fw-bold">Policy Type <span class="text-danger">*</span></label>
                         <select class="form-control" name="insurance_type_id" id="seg_type_id" required>
                             <option value="">-- Select Policy Type --</option>
+                            @if(isset($policyTypes) && count($policyTypes) > 0)
+                                @foreach($policyTypes as $pt)
+                                    <option value="{{ $pt->id }}">{{ $pt->name }}</option>
+                                @endforeach
+                            @endif
                         </select>
                     </div>
                     <div class="mb-3">
@@ -1292,6 +1307,11 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                         <label class="form-label fw-bold">Insurance Company <span class="text-danger">*</span></label>
                         <select class="form-control" name="company_id" id="branch_company_id" required>
                             <option value="">-- Select Company --</option>
+                            @if(isset($companies) && count($companies) > 0)
+                                @foreach($companies as $cmp)
+                                    <option value="{{ $cmp->id }}">{{ $cmp->name }}</option>
+                                @endforeach
+                            @endif
                         </select>
                     </div>
                     <div class="mb-3">
@@ -1389,8 +1409,8 @@ var AI_UPLOAD_URL   = "{{ route('fablead.ai.upload') }}";
 var AI_EXTRACT_URL  = "{{ route('fablead.ai.extract') }}";
 var AI_SAVE_URL     = "{{ route('fablead.ai.save') }}";
 var AI_PDF_URL      = "{{ route('fablead.ai.pdf') }}";
-var CSRF_TOKEN      = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-var BASE_URL        = document.getElementById('base_url').value.replace(/\/+$/, '') + '/';
+var CSRF_TOKEN      = "{{ csrf_token() }}";
+var BASE_URL        = "{{ url('/') }}/";
 
 var selectedFiles   = [];
 var currentUploadId = null;
@@ -1398,9 +1418,167 @@ var extractedData   = null;
 var currentFileIndex= 0;
 
 // ── Toastr config ──────────────────────────────────────────────────────────
-toastr.options = { positionClass: 'toast-top-right', timeOut: 4000, progressBar: true };
+if (typeof toastr !== 'undefined') {
+    toastr.options = { positionClass: 'toast-top-right', timeOut: 4000, progressBar: true };
+}
 
-// ── Init Select2 ──────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════
+// GLOBAL MODAL HELPERS (AVAILABLE IMMEDIATELY BEFORE ANY CLICKS)
+// ════════════════════════════════════════════════════════════════════════
+
+window.appendAndSelect = function(selectId, id, label, extraAttrs) {
+    var $sel = $(selectId);
+    $sel.find('option[value="' + id + '"]').remove();
+    var $opt = $('<option>', { value: id, text: label });
+    if (extraAttrs) {
+        $.each(extraAttrs, function (attr, val) {
+            $opt.attr('data-' + attr, val);
+        });
+    }
+    $sel.append($opt);
+    $sel.val(id);
+    $sel.trigger('change');
+    if ($sel.data('select2')) {
+        $sel.trigger('change.select2');
+    }
+};
+
+window.populateSelect = function(selectId, url, valueFn, labelFn, placeholder, selectedVal) {
+    var $sel = $(selectId);
+    $.getJSON(url, function (data) {
+        if (!data || !data.length) return;
+        var existingVal = selectedVal || $sel.val();
+        $sel.html('<option value="">' + (placeholder || '-- Select --') + '</option>');
+        $.each(data, function (i, row) {
+            var val = valueFn(row);
+            var isSel = (existingVal && existingVal == val) ? ' selected' : '';
+            $sel.append('<option value="' + val + '"' + isSel + '>' + labelFn(row) + '</option>');
+        });
+        if (existingVal) { $sel.val(existingVal); }
+        if ($sel.data('select2')) { $sel.trigger('change.select2'); }
+    });
+};
+
+window.submitModalAjax = function (formId, modalId, url) {
+    var $form = $(formId);
+    var formEl = document.querySelector(formId);
+    if (!formEl) return false;
+
+    if (formEl.checkValidity && !formEl.checkValidity()) {
+        formEl.reportValidity();
+        return false;
+    }
+
+    var $modal = $(modalId);
+    var $btn = $modal.find('.btn-submit-modal');
+    var origHtml = $btn.html();
+    $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
+
+    var endpoint = (typeof BASE_URL !== 'undefined' ? BASE_URL : '{{ url("/") }}/').replace(/\/+$/, '') + '/' + url.replace(/^\/+/, '');
+    var token = (typeof CSRF_TOKEN !== 'undefined' && CSRF_TOKEN) ? CSRF_TOKEN : '{{ csrf_token() }}';
+
+    $.ajax({
+        url: endpoint,
+        type: 'POST',
+        data: $form.serialize(),
+        headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
+        dataType: 'json',
+        success: function (res) {
+            $btn.prop('disabled', false).html(origHtml);
+            var ok = res.status === 'success' || res.status === true || res.success === true || (res.id && !res.error);
+            if (ok) {
+                if (typeof toastr !== 'undefined') {
+                    toastr.success(res.message || 'Saved successfully.');
+                }
+
+                if (modalId === '#modalFamilyGroup') {
+                    appendAndSelect('#family_group_id', res.id, res.group_name || $form.find('[name="group_name"]').val(), { 'holder-id': res.holder_id || '' });
+                } else if (modalId === '#modalPolicyHolder') {
+                    var label = res.name || (res.data ? res.data.name : '') || $form.find('[name="name"]').val();
+                    appendAndSelect('#user_id', res.id, label);
+                    $('#fg_holder_id').append('<option value="' + res.id + '">' + label + '</option>');
+                    if (res.email && !$('#customer_email').val()) { $('#customer_email').val(res.email); }
+                    if (res.phone && !$('#customer_phone').val()) { $('#customer_phone').val(res.phone); }
+                    if (res.address && !$('#customer_address').val()) { $('#customer_address').val(res.address); }
+                } else if (modalId === '#modalPolicyType') {
+                    var label = res.name || $form.find('[name="policy_type_name"]').val();
+                    appendAndSelect('#policy_type_id', res.id, label);
+                    $('#pst_type_id').append('<option value="' + res.id + '">' + label + '</option>');
+                    $('#seg_type_id').append('<option value="' + res.id + '">' + label + '</option>');
+                } else if (modalId === '#modalPolicySubType') {
+                    var label = res.name || $form.find('[name="name"]').val();
+                    var selectedType = $('#policy_type_id').val();
+                    var typeId = res.type_id || res.insurance_policy_types_id || $form.find('[name="type_id"]').val();
+                    if (!selectedType || selectedType == typeId) {
+                        appendAndSelect('#sub_type_id', res.id, label);
+                    } else {
+                        if (typeof toastr !== 'undefined') {
+                            toastr.info('Sub type saved. Select the matching policy type to see it in the list.');
+                        }
+                    }
+                } else if (modalId === '#modalSegment') {
+                    var label = res.name || $form.find('[name="name"]').val();
+                    var selectedType = $('#policy_type_id').val();
+                    var typeId = res.insurance_type_id || $form.find('[name="insurance_type_id"]').val();
+                    if (!selectedType || selectedType == typeId) {
+                        appendAndSelect('#segment_id', res.id, label);
+                    } else {
+                        if (typeof toastr !== 'undefined') {
+                            toastr.info('Segment saved. Select the matching policy type to see it in the list.');
+                        }
+                    }
+                } else if (modalId === '#modalInsuranceCompany') {
+                    var label = res.name || $form.find('[name="name"]').val();
+                    appendAndSelect('#company_id', res.id, label);
+                    $('#branch_company_id').append('<option value="' + res.id + '">' + label + '</option>');
+                } else if (modalId === '#modalBranch') {
+                    var label = res.name || $form.find('[name="branch_name"]').val();
+                    var selectedCompany = $('#company_id').val();
+                    var compId = res.company_id || $form.find('[name="company_id"]').val();
+                    if (!selectedCompany || selectedCompany == compId) {
+                        appendAndSelect('#branch_id', res.id, label);
+                    }
+                } else if (modalId === '#modalBroker') {
+                    var broker = res.data || res;
+                    var label = broker.broker_name || broker.name || $form.find('[name="broker_name"]').val();
+                    appendAndSelect('#broker_id', broker.id, label);
+                } else if (modalId === '#modalStaff') {
+                    var user = res.data || res.user || res;
+                    var label = user.name || $form.find('[name="name"]').val();
+                    appendAndSelect('#staff_id', user.id, label);
+                }
+
+                var modalEl = document.querySelector(modalId);
+                if (modalEl) {
+                    var bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                    bsModal.hide();
+                }
+                formEl.reset();
+            } else {
+                if (typeof toastr !== 'undefined') {
+                    toastr.error(res.message || 'Failed. Please try again.');
+                }
+            }
+        },
+        error: function (xhr) {
+            $btn.prop('disabled', false).html(origHtml);
+            var msg = 'Failed to save.';
+            try {
+                var parsed = JSON.parse(xhr.responseText);
+                msg = parsed.message || (parsed.errors ? Object.values(parsed.errors).flat().join('<br>') : msg);
+            } catch (e) {}
+            if (typeof toastr !== 'undefined') {
+                toastr.error(msg);
+            } else {
+                alert(msg);
+            }
+        }
+    });
+
+    return false;
+};
+
+// ── Init Select2 & Event Handlers ─────────────────────────────────────────
 $(document).ready(function() {
     $('.select2-ai').select2({ width: '100%' });
 
@@ -1472,151 +1650,14 @@ $(document).ready(function() {
     $('#premium').on('input', recalcTotal);
 
     // ════════════════════════════════════════════════════════════════════════
-    // ADD MODALS LOGIC & HANDLERS (AJAX NO-RELOAD)
+    // MODAL EVENT LISTENERS & AUTO-SELECTORS
     // ════════════════════════════════════════════════════════════════════════
 
-    window.appendAndSelect = function(selectId, id, label, extraAttrs) {
-        var $sel = $(selectId);
-        $sel.find('option[value="' + id + '"]').remove();
-        var $opt = $('<option>', { value: id, text: label });
-        if (extraAttrs) {
-            $.each(extraAttrs, function (attr, val) {
-                $opt.attr('data-' + attr, val);
-            });
-        }
-        $sel.append($opt).val(id);
-        $sel.trigger('change');
-        if ($sel.data('select2')) {
-            $sel.trigger('change.select2');
-        }
-    };
-
-    window.populateSelect = function(selectId, url, valueFn, labelFn, placeholder, selectedVal) {
-        var $sel = $(selectId);
-        $sel.html('<option value="">Loading...</option>');
-        $.getJSON(url, function (data) {
-            $sel.html('<option value="">' + (placeholder || '-- Select --') + '</option>');
-            $.each(data, function (i, row) {
-                var isSel = (selectedVal && selectedVal == valueFn(row)) ? ' selected' : '';
-                $sel.append('<option value="' + valueFn(row) + '"' + isSel + '>' + labelFn(row) + '</option>');
-            });
-            if (selectedVal) { $sel.val(selectedVal); }
-            if ($sel.data('select2')) { $sel.trigger('change.select2'); }
-        }).fail(function () {
-            $sel.html('<option value="">' + (placeholder || '-- Select --') + '</option>');
-            if ($sel.data('select2')) { $sel.trigger('change.select2'); }
-        });
-    };
-
-    window.submitModalAjax = function (formId, modalId, url) {
-        var $form = $(formId);
-        var formEl = document.querySelector(formId);
-        if (!formEl) return false;
-
-        if (formEl.checkValidity && !formEl.checkValidity()) {
-            formEl.reportValidity();
-            return false;
-        }
-
-        var $modal = $(modalId);
-        var $btn = $modal.find('.btn-submit-modal');
-        var origHtml = $btn.html();
-        $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
-
-        var endpoint = (typeof BASE_URL !== 'undefined' ? BASE_URL : '/').replace(/\/+$/, '') + '/' + url.replace(/^\/+/, '');
-        var token = (typeof CSRF_TOKEN !== 'undefined' && CSRF_TOKEN) ? CSRF_TOKEN : $('meta[name="csrf-token"]').attr('content');
-
-        $.ajax({
-            url: endpoint,
-            type: 'POST',
-            data: $form.serialize(),
-            headers: { 'X-CSRF-TOKEN': token },
-            dataType: 'json',
-            success: function (res) {
-                $btn.prop('disabled', false).html(origHtml);
-                var ok = res.status === 'success' || res.status === true || res.success === true || (res.id && !res.error);
-                if (ok) {
-                    toastr.success(res.message || 'Saved successfully.');
-
-                    if (modalId === '#modalFamilyGroup') {
-                        appendAndSelect('#family_group_id', res.id, res.group_name || $form.find('[name="group_name"]').val(), { 'holder-id': res.holder_id || '' });
-                    } else if (modalId === '#modalPolicyHolder') {
-                        var label = res.name || $form.find('[name="name"]').val();
-                        appendAndSelect('#user_id', res.id, label);
-                        if (res.email && !$('#customer_email').val()) { $('#customer_email').val(res.email); }
-                        if (res.phone && !$('#customer_phone').val()) { $('#customer_phone').val(res.phone); }
-                        if (res.address && !$('#customer_address').val()) { $('#customer_address').val(res.address); }
-                    } else if (modalId === '#modalPolicyType') {
-                        var label = res.name || $form.find('[name="policy_type_name"]').val();
-                        appendAndSelect('#policy_type_id', res.id, label);
-                        populateSelect('#pst_type_id', BASE_URL + 'all-policy-type-json', function (r) { return r.id; }, function (r) { return r.name; }, '-- Select Policy Type --');
-                        populateSelect('#seg_type_id', BASE_URL + 'all-policy-type-json', function (r) { return r.id; }, function (r) { return r.name; }, '-- Select Policy Type --');
-                    } else if (modalId === '#modalPolicySubType') {
-                        var label = res.name || $form.find('[name="name"]').val();
-                        var selectedType = $('#policy_type_id').val();
-                        if (!selectedType || selectedType == res.type_id || selectedType == res.insurance_policy_types_id) {
-                            appendAndSelect('#sub_type_id', res.id, label);
-                        } else {
-                            toastr.info('Sub type saved. Select the matching policy type to see it in the list.');
-                        }
-                    } else if (modalId === '#modalSegment') {
-                        var label = res.name || $form.find('[name="name"]').val();
-                        var selectedType = $('#policy_type_id').val();
-                        if (!selectedType || selectedType == res.insurance_type_id) {
-                            appendAndSelect('#segment_id', res.id, label);
-                        } else {
-                            toastr.info('Segment saved. Select the matching policy type to see it in the list.');
-                        }
-                    } else if (modalId === '#modalInsuranceCompany') {
-                        var label = res.name || $form.find('[name="name"]').val();
-                        appendAndSelect('#company_id', res.id, label);
-                        populateSelect('#branch_company_id', BASE_URL + 'get-companies-json', function (r) { return r.id; }, function (r) { return r.name; }, '-- Select Company --');
-                    } else if (modalId === '#modalBranch') {
-                        var label = res.name || $form.find('[name="branch_name"]').val();
-                        appendAndSelect('#branch_id', res.id, label);
-                    } else if (modalId === '#modalBroker') {
-                        var broker = res.data || res;
-                        var label = broker.broker_name || broker.name || $form.find('[name="broker_name"]').val();
-                        appendAndSelect('#broker_id', broker.id, label);
-                    } else if (modalId === '#modalStaff') {
-                        var user = res.data || res.user || res;
-                        var label = user.name || $form.find('[name="name"]').val();
-                        appendAndSelect('#staff_id', user.id, label);
-                    }
-
-                    var modalEl = document.querySelector(modalId);
-                    if (modalEl) {
-                        var bsModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-                        bsModal.hide();
-                    }
-                    formEl.reset();
-                } else {
-                    toastr.error(res.message || 'Failed. Please try again.');
-                }
-            },
-            error: function (xhr) {
-                $btn.prop('disabled', false).html(origHtml);
-                var msg = 'Failed to save.';
-                try {
-                    var parsed = JSON.parse(xhr.responseText);
-                    msg = parsed.message || (parsed.errors ? Object.values(parsed.errors).flat().join('<br>') : msg);
-                } catch (e) {}
-                toastr.error(msg);
-            }
-        });
-
-        return false;
-    };
-
-    // Modal Preloaders
     $('#modalFamilyGroup').on('show.bs.modal', function () {
         var currentUId = $('#user_id').val();
-        populateSelect('#fg_holder_id', BASE_URL + 'get-policy-customers-json',
-            function (r) { return r.id; },
-            function (r) { return r.name + (r.email ? ' (' + r.email + ')' : ''); },
-            'Select Policy Holder',
-            currentUId
-        );
+        if (currentUId) {
+            $('#fg_holder_id').val(currentUId);
+        }
     });
 
     $('#fg_add_member').on('click', function () {
@@ -1637,20 +1678,23 @@ $(document).ready(function() {
 
     $('#modalPolicySubType').on('show.bs.modal', function () {
         var currentPtId = $('#policy_type_id').val();
-        populateSelect('#pst_type_id', BASE_URL + 'all-policy-type-json',
-            function (r) { return r.id; }, function (r) { return r.name; }, '-- Select Policy Type --', currentPtId);
+        if (currentPtId) {
+            $('#pst_type_id').val(currentPtId);
+        }
     });
 
     $('#modalSegment').on('show.bs.modal', function () {
         var currentPtId = $('#policy_type_id').val();
-        populateSelect('#seg_type_id', BASE_URL + 'all-policy-type-json',
-            function (r) { return r.id; }, function (r) { return r.name; }, '-- Select Policy Type --', currentPtId);
+        if (currentPtId) {
+            $('#seg_type_id').val(currentPtId);
+        }
     });
 
     $('#modalBranch').on('show.bs.modal', function () {
         var currentCId = $('#company_id').val();
-        populateSelect('#branch_company_id', BASE_URL + 'get-companies-json',
-            function (r) { return r.id; }, function (r) { return r.name; }, '-- Select Company --', currentCId);
+        if (currentCId) {
+            $('#branch_company_id').val(currentCId);
+        }
     });
 
     // Universal form submit blocker (Prevents any form from causing page reloads)
