@@ -47,9 +47,22 @@ class AdminWithdrawalController extends Controller
         }
 
         // Query Commission Entries (which have Pay-In, Pay-Out, and Company)
-        $cQuery = CommissionEntry::with(['commissionRule.company', 'policy.company', 'user', 'policy.holder'])->latest();
+        $cQuery = CommissionEntry::with(['commissionRule.company', 'policy.company', 'user', 'agent', 'policy.holder', 'policy.creator'])->latest();
         if (!empty($subagentId)) {
-            $cQuery->where('user_id', $subagentId);
+            $cQuery->where(function ($cq) use ($subagentId) {
+                if (Schema::hasColumn('commission_entries', 'user_id')) {
+                    $cq->where('user_id', $subagentId);
+                }
+                if (Schema::hasColumn('commission_entries', 'agent_id')) {
+                    $cq->orWhere('agent_id', $subagentId);
+                }
+                $cq->orWhereHas('policy', function ($pq) use ($subagentId) {
+                    if (Schema::hasColumn('policies', 'user_id')) {
+                        $pq->where('user_id', $subagentId);
+                    }
+                    $pq->orWhere('created_by', $subagentId);
+                });
+            });
         }
         if (!empty($companyId)) {
             $cQuery->where(function ($cq) use ($companyId) {
@@ -139,9 +152,9 @@ class AdminWithdrawalController extends Controller
                     'ref_no' => $polNum,
                     'type_label' => ($inAmt > 0 && $outAmt > 0) ? 'Pay-In & Out' : ($inAmt > 0 ? 'Pay-In' : 'Pay-Out'),
                     'type_class' => ($inAmt > 0 && $outAmt > 0) ? 'info' : ($inAmt > 0 ? 'primary' : 'warning'),
-                    'user' => $c->user ?? $c->policy?->user,
-                    'user_name' => $c->user?->name ?? $c->policy?->user?->name ?? 'Staff / Sub-Agent',
-                    'user_email' => $c->user?->email ?? $c->policy?->user?->email,
+                    'user' => $c->user ?? $c->agent ?? $c->policy?->user ?? $c->policy?->creator,
+                    'user_name' => $c->user?->name ?? $c->agent?->name ?? $c->policy?->user?->name ?? $c->policy?->creator?->name ?? 'Staff / Sub-Agent',
+                    'user_email' => $c->user?->email ?? $c->agent?->email ?? $c->policy?->user?->email ?? $c->policy?->creator?->email,
                     'company_name' => $compName,
                     'company_id' => $c->policy?->company_id ?? $c->commissionRule?->company_id,
                     'gross_premium' => (float) $c->premium_amount,

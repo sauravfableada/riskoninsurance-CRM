@@ -172,12 +172,14 @@
                                 <tr>
                                     <td class="text-center">{{ $index + 1 }}</td>
                                     <td>
-                                        <div class="fw-bold">{{ $entry->commissionRule->rule_name ?? 'Policy Commission' }}</div>
+                                        <div class="fw-bold">{{ $entry->commissionRule->rule_name ?? 'Standard Commission' }}</div>
                                         @if($entry->commissionRule?->company)
                                             <small class="text-muted">{{ $entry->commissionRule->company->name }}</small>
+                                        @elseif($entry->policy?->company)
+                                            <small class="text-muted">{{ $entry->policy->company->name }}</small>
                                         @endif
                                     </td>
-                                    <td>{{ $entry->user?->name ?? $entry->policy?->user?->name ?? $entry->agent?->name ?? '—' }}</td>
+                                    <td>{{ $entry->user?->name ?? $entry->agent?->name ?? $entry->policy?->user?->name ?? $entry->policy?->creator?->name ?? '—' }}</td>
                                     <td>{{ $entry->policy->policy_number ?? $entry->policy_id ?? '—' }}</td>
                                     <td>₹{{ number_format($entry->premium_amount, 2) }}</td>
                                     @if(!($isSubAgent ?? false))

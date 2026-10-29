@@ -297,15 +297,17 @@ class PolicyController extends Controller
             DB::beginTransaction();
             
             // Insert Policy
-            $policy = Policy::create($data);
+            $policyTableColumns = Schema::getColumnListing('policies');
+            $insertData = array_intersect_key($data, array_flip($policyTableColumns));
+            $policy = Policy::create($insertData);
             $this->syncVehicleDetails($policy, $request);
 
             // Handle commission calculation if policy is booked by or assigned to an agent/staff
-            $assignedUserId = (int) ($policy->user_id ?: 0);
+            $assignedUserId = (int) ($policy->user_id ?: ($policy->created_by ?: $userId));
             $assignedUser = $assignedUserId ? User::find($assignedUserId) : null;
             $isAgentAssigned = $assignedUser && in_array($assignedUser->type, ['staff', 'sub_agents'], true);
 
-            if ($userRole == 1 || $isAgentAssigned) {
+            if ($userRole == 1 || $isAgentAssigned || ($assignedUser && $assignedUser->type !== null)) {
                 $premiumAmount = (float) ($policy->premium_amount ?? 0);
                 $commissionDate = $policy->payment_date ?: $policy->start_date ?: now()->toDateString();
 
@@ -455,60 +457,83 @@ class PolicyController extends Controller
                     }
                 }
 
+                // If a matching CommissionRule is found, use its percentages
                 if ($commissionRule) {
-                    // Pay-In calculation
                     $payInType = $commissionRule->pay_in_type ?: ($commissionRule->commission_type ?: 'percentage');
                     $payInVal = (float) ($commissionRule->pay_in_value > 0 ? $commissionRule->pay_in_value : $commissionRule->commission_value);
-                    $payInAmount = ($payInType === 'percentage')
-                        ? round(($premiumAmount * $payInVal) / 100, 2)
-                        : $payInVal;
-
-                    // Pay-Out calculation
                     $payOutType = $commissionRule->pay_out_type ?: ($commissionRule->commission_type ?: 'percentage');
                     $payOutVal = (float) ($commissionRule->pay_out_value > 0 ? $commissionRule->pay_out_value : $commissionRule->commission_value);
                     $payOutBasedOn = $commissionRule->pay_out_based_on ?: 'admin_commission';
+                    $ruleId = $commissionRule->id;
+                } else {
+                    // Standard / Default Commission Fallback
+                    // Check if default rates exist in settings or use system standards (20% pay-in, 10% pay-out of admin commission)
+                    $defaultPayIn = (float) (\App\Models\Setting::where('key', 'default_pay_in_percentage')->value('value') ?? 20);
+                    $defaultPayOut = (float) (\App\Models\Setting::where('key', 'default_pay_out_percentage')->value('value') ?? 10);
+                    $defaultPayOutBasedOn = \App\Models\Setting::where('key', 'default_pay_out_based_on')->value('value') ?? 'admin_commission';
 
-                    if ($payOutType === 'percentage') {
-                        $base = ($payOutBasedOn === 'premium') ? $premiumAmount : $payInAmount;
-                        $payOutAmount = round(($base * $payOutVal) / 100, 2);
-                    } else {
-                        $payOutAmount = $payOutVal;
-                    }
+                    $payInType = 'percentage';
+                    $payInVal = $defaultPayIn > 0 ? $defaultPayIn : 20;
+                    $payOutType = 'percentage';
+                    $payOutVal = $defaultPayOut > 0 ? $defaultPayOut : 10;
+                    $payOutBasedOn = $defaultPayOutBasedOn;
+                    $ruleId = null;
+                }
 
-                    $netAdminProfit = max(0, round($payInAmount - $payOutAmount, 2));
+                // Calculate Pay-In (Admin commission received from insurer)
+                if ($payInType === 'percentage') {
+                    $payInAmount = round(($premiumAmount * $payInVal) / 100, 2);
+                } else {
+                    $payInAmount = (float) $payInVal;
+                }
 
-                    $commissionEntryData = [
-                        'commission_rule_id' => $commissionRule->id,
-                        'policy_id' => $policy->id,
-                        'premium_amount' => $premiumAmount,
-                        'pay_in_amount' => $payInAmount,
-                        'pay_in_percentage' => ($payInType === 'percentage') ? $payInVal : null,
-                        'pay_out_amount' => $payOutAmount,
+                // Calculate Pay-Out (Sub-agent commission payout)
+                if ($payOutType === 'percentage') {
+                    $base = ($payOutBasedOn === 'premium') ? $premiumAmount : $payInAmount;
+                    $payOutAmount = round(($base * $payOutVal) / 100, 2);
+                } else {
+                    $payOutAmount = (float) $payOutVal;
+                }
+
+                $netAdminProfit = max(0, round($payInAmount - $payOutAmount, 2));
+
+                $targetAgentId = $assignedUserId ?: (int) ($policy->created_by ?: $userId);
+
+                $commissionEntryData = [
+                    'commission_rule_id' => $ruleId,
+                    'policy_id'          => $policy->id,
+                    'premium_amount'     => $premiumAmount,
+                    'pay_in_amount'      => $payInAmount,
+                    'pay_in_percentage'  => ($payInType === 'percentage') ? $payInVal : null,
+                    'pay_out_amount'     => $payOutAmount,
+                    'pay_out_percentage' => ($payOutType === 'percentage') ? $payOutVal : null,
+                    'net_admin_profit'   => $netAdminProfit,
+                    'commission_amount'  => $payOutAmount,
+                    'commission_percentage' => ($payOutType === 'percentage') ? $payOutVal : null,
+                    'payment_status'     => 'pending',
+                    'remarks'            => 'Pay-In: ₹' . number_format($payInAmount, 2) . ' | Pay-Out: ₹' . number_format($payOutAmount, 2) . ' | Profit: ₹' . number_format($netAdminProfit, 2),
+                    'entry_date'         => $commissionDate,
+                ];
+
+                if (Schema::hasColumn('commission_entries', 'user_id')) {
+                    $commissionEntryData['user_id'] = $targetAgentId;
+                }
+                if (Schema::hasColumn('commission_entries', 'agent_id')) {
+                    $commissionEntryData['agent_id'] = $commissionRule?->agent_id ?: $targetAgentId;
+                }
+
+                CommissionEntry::create($commissionEntryData);
+
+                if (Schema::hasColumn('policies', 'pay_in_amount')) {
+                    $policy->update([
+                        'pay_in_amount'      => $payInAmount,
+                        'pay_in_percentage'  => ($payInType === 'percentage') ? $payInVal : null,
+                        'pay_out_amount'     => $payOutAmount,
                         'pay_out_percentage' => ($payOutType === 'percentage') ? $payOutVal : null,
-                        'net_admin_profit' => $netAdminProfit,
-                        'commission_amount' => $payOutAmount,
-                        'commission_percentage' => ($payOutType === 'percentage') ? $payOutVal : null,
-                        'payment_status' => 'pending',
-                        'remarks' => 'Pay-In: ₹' . number_format($payInAmount, 2) . ' | Pay-Out: ₹' . number_format($payOutAmount, 2) . ' | Profit: ₹' . number_format($netAdminProfit, 2),
-                        'entry_date' => $commissionDate,
-                    ];
-
-                    if (Schema::hasColumn('commission_entries', 'user_id')) {
-                        $commissionEntryData['user_id'] = (int) ($policy->user_id ?: 1);
-                    } elseif (Schema::hasColumn('commission_entries', 'agent_id')) {
-                        $commissionEntryData['agent_id'] = $commissionRule->agent_id ?: (int) ($policy->user_id ?: 1);
-                    }
-
-                    CommissionEntry::create($commissionEntryData);
-
-                    if (Schema::hasColumn('policies', 'pay_in_amount')) {
-                        $policy->update([
-                            'pay_in_amount' => $payInAmount,
-                            'pay_in_percentage' => ($payInType === 'percentage') ? $payInVal : null,
-                            'pay_out_amount' => $payOutAmount,
-                            'pay_out_percentage' => ($payOutType === 'percentage') ? $payOutVal : null,
-                        ]);
-                    }
+                    ]);
+                }
+                if (Schema::hasColumn('policies', 'user_id') && !$policy->user_id) {
+                    $policy->update(['user_id' => $targetAgentId]);
                 }
             }
 
@@ -659,11 +684,36 @@ class PolicyController extends Controller
             'modified_by'        => Auth::user()->id,
         ];
 
-        if ($policy->update($data)) {
+        $policyTableColumns = Schema::getColumnListing('policies');
+        $updateData = array_intersect_key($data, array_flip($policyTableColumns));
+
+        if ($policy->update($updateData)) {
             $this->syncVehicleDetails($policy, $request);
             if ($request->hasFile('policy_pdf') && $request->file('policy_pdf')->isValid()) {
                 $this->storePolicyPdf($policy, $request->file('policy_pdf'), 'policy', 'Updated Policy PDF');
             }
+
+            // Sync or update commission entry if policy has an agent assigned or was created by agent
+            $assignedUserId = (int) ($policy->user_id ?: ($policy->created_by ?: Auth::id()));
+            $assignedUser = $assignedUserId ? User::find($assignedUserId) : null;
+            if ($assignedUser && in_array($assignedUser->type, ['staff', 'sub_agents'], true)) {
+                $prem = (float) ($policy->premium_amount ?? 0);
+                $entry = CommissionEntry::where('policy_id', $policy->id)->latest()->first();
+                if ($entry) {
+                    $pInVal = (float) ($entry->pay_in_percentage ?? 20);
+                    $pOutVal = (float) ($entry->pay_out_percentage ?? 10);
+                    $pInAmt = round(($prem * $pInVal) / 100, 2);
+                    $pOutAmt = round(($pInAmt * $pOutVal) / 100, 2);
+                    $entry->update([
+                        'premium_amount' => $prem,
+                        'pay_in_amount' => $pInAmt,
+                        'pay_out_amount' => $pOutAmt,
+                        'commission_amount' => $pOutAmt,
+                        'net_admin_profit' => max(0, round($pInAmt - $pOutAmt, 2)),
+                    ]);
+                }
+            }
+
             return response()->json([
                 'status'  => true,
                 'message' => 'Policy updated successfully.',

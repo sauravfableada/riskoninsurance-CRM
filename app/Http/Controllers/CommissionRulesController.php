@@ -158,9 +158,16 @@ class CommissionRulesController extends Controller
             })->count();
 
             // Total commission earned
-            $totalEarned = (float) \App\Models\CommissionEntry::where('user_id', $ag->id)
-                ->whereIn('payment_status', ['pending', 'paid'])
-                ->sum('commission_amount');
+            $totalEarned = (float) \App\Models\CommissionEntry::where(function ($cq) use ($ag) {
+                if (Schema::hasColumn('commission_entries', 'user_id')) {
+                    $cq->where('user_id', $ag->id);
+                }
+                if (Schema::hasColumn('commission_entries', 'agent_id')) {
+                    $cq->orWhere('agent_id', $ag->id);
+                }
+            })
+            ->whereIn('payment_status', ['pending', 'paid', 'approved'])
+            ->sum(DB::raw('COALESCE(NULLIF(pay_out_amount, 0), commission_amount)'));
 
             // Approved & Pending Withdrawals
             $withdrawnApproved = (float) \App\Models\WithdrawalRequest::where('user_id', $ag->id)
@@ -528,30 +535,147 @@ class CommissionRulesController extends Controller
      */
     public function entriesIndex()
     {
-        $query = CommissionEntry::with(['commissionRule', 'user', 'agent', 'policy.user'])->latest();
+        $currentAuthUser = auth()->user();
+        $userType = $currentAuthUser?->type;
+        $isSubAgent = in_array($userType, ['sub_agents', 'staff'], true) || (!auth()->user()?->isAdmin());
+        $userId = (int) auth()->id();
 
-        if (in_array(auth()->user()?->type, ['staff', 'sub_agents'], true)) {
-            $query->where(function ($ownedEntries) {
-                if (Schema::hasColumn('commission_entries', 'user_id')) {
-                    $ownedEntries->where('user_id', auth()->id());
+        // 1. Auto-sync missing CommissionEntry records for policies booked by or assigned to agents
+        $policiesToSyncQuery = Policy::query()->whereDoesntHave('commissionEntries')->where('premium_amount', '>', 0);
+        if ($isSubAgent) {
+            $policiesToSyncQuery->where(function ($q) use ($userId) {
+                if (Schema::hasColumn('policies', 'user_id')) {
+                    $q->where('user_id', $userId);
+                }
+                $q->orWhere('created_by', $userId);
+            });
+        }
+        $uncreditedPolicies = $policiesToSyncQuery->get();
+
+        foreach ($uncreditedPolicies as $unPolicy) {
+            $prem = (float) ($unPolicy->premium_amount ?? 0);
+            if ($prem <= 0) continue;
+
+            $assignedAgentId = (int) ($unPolicy->user_id ?: ($unPolicy->created_by ?: $userId));
+            $cDate = $unPolicy->payment_date ?: ($unPolicy->start_date ?: now()->toDateString());
+
+            $agentRule = CommissionRule::query()
+                ->active()
+                ->where('agent_id', $assignedAgentId)
+                ->latest('id')
+                ->first();
+
+            $pInVal = (float) ($agentRule?->pay_in_value ?? ($unPolicy->pay_in_percentage ?? 20));
+            $pOutVal = (float) ($agentRule?->pay_out_value ?? ($unPolicy->pay_out_percentage ?? 10));
+            $pOutBasedOn = $agentRule?->pay_out_based_on ?? 'admin_commission';
+
+            $pInAmt = round(($prem * $pInVal) / 100, 2);
+            $base = ($pOutBasedOn === 'premium') ? $prem : $pInAmt;
+            $pOutAmt = round(($base * $pOutVal) / 100, 2);
+            $profit = max(0, round($pInAmt - $pOutAmt, 2));
+
+            $entryData = [
+                'commission_rule_id'    => $agentRule?->id,
+                'policy_id'             => $unPolicy->id,
+                'premium_amount'        => $prem,
+                'pay_in_amount'         => $pInAmt,
+                'pay_in_percentage'     => $pInVal,
+                'pay_out_amount'        => $pOutAmt,
+                'pay_out_percentage'    => $pOutVal,
+                'net_admin_profit'      => $profit,
+                'commission_amount'     => $pOutAmt,
+                'commission_percentage' => $pOutVal,
+                'payment_status'        => 'pending',
+                'remarks'               => 'Pay-In: ₹' . number_format($pInAmt, 2) . ' | Pay-Out: ₹' . number_format($pOutAmt, 2) . ' | Profit: ₹' . number_format($profit, 2),
+                'entry_date'            => $cDate,
+            ];
+
+            if (Schema::hasColumn('commission_entries', 'user_id')) {
+                $entryData['user_id'] = $assignedAgentId;
+            }
+            if (Schema::hasColumn('commission_entries', 'agent_id')) {
+                $entryData['agent_id'] = $agentRule?->agent_id ?: $assignedAgentId;
+            }
+
+            CommissionEntry::create($entryData);
+
+            if (Schema::hasColumn('policies', 'pay_in_amount') && !$unPolicy->pay_in_amount) {
+                $unPolicy->update([
+                    'pay_in_amount'      => $pInAmt,
+                    'pay_in_percentage'  => $pInVal,
+                    'pay_out_amount'     => $pOutAmt,
+                    'pay_out_percentage' => $pOutVal,
+                ]);
+            }
+        }
+
+        // 2. Fix attribution for any existing entries created for this sub-agent's policies
+        if ($isSubAgent) {
+            CommissionEntry::where(function ($q) {
+                $q->whereNull('user_id')->orWhere('user_id', 1)->orWhere('user_id', 0);
+            })
+            ->whereHas('policy', function ($pq) use ($userId) {
+                $pq->where('created_by', $userId);
+            })
+            ->update([
+                'user_id' => $userId,
+                'agent_id' => $userId,
+            ]);
+        }
+
+        // 3. Query entries with comprehensive relations
+        $query = CommissionEntry::with([
+            'commissionRule.company',
+            'user',
+            'agent',
+            'policy.company',
+            'policy.holder',
+            'policy.creator',
+            'policy.user'
+        ])->latest();
+
+        if ($isSubAgent) {
+            $query->where(function ($ownedEntries) use ($userId) {
+                $hasUserCol = Schema::hasColumn('commission_entries', 'user_id');
+                $hasAgentCol = Schema::hasColumn('commission_entries', 'agent_id');
+
+                if ($hasUserCol && $hasAgentCol) {
+                    $ownedEntries->where(function ($q) use ($userId) {
+                        $q->where('user_id', $userId)->orWhere('agent_id', $userId);
+                    });
+                } elseif ($hasUserCol) {
+                    $ownedEntries->where('user_id', $userId);
+                } elseif ($hasAgentCol) {
+                    $ownedEntries->where('agent_id', $userId);
                 }
 
-                $ownedEntries->orWhereHas('policy', function ($policyQuery) {
-                    $policyQuery->where('user_id', auth()->id());
+                $ownedEntries->orWhereHas('policy', function ($policyQuery) use ($userId) {
+                    $policyQuery->where(function ($pq) use ($userId) {
+                        if (Schema::hasColumn('policies', 'user_id')) {
+                            $pq->where('user_id', $userId);
+                        }
+                        $pq->orWhere('created_by', $userId);
+                    });
                 });
             });
         }
 
         $commissionEntries = $query->get();
         $totalEarned = (float) $commissionEntries
-            ->whereIn('payment_status', ['pending', 'paid'])
-            ->sum('commission_amount');
+            ->whereIn('payment_status', ['pending', 'paid', 'approved'])
+            ->sum(function ($entry) {
+                return (float) ($entry->pay_out_amount > 0 ? $entry->pay_out_amount : $entry->commission_amount);
+            });
         $pendingCommission = (float) $commissionEntries
             ->where('payment_status', 'pending')
-            ->sum('commission_amount');
+            ->sum(function ($entry) {
+                return (float) ($entry->pay_out_amount > 0 ? $entry->pay_out_amount : $entry->commission_amount);
+            });
         $paidCommission = (float) $commissionEntries
-            ->where('payment_status', 'paid')
-            ->sum('commission_amount');
+            ->whereIn('payment_status', ['paid', 'approved'])
+            ->sum(function ($entry) {
+                return (float) ($entry->pay_out_amount > 0 ? $entry->pay_out_amount : $entry->commission_amount);
+            });
 
         // Admin Pay-In and Net Profit totals
         $totalPayIn = (float) $commissionEntries->sum(function ($entry) {
@@ -565,11 +689,6 @@ class CommissionRulesController extends Controller
             $totalAdminProfit = max(0, $totalPayIn - $totalPayOut);
         }
 
-        // Sub-agent & Staff commission view check
-        $userType = auth()->user()?->type;
-        $isSubAgent = in_array($userType, ['sub_agents', 'staff'], true) || (!auth()->user()?->isAdmin());
-        $userId = auth()->id();
-
         $totalWithdrawnApproved = (float) \App\Models\WithdrawalRequest::where('user_id', $userId)
             ->where('status', 'approved')
             ->sum('amount');
@@ -578,7 +697,7 @@ class CommissionRulesController extends Controller
             ->where('status', 'pending')
             ->sum('amount');
 
-        $availableBalance = max(0, $totalEarned - $totalWithdrawnApproved - $pendingWithdrawalAmount);
+        $availableBalance = max(0, round($totalEarned - $totalWithdrawnApproved - $pendingWithdrawalAmount, 2));
 
         $myWithdrawals = \App\Models\WithdrawalRequest::where('user_id', $userId)
             ->latest()
