@@ -257,9 +257,19 @@ Route::middleware('auth.api')->group(function () {
     Route::resource('services', ServiceController::class)->only(['index', 'create', 'show', 'edit'])->middleware('matrix_permission:view_services');
 
     // Documents web routes
-    Route::resource('documents', DocumentController::class)->only(['index', 'create', 'edit']);
+    Route::get('documents', [DocumentController::class, 'index'])->name('documents.index');
+    Route::get('documents/customer/{customerId}', [DocumentController::class, 'customerView'])->name('documents.customer');
+    Route::post('documents/customer/{customerId}/upload', [DocumentController::class, 'customerUpload'])->name('documents.customer.upload');
+    Route::post('documents/{document}/update-ajax', [DocumentController::class, 'updateAjax'])->name('documents.update_ajax');
+    Route::delete('documents/{document}/delete-ajax', [DocumentController::class, 'destroyAjax'])->name('documents.destroy_ajax');
+    Route::get('documents/create', [DocumentController::class, 'create'])->name('documents.create');
+    Route::post('documents/store', [DocumentController::class, 'store'])->name('documents.store');
+    Route::get('documents/{document}/edit', [DocumentController::class, 'edit'])->name('documents.edit');
+    Route::put('documents/{document}', [DocumentController::class, 'update'])->name('documents.update');
+    Route::delete('documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
     Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
     Route::get('documents/{document}/view', [DocumentController::class, 'viewFile'])->name('documents.view');
+    Route::get('documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
 
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile.show');

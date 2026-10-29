@@ -635,6 +635,12 @@
 
                             {{-- Client Documents --}}
                             <div class="tab-pane fade p-0" id="documents" role="tabpanel">
+                                <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
+                                    <span class="small fw-semibold text-muted">All uploaded documents and images for this customer.</span>
+                                    <a href="{{ route('documents.customer', $customer->id) }}" class="btn btn-sm btn-dark-blue rounded-pill px-3">
+                                        <i class="bi bi-folder2-open me-1"></i> Manage in Document Center
+                                    </a>
+                                </div>
                                 @if($customer->documents->isNotEmpty())
                                     <div class="table-responsive">
                                         <table class="table table-hover align-middle mb-0">
@@ -649,10 +655,15 @@
                                             </thead>
                                             <tbody>
                                                 @foreach($customer->documents as $doc)
+                                                    @php
+                                                        $isImg = $doc->isImage();
+                                                        $isPdf = $doc->isPdf();
+                                                        $iconClass = $isPdf ? 'fas fa-file-pdf text-danger' : ($isImg ? 'fas fa-file-image text-success' : 'fas fa-file-alt text-primary');
+                                                    @endphp
                                                     <tr>
                                                         <td class="ps-4">
                                                             <div class="fw-bold text-dark d-flex align-items-center gap-2">
-                                                                <i class="fas fa-file-pdf text-danger fa-lg"></i>
+                                                                <i class="{{ $iconClass }} fa-lg"></i>
                                                                 <span>{{ $doc->title ?: 'Document #' . $doc->id }}</span>
                                                             </div>
                                                         </td>
@@ -672,6 +683,9 @@
                                                             <span class="small text-muted">{{ $doc->created_at?->format('d M, Y h:i A') ?? '--' }}</span>
                                                         </td>
                                                         <td class="text-end pe-4">
+                                                            <a href="{{ route('documents.view', $doc) }}" target="_blank" class="btn btn-sm btn-outline-primary me-1" title="View Document">
+                                                                <i class="bi bi-eye"></i> View
+                                                            </a>
                                                             <a href="{{ route('documents.download', $doc) }}" class="btn btn-sm btn-outline-dark-blue" title="Download Document">
                                                                 <i class="bi bi-download me-1"></i> Download
                                                             </a>
@@ -685,6 +699,9 @@
                                     <div class="text-center text-muted py-5 px-4">
                                         <i class="fas fa-folder-open display-5 d-block mb-3 opacity-25"></i>
                                         <p class="mb-0 fw-semibold">No documents uploaded for this client.</p>
+                                        <a href="{{ route('documents.customer', $customer->id) }}" class="btn btn-sm btn-dark-blue rounded-pill px-3 mt-3">
+                                            <i class="bi bi-cloud-upload me-1"></i> Upload Document Now
+                                        </a>
                                     </div>
                                 @endif
                             </div>
