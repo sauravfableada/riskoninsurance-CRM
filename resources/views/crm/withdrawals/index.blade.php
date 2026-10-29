@@ -257,7 +257,12 @@
             });
         }
 
-        // Fetch filtered data via AJAX without full page load
+        // Clean URL to keep address bar free of query strings
+        if (window.location.search) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        // Fetch filtered data via AJAX without altering browser URL
         function fetchFilteredData(url = null) {
             const typeVal = filterTypeInput.value || 'all';
             const companyVal = filterCompany ? filterCompany.value : '';
@@ -280,9 +285,6 @@
                 if (subagentVal) params.append('subagent_id', subagentVal);
                 url = `{{ route('admin.withdrawals.index') }}?` + params.toString();
             }
-
-            // Update browser URL without reload
-            window.history.pushState({}, '', url);
 
             // Show loading overlay
             loadingOverlay.classList.remove('d-none');

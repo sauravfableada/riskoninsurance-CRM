@@ -1211,9 +1211,6 @@
                 width: '100%',
                 placeholder: '-- Search or Select Staff / Sub-Agent --'
             });
-                width: '100%',
-                placeholder: '-- Search or Select Member --'
-            });
 
             // Function to update Paid & Pending badges dynamically based on filtered rows
             function updateEntrySummaryBadges() {
