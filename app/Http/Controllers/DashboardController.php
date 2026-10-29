@@ -9,6 +9,9 @@ use App\Models\Deal;
 use App\Models\Stage;
 use App\Models\Policy;
 use App\Models\InsurancePolicyType;
+use App\Models\CommissionEntry;
+use App\Models\User;
+use App\Models\Agent;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\JsonResponse;
@@ -400,6 +403,8 @@ class DashboardController extends Controller
                     'premium' => round((float) $items->sum('premium_amount'), 2),
                 ])->sortByDesc('premium')->values();
 
+            $commissionsData = $this->buildCommissionsData();
+
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -407,6 +412,8 @@ class DashboardController extends Controller
                     'portfolio_summary' => $portfolioSummary,
                     'expiry_buckets' => $expiryBuckets->toArray(),
                     'insurers' => $insurers->toArray(),
+                    'commissions' => $commissionsData['commissions'],
+                    'commission_summary' => $commissionsData['summary'],
                 ],
             ]);
         } catch (\Exception $e) {
@@ -415,6 +422,32 @@ class DashboardController extends Controller
                 'success' => false,
                 'message' => 'Failed to load insurance insights.',
                 'data' => $this->emptyInsuranceInsights(),
+            ], 500);
+        }
+    }
+
+    public function apiCommissionsWidget(): JsonResponse
+    {
+        try {
+            $data = $this->buildCommissionsData();
+            return response()->json([
+                'success' => true,
+                'data' => $data,
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Dashboard commissions widget error', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to load commissions widget.',
+                'data' => [
+                    'commissions' => [],
+                    'summary' => [
+                        'total_commission' => 0,
+                        'top_group' => '--',
+                        'top_group_share' => 0,
+                        'distribution' => [],
+                    ],
+                ],
             ], 500);
         }
     }
@@ -431,6 +464,242 @@ class DashboardController extends Controller
             ],
             'expiry_buckets' => [],
             'insurers' => [],
+            'commissions' => [],
+            'commission_summary' => [
+                'total_commission' => 0,
+                'top_group' => '--',
+                'top_group_share' => 0,
+                'distribution' => [],
+            ],
+        ];
+    }
+
+    private function buildCommissionsData(): array
+    {
+        $user = auth()->user();
+        $isSubAgentOrStaff = $user && (!$user->isAdmin() || in_array($user->type, ['sub_agents', 'staff'], true));
+        $currentUid = $user ? $user->id : 0;
+
+        $commissionList = [];
+        $existingPolicyIds = [];
+
+        // 1. Fetch from CommissionEntry if table exists
+        if (Schema::hasTable('commission_entries')) {
+            $entriesQuery = CommissionEntry::with([
+                'user:id,name,email,type',
+                'agent:id,name,email,type',
+                'policy:id,policy_number,policy_number_no,premium_amount,company_id,user_id,created_by,staff_name,start_date,created_at',
+                'policy.company:id,name',
+                'policy.user:id,name,type',
+                'policy.creator:id,name,type',
+                'commissionRule.company:id,name'
+            ])->latest('id');
+
+            if ($isSubAgentOrStaff && $currentUid > 0) {
+                $entriesQuery->where(function ($q) use ($currentUid) {
+                    if (Schema::hasColumn('commission_entries', 'user_id')) {
+                        $q->where('user_id', $currentUid);
+                    }
+                    if (Schema::hasColumn('commission_entries', 'agent_id')) {
+                        $q->orWhere('agent_id', $currentUid);
+                    }
+                    $q->orWhereHas('policy', function ($pq) use ($currentUid) {
+                        $pq->where('user_id', $currentUid)->orWhere('created_by', $currentUid);
+                    });
+                });
+            }
+
+            $entries = $entriesQuery->get();
+
+            foreach ($entries as $entry) {
+                if ($entry->policy_id) {
+                    $existingPolicyIds[] = (int) $entry->policy_id;
+                }
+
+                $personName = $entry->user?->name
+                    ?: ($entry->agent?->name
+                    ?: ($entry->policy?->staff_name
+                    ?: ($entry->policy?->user?->name
+                    ?: ($entry->policy?->creator?->name ?: 'Agent'))));
+
+                $rawType = strtolower($entry->user?->type
+                    ?: ($entry->policy?->user?->type
+                    ?: ($entry->agent?->type ?: '')));
+
+                if ($rawType === 'staff' || (!empty($entry->policy?->staff_name) && empty($entry->agent_id))) {
+                    $roleLabel = 'Staff';
+                    $roleType = 'staff';
+                } else {
+                    $roleLabel = 'Sub-Agent';
+                    $roleType = 'sub_agent';
+                }
+
+                $policyNumber = $entry->policy?->policy_number
+                    ?: ($entry->policy?->policy_number_no ?: ('POL-' . str_pad($entry->policy_id ?: $entry->id, 4, '0', STR_PAD_LEFT)));
+
+                $companyName = $entry->policy?->company?->name
+                    ?: ($entry->commissionRule?->company?->name ?: 'Insurance');
+
+                $premium = (float) ($entry->premium_amount > 0 ? $entry->premium_amount : ($entry->policy?->premium_amount ?? 0));
+
+                $commissionAmount = (float) ($entry->pay_out_amount > 0
+                    ? $entry->pay_out_amount
+                    : ($entry->commission_amount > 0
+                        ? $entry->commission_amount
+                        : ($entry->pay_in_amount > 0 ? $entry->pay_in_amount : 0)));
+
+                $commissionPct = (float) ($entry->commission_percentage ?? $entry->pay_out_percentage ?? 0);
+                if ($commissionPct <= 0 && $premium > 0 && $commissionAmount > 0) {
+                    $commissionPct = round(($commissionAmount / $premium) * 100, 1);
+                }
+
+                $status = strtolower($entry->payment_status ?: 'pending');
+                $dateObj = $entry->entry_date ?: $entry->created_at;
+                $date = $dateObj ? Carbon::parse($dateObj)->format('d M, Y') : now()->format('d M, Y');
+
+                $commissionList[] = [
+                    'id' => $entry->id,
+                    'name' => $personName,
+                    'role' => $roleLabel,
+                    'role_type' => $roleType,
+                    'policy_id' => $entry->policy_id,
+                    'policy_number' => $policyNumber,
+                    'company' => $companyName,
+                    'premium' => $premium,
+                    'commission_amount' => $commissionAmount,
+                    'commission_percentage' => $commissionPct,
+                    'status' => ucfirst($status),
+                    'date' => $date,
+                ];
+            }
+        }
+
+        // 2. Fallback: If fewer than 5 records, check Policies table
+        if (count($commissionList) < 5 && Schema::hasTable('policies')) {
+            $policyQuery = Policy::with(['company:id,name', 'user:id,name,type', 'creator:id,name,type'])
+                ->whereNull('deleted_at')
+                ->where(function ($pq) {
+                    $pq->where('pay_out_amount', '>', 0)
+                       ->orWhere('pay_in_amount', '>', 0)
+                       ->orWhereNotNull('staff_name')
+                       ->orWhere('premium_amount', '>', 0);
+                });
+
+            if (!empty($existingPolicyIds)) {
+                $policyQuery->whereNotIn('id', array_unique(array_filter($existingPolicyIds)));
+            }
+
+            if ($isSubAgentOrStaff && $currentUid > 0) {
+                $policyQuery->where(function ($q) use ($currentUid) {
+                    $q->where('user_id', $currentUid)->orWhere('created_by', $currentUid);
+                });
+            }
+
+            $needed = 5 - count($commissionList);
+            $additionalPolicies = $policyQuery->latest('id')->take($needed)->get();
+
+            foreach ($additionalPolicies as $pol) {
+                $personName = !empty($pol->staff_name)
+                    ? $pol->staff_name
+                    : ($pol->user?->name ?: ($pol->creator?->name ?: 'Sub-Agent'));
+
+                $rawType = strtolower($pol->user?->type ?: ($pol->creator?->type ?: ''));
+                if ($rawType === 'staff' || !empty($pol->staff_name)) {
+                    $roleLabel = 'Staff';
+                    $roleType = 'staff';
+                } else {
+                    $roleLabel = 'Sub-Agent';
+                    $roleType = 'sub_agent';
+                }
+
+                $premium = (float) ($pol->premium_amount ?? 0);
+                $commissionAmount = (float) ($pol->pay_out_amount > 0
+                    ? $pol->pay_out_amount
+                    : ($pol->pay_in_amount > 0 ? $pol->pay_in_amount : round($premium * 0.10, 2)));
+
+                $commissionPct = (float) ($pol->pay_out_percentage ?: ($premium > 0 ? round(($commissionAmount / $premium) * 100, 1) : 10.0));
+                $dateObj = $pol->start_date ?: $pol->created_at;
+                $date = $dateObj ? Carbon::parse($dateObj)->format('d M, Y') : now()->format('d M, Y');
+
+                $commissionList[] = [
+                    'id' => 'pol-' . $pol->id,
+                    'name' => $personName,
+                    'role' => $roleLabel,
+                    'role_type' => $roleType,
+                    'policy_id' => $pol->id,
+                    'policy_number' => $pol->policy_number ?: ($pol->policy_number_no ?: ('POL-' . str_pad($pol->id, 4, '0', STR_PAD_LEFT))),
+                    'company' => $pol->company?->name ?: 'General Insurance',
+                    'premium' => $premium,
+                    'commission_amount' => $commissionAmount,
+                    'commission_percentage' => $commissionPct,
+                    'status' => 'Pending',
+                    'date' => $date,
+                ];
+            }
+        }
+
+        // 3. Compute Summary & Distribution
+        $totalCommission = 0;
+        $staffCommissionTotal = 0;
+        $subAgentCommissionTotal = 0;
+        $staffCount = 0;
+        $subAgentCount = 0;
+
+        foreach ($commissionList as $item) {
+            $amt = (float) ($item['commission_amount'] ?? 0);
+            $totalCommission += $amt;
+            if ($item['role_type'] === 'staff') {
+                $staffCommissionTotal += $amt;
+                $staffCount++;
+            } else {
+                $subAgentCommissionTotal += $amt;
+                $subAgentCount++;
+            }
+        }
+
+        $distribution = [];
+        if ($subAgentCommissionTotal > 0 || ($staffCommissionTotal === 0.0 && $totalCommission > 0)) {
+            $subShare = $totalCommission > 0 ? round(($subAgentCommissionTotal / $totalCommission) * 100) : 50;
+            $distribution[] = [
+                'name' => 'Sub-Agents',
+                'role_type' => 'sub_agent',
+                'amount' => round($subAgentCommissionTotal, 2),
+                'count' => $subAgentCount,
+                'share' => $subShare,
+                'color' => '#2563EB',
+            ];
+        }
+        if ($staffCommissionTotal > 0 || empty($distribution)) {
+            $staffShare = $totalCommission > 0 ? round(($staffCommissionTotal / $totalCommission) * 100) : ($distribution ? 100 - $distribution[0]['share'] : 50);
+            $distribution[] = [
+                'name' => 'Staff Members',
+                'role_type' => 'staff',
+                'amount' => round($staffCommissionTotal, 2),
+                'count' => $staffCount,
+                'share' => $staffShare,
+                'color' => '#10B981',
+            ];
+        }
+
+        $topGroup = 'Sub-Agents';
+        $topGroupShare = 0;
+        if (!empty($distribution)) {
+            $sorted = $distribution;
+            usort($sorted, fn ($a, $b) => $b['amount'] <=> $a['amount']);
+            $topGroup = $sorted[0]['name'];
+            $topGroupShare = $sorted[0]['share'];
+        }
+
+        $last5 = array_slice($commissionList, 0, 5);
+
+        return [
+            'commissions' => $last5,
+            'summary' => [
+                'total_commission' => round($totalCommission, 2),
+                'top_group' => $topGroup,
+                'top_group_share' => $topGroupShare,
+                'distribution' => $distribution,
+            ],
         ];
     }
 

@@ -11,12 +11,14 @@
         trend: "/api/dashboard/trend",
         customerReport: "/api/dashboard/customer-report",
         insuranceInsights: "/api/dashboard/insurance-insights",
+        commissionsWidget: "/api/dashboard/commissions-widget",
     };
 
     let trendChart = null;
     let customerReportChart = null;
     let policyPortfolioChart = null;
     let policyExpiryChart = null;
+    let commissionDistributionChart = null;
     let leadBoardSliderBound = false;
 
     function initDashboard() {
@@ -27,6 +29,7 @@
         loadStats();
         loadRenewalPolicies();
         loadInsuranceInsights();
+        loadCommissionsWidget();
     }
 
     function notifyError(message) {
@@ -509,6 +512,21 @@
                 );
                 renderExpiryExposure(expiryCanvas, Array.isArray(data.expiry_buckets) ? data.expiry_buckets : []);
                 renderInsurerPerformance(insurerBody, Array.isArray(data.insurers) ? data.insurers : []);
+
+                if (data.commissions || data.commission_summary) {
+                    const commissionCanvas = document.getElementById("commissionDistributionChart");
+                    const commissionBody = document.querySelector("#staffSubAgentCommissionTable tbody");
+                    if (commissionBody && Array.isArray(data.commissions)) {
+                        renderCommissionRecords(commissionBody, data.commissions);
+                    }
+                    if (commissionCanvas && data.commission_summary) {
+                        renderCommissionDistribution(
+                            commissionCanvas,
+                            Array.isArray(data.commission_summary.distribution) ? data.commission_summary.distribution : [],
+                            data.commission_summary
+                        );
+                    }
+                }
             })
             .catch(function (error) {
                 console.error("Failed to load insurance insights:", error);
@@ -670,6 +688,170 @@
                 + '<td class="text-center fw-semibold">' + formatNumber(row.policies) + '</td>'
                 + '<td class="text-center"><span class="insurer-active-rate">' + activeRate + '%</span></td>'
                 + '<td class="text-end fw-semibold">' + formatCompactCurrency(row.premium) + '</td>'
+                + '</tr>';
+        }).join("");
+    }
+
+    function loadCommissionsWidget() {
+        const commissionCanvas = document.getElementById("commissionDistributionChart");
+        const commissionBody = document.querySelector("#staffSubAgentCommissionTable tbody");
+
+        if (!commissionCanvas && !commissionBody) {
+            return;
+        }
+
+        if (typeof window.Chart === "undefined") {
+            setTimeout(loadCommissionsWidget, 100);
+            return;
+        }
+
+        getJson(endpoints.commissionsWidget)
+            .then(function (response) {
+                const data = response && response.data ? response.data : {};
+                renderCommissionRecords(commissionBody, Array.isArray(data.commissions) ? data.commissions : []);
+                renderCommissionDistribution(
+                    commissionCanvas,
+                    Array.isArray(data.summary?.distribution) ? data.summary.distribution : [],
+                    data.summary || {}
+                );
+            })
+            .catch(function (error) {
+                console.error("Failed to load commissions widget:", error);
+                if (commissionBody) {
+                    commissionBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No commission records available.</td></tr>';
+                }
+            });
+    }
+
+    function renderCommissionDistribution(canvas, rows, summary) {
+        if (!canvas) return;
+        if (commissionDistributionChart) commissionDistributionChart.destroy();
+        const colors = ["#2563EB", "#10B981", "#F59E0B", "#06B6D4", "#8B5CF6", "#F43F5E", "#64748B"];
+        const totalCommission = Number(summary.total_commission || 0);
+        const legend = document.getElementById("commissionDistributionLegend");
+        const totalEl = document.getElementById("commissionTotalAmount");
+        const topGroupEl = document.getElementById("commissionTopGroup");
+
+        if (totalEl) {
+            totalEl.textContent = formatCompactCurrency(summary.total_commission);
+        }
+        if (topGroupEl) {
+            topGroupEl.textContent = (summary.top_group || "--") + " · " + formatNumber(summary.top_group_share) + "%";
+            topGroupEl.title = summary.top_group || "";
+        }
+        if (legend) {
+            legend.innerHTML = rows.length ? rows.map(function (row, index) {
+                const share = totalCommission ? Math.round((Number(row.amount) / totalCommission) * 100) : (row.share || 0);
+                return '<div class="portfolio-category-row">'
+                    + '<span class="portfolio-category-dot" style="background:' + (row.color || colors[index % colors.length]) + '"></span>'
+                    + '<div class="portfolio-category-name" title="' + escapeHtml(row.name) + '">' + escapeHtml(row.name) + '</div>'
+                    + '<div class="portfolio-category-value"><strong>' + formatCompactCurrency(row.amount) + '</strong><small>' + share + '%</small></div>'
+                    + '</div>';
+            }).join("") : '<div class="portfolio-empty">No commission data available.</div>';
+        }
+
+        const centerTextPlugin = {
+            id: "commissionCenterText",
+            afterDraw: function (chart) {
+                if (!chart.chartArea) return;
+                const ctx = chart.ctx;
+                const x = (chart.chartArea.left + chart.chartArea.right) / 2;
+                const y = (chart.chartArea.top + chart.chartArea.bottom) / 2;
+                const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+                ctx.save();
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = isDark ? "#F8FAFC" : "#0F172A";
+                ctx.font = "700 20px Arial";
+                ctx.fillText(formatCompactCurrency(totalCommission), x, y - 7);
+                ctx.fillStyle = isDark ? "#94A3B8" : "#64748B";
+                ctx.font = "600 10px Arial";
+                ctx.fillText("COMMISSION", x, y + 14);
+                ctx.restore();
+            },
+        };
+
+        const chartData = rows.length && totalCommission > 0
+            ? rows.map(function (r) { return Number(r.amount || 0); })
+            : [1];
+        const chartColors = rows.length && totalCommission > 0
+            ? rows.map(function (r, i) { return r.color || colors[i % colors.length]; })
+            : ["#E2E8F0"];
+        const chartLabels = rows.length && totalCommission > 0
+            ? rows.map(function (r) { return r.name; })
+            : ["No Data"];
+
+        commissionDistributionChart = new Chart(canvas, {
+            type: "doughnut",
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    data: chartData,
+                    backgroundColor: chartColors,
+                    borderColor: "#FFFFFF",
+                    borderWidth: 3,
+                    hoverOffset: 5,
+                }],
+            },
+            plugins: [centerTextPlugin],
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: "68%",
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                if (totalCommission <= 0) return " No commission data";
+                                const row = rows[context.dataIndex] || {};
+                                return " " + formatCompactCurrency(row.amount) + " (" + (row.share || 0) + "%)";
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    }
+
+    function renderCommissionRecords(tbody, rows) {
+        if (!tbody) return;
+        if (!rows || !rows.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No commission records available.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = rows.map(function (row, index) {
+            const isStaff = (row.role_type === 'staff');
+            const roleBadgeClass = isStaff
+                ? 'badge bg-success-subtle text-success border border-success-subtle'
+                : 'badge bg-primary-subtle text-primary border border-primary-subtle';
+
+            const statusLower = (row.status || '').toLowerCase();
+            const statusBadge = statusLower === 'paid'
+                ? '<span class="insurer-active-rate">Paid</span>'
+                : '<span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="border-radius: 999px; padding: 4px 9px; font-weight: 700; font-size: 0.7rem;">Pending</span>';
+
+            return '<tr>'
+                + '<td>'
+                +   '<div class="insurer-rank">'
+                +     '<span>' + (index + 1) + '</span>'
+                +     '<div class="text-truncate" style="max-width: 175px;">'
+                +       '<strong class="d-block text-truncate" title="' + escapeHtml(row.name) + '">' + escapeHtml(row.name) + '</strong>'
+                +       '<span class="' + roleBadgeClass + '" style="font-size: 0.65rem; padding: 1px 6px;">' + escapeHtml(row.role || 'Agent') + '</span>'
+                +     '</div>'
+                +   '</div>'
+                + '</td>'
+                + '<td>'
+                +   '<strong class="d-block text-dark text-truncate" style="max-width: 160px;" title="' + escapeHtml(row.policy_number) + '">' + escapeHtml(row.policy_number) + '</strong>'
+                +   '<small class="text-muted d-block text-truncate" style="max-width: 160px;" title="' + escapeHtml(row.company) + '">' + escapeHtml(row.company) + '</small>'
+                + '</td>'
+                + '<td class="text-end fw-semibold">' + formatCompactCurrency(row.premium) + '</td>'
+                + '<td class="text-end">'
+                +   '<strong class="text-success d-block">' + formatCompactCurrency(row.commission_amount) + '</strong>'
+                +   '<small class="text-muted">' + (row.commission_percentage ? row.commission_percentage + '%' : '') + '</small>'
+                + '</td>'
+                + '<td class="text-center">' + statusBadge + '</td>'
                 + '</tr>';
         }).join("");
     }

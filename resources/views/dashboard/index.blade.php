@@ -1028,6 +1028,69 @@
             </div>
         </div>
     </div>
+
+    <div class="row g-3 mt-1">
+        <div class="col-12 col-xl-7">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header dashboard-widget-head py-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0 fw-bold text-white">Staff &amp; Sub-Agent Commissions</h5>
+                        <small class="dashboard-widget-subtitle">Recent policy commission payouts (Last 5 records)</small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="{{ Route::has('commission-rules.entries.index') ? route('commission-rules.entries.index') : url('/commission-entries') }}" class="text-dark badge bg-light px-3 py-2 fw-semibold small" style="color: #0c0c0c !important;">View All</a>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive insurer-performance-wrap">
+                        <table class="table table-hover align-middle mb-0" id="staffSubAgentCommissionTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 32%;">Agent / Staff</th>
+                                    <th style="width: 28%;">Policy</th>
+                                    <th style="width: 15%;" class="text-end">Premium</th>
+                                    <th style="width: 15%;" class="text-end">Commission</th>
+                                    <th style="width: 10%;" class="text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td colspan="5" class="text-center text-muted py-4">Loading commission records...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-xl-5">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header dashboard-widget-head py-3">
+                    <h5 class="mb-0 fw-bold text-white">Commission Distribution</h5>
+                    <small class="dashboard-widget-subtitle">Earnings mix by staff &amp; sub-agents</small>
+                </div>
+                <div class="card-body portfolio-mix-body">
+                    <div class="portfolio-mix-layout">
+                        <div class="portfolio-chart-box">
+                            <canvas id="commissionDistributionChart"></canvas>
+                        </div>
+                        <div class="portfolio-category-list" id="commissionDistributionLegend">
+                            <div class="text-muted small">Loading commission mix...</div>
+                        </div>
+                    </div>
+                    <div class="portfolio-summary-strip">
+                        <div class="portfolio-summary-item">
+                            <span class="portfolio-summary-icon portfolio-summary-icon--premium"><i class="fa-solid fa-indian-rupee-sign"></i></span>
+                            <div><small>Total Commission</small><strong id="commissionTotalAmount">₹0</strong></div>
+                        </div>
+                        <div class="portfolio-summary-divider"></div>
+                        <div class="portfolio-summary-item">
+                            <span class="portfolio-summary-icon portfolio-summary-icon--segment"><i class="fa-solid fa-chart-pie"></i></span>
+                            <div><small>Top Earning Group</small><strong id="commissionTopGroup">--</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <footer class="dashboard-footer text-center py-2 mt-4">
         © {{ date('Y') }} Copyright - <a href="https://www.fableadtechnolabs.com/" target="_blank"
             rel="noopener noreferrer" style="color: inherit; text-decoration: none;">Fablead Developers Technolab</a>

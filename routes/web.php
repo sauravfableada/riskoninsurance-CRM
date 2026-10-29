@@ -142,6 +142,7 @@ Route::middleware('auth.api')->group(function () {
     Route::get('/api/dashboard/trend', [DashboardController::class, 'apiTrend'])->name('api.dashboard.trend');
     Route::get('/api/dashboard/customer-report', [DashboardController::class, 'apiCustomerReport'])->name('api.dashboard.customer_report');
     Route::get('/api/dashboard/insurance-insights', [DashboardController::class, 'apiInsuranceInsights'])->name('api.dashboard.insurance_insights');
+    Route::get('/api/dashboard/commissions-widget', [DashboardController::class, 'apiCommissionsWidget'])->name('api.dashboard.commissions_widget');
     Route::get('/api/dashboard/deals-widget', [DashboardController::class, 'apiDealsWidget'])->name('api.dashboard.deals_widget');
 
     // Core CRM web routes (view only)
