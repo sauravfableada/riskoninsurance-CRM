@@ -28,7 +28,7 @@ class TaskController extends ApiBaseController
         $perPage = max(1, min(100, (int) $request->input('per_page', 10)));
 
         $tasks = $this->scopeOwnedRecords(
-            Task::query()->with(['assignedUser', 'customer', 'project.customer'])
+            Task::query()->with(['assignedUser', 'customer', 'project.customer', 'policyType', 'policySubType'])
         )
             ->when($search, function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
@@ -36,6 +36,15 @@ class TaskController extends ApiBaseController
                         ->orWhere('description', 'like', "%{$search}%")
                         ->orWhere('priority', 'like', "%{$search}%")
                         ->orWhere('status', 'like', "%{$search}%")
+                        ->orWhereHas('policyType', function ($ptQ) use ($search) {
+                            $ptQ->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('policySubType', function ($pstQ) use ($search) {
+                            $pstQ->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                            $customerQuery->where('name', 'like', "%{$search}%");
+                        })
                         ->orWhereHas('project', function ($projectQuery) use ($search) {
                             $projectQuery->where('name', 'like', "%{$search}%")
                                 ->orWhereHas('customer', function ($customerQuery) use ($search) {
@@ -89,7 +98,9 @@ class TaskController extends ApiBaseController
 
         $data = $validator->validated();
         $this->ensureVisibleCustomer((int) $data['related_id']);
-        $this->ensureVisibleProject((int) $data['project_id']);
+        if (!empty($data['project_id'])) {
+            $this->ensureVisibleProject((int) $data['project_id']);
+        }
         $this->ensureAssignableUser($data['assigned_user_id'] ?? null, $user);
         $data['related_type'] = !empty($data['related_id']) ? 'customer' : null;
         if (Task::supportsOwnedByUserColumn()) {
@@ -106,9 +117,12 @@ class TaskController extends ApiBaseController
 
         // WhatsApp notification to assigned staff
         try {
-            $task->load(['assignedUser', 'customer', 'project.customer']);
+            $task->load(['assignedUser', 'customer', 'project.customer', 'policyType', 'policySubType']);
 
-            $projectName = $task->project?->name ?: '--';
+            $policyName = $task->policyType?->name ?: ($task->project?->name ?: '--');
+            if ($task->policySubType?->name) {
+                $policyName .= ' (' . $task->policySubType->name . ')';
+            }
             $customer = $task->customer ?: $task->project?->customer;
             $customerName = $customer?->name ?: 'Customer';
             $dueDateText = $task->due_date ? \Illuminate\Support\Carbon::parse($task->due_date)->format('d M Y') : '';
@@ -122,7 +136,7 @@ class TaskController extends ApiBaseController
                     $staffPhone,
                     [
                         $task->assignedUser->name ?? 'Staff',
-                        $projectName,
+                        $policyName,
                         $task->title ?? 'Task',
                         $customerName,
                         $dueDateText,
@@ -140,7 +154,7 @@ class TaskController extends ApiBaseController
                     $customerPhone,
                     [
                         $customerName,
-                        $projectName,
+                        $policyName,
                         $task->title ?? 'Task',
                         $task->assignedUser?->name ?? 'Staff',
                         $dueDateText,
@@ -159,7 +173,7 @@ class TaskController extends ApiBaseController
         return response()->json([
             'success' => true,
             'message' => 'Task created successfully.',
-            'data' => $task->fresh(['assignedUser', 'customer', 'project.customer']),
+            'data' => $task->fresh(['assignedUser', 'customer', 'project.customer', 'policyType', 'policySubType']),
             'history_entry' => $this->serializeHistoryEntry($historyEntry),
             'redirect' => route('tasks.index'),
         ], 201);
@@ -167,7 +181,7 @@ class TaskController extends ApiBaseController
 
     public function show(string $id)
     {
-        $task = Task::with(['assignedUser', 'customer', 'project.customer', 'project.creator'])->findOrFail($id);
+        $task = Task::with(['assignedUser', 'customer', 'project.customer', 'project.creator', 'policyType', 'policySubType'])->findOrFail($id);
         $this->authorize('view', $task);
 
         return response()->json([
@@ -194,7 +208,9 @@ class TaskController extends ApiBaseController
 
         $data = $validator->validated();
         $this->ensureVisibleCustomer((int) $data['related_id']);
-        $this->ensureVisibleProject((int) $data['project_id']);
+        if (!empty($data['project_id'])) {
+            $this->ensureVisibleProject((int) $data['project_id']);
+        }
         $this->ensureAssignableUser($data['assigned_user_id'] ?? null, $user);
         $data['related_type'] = !empty($data['related_id']) ? 'customer' : null;
         if (Task::supportsOwnedByUserColumn()) {
@@ -219,9 +235,12 @@ class TaskController extends ApiBaseController
         }
 
         try {
-            $task->load(['assignedUser', 'customer', 'project.customer']);
+            $task->load(['assignedUser', 'customer', 'project.customer', 'policyType', 'policySubType']);
 
-            $projectName = $task->project?->name ?: '--';
+            $policyName = $task->policyType?->name ?: ($task->project?->name ?: '--');
+            if ($task->policySubType?->name) {
+                $policyName .= ' (' . $task->policySubType->name . ')';
+            }
             $customer = $task->customer ?: $task->project?->customer;
             $customerName = $customer?->name ?: 'Customer';
             $customerPhone = $customer?->whatsapp ?: $customer?->phone;
@@ -238,7 +257,7 @@ class TaskController extends ApiBaseController
                     $staffPhone,
                     [
                         $staffName,
-                        $projectName,
+                        $policyName,
                         $task->title ?? 'Task',
                         $customerName,
                         $dueDateText,
@@ -256,7 +275,7 @@ class TaskController extends ApiBaseController
                     $customerPhone,
                     [
                         $customerName,
-                        $projectName,
+                        $policyName,
                         $task->title ?? 'Task',
                         $staffName,
                         $dueDateText,
@@ -276,7 +295,7 @@ class TaskController extends ApiBaseController
         return response()->json([
             'success' => true,
             'message' => 'Task updated successfully.',
-            'data' => $task->fresh(['assignedUser', 'customer', 'project.customer']),
+            'data' => $task->fresh(['assignedUser', 'customer', 'project.customer', 'policyType', 'policySubType']),
             'history_entry' => $this->serializeHistoryEntry($historyEntry),
             'redirect' => route('tasks.index', $task),
         ]);
@@ -361,7 +380,9 @@ class TaskController extends ApiBaseController
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
             'related_id' => ['required', 'exists:customers,id'],
-            'project_id' => ['required', 'exists:projects,id'],
+            'policy_type_id' => ['required', 'integer', 'exists:insurance_policy_types,id'],
+            'policy_sub_type_id' => ['nullable', 'integer', 'exists:insurance_policy_sub_types,id'],
+            'project_id' => ['nullable'],
             'assigned_user_id' => ['nullable', 'integer', 'exists:users,id'],
             'due_date' => ['nullable', 'date'],
             'priority' => ['required', 'in:low,medium,high'],
@@ -373,7 +394,9 @@ class TaskController extends ApiBaseController
     private function messages(): array
     {
         return [
-            'project_id.required' => 'Project is required.',
+            'policy_type_id.required' => 'Policy Type is required.',
+            'policy_type_id.exists' => 'Please select a valid policy type.',
+            'policy_sub_type_id.exists' => 'Please select a valid policy sub type.',
             'project_id.exists' => 'Please select a valid project.',
             'related_id.required' => 'Please select a customer.',
             'related_id.exists' => 'Please select a valid customer.',

@@ -22,6 +22,8 @@ class Task extends Model
         'related_type',
         'related_id',
         'project_id',
+        'policy_type_id',
+        'policy_sub_type_id',
         'assigned_user_id',
         'user_id',
         'due_date',
@@ -53,6 +55,16 @@ class Task extends Model
     public function project()
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function policyType()
+    {
+        return $this->belongsTo(InsurancePolicyType::class, 'policy_type_id');
+    }
+
+    public function policySubType()
+    {
+        return $this->belongsTo(InsurancePolicySubType::class, 'policy_sub_type_id');
     }
 
     public function customer()

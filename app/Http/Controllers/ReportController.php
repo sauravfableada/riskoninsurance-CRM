@@ -991,13 +991,22 @@ class ReportController extends Controller
         $search = trim((string) $request->get('search', ''));
 
         if ($request->ajax()) {
-            $query = $this->visibleTasks()->with(['project.customer'])->latest();
+            $query = $this->visibleTasks()->with(['project.customer', 'customer', 'policyType', 'policySubType'])->latest();
 
             if ($search !== '') {
                 $query->where(function ($q) use ($search) {
                     $q->where('title', 'like', "%{$search}%")
                         ->orWhere('priority', 'like', "%{$search}%")
                         ->orWhere('status', 'like', "%{$search}%")
+                        ->orWhereHas('policyType', function ($ptQ) use ($search) {
+                            $ptQ->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('policySubType', function ($pstQ) use ($search) {
+                            $pstQ->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                            $customerQuery->where('name', 'like', "%{$search}%");
+                        })
                         ->orWhereHas('project', function ($projectQuery) use ($search) {
                             $projectQuery->where('name', 'like', "%{$search}%")
                                 ->orWhereHas('customer', function ($customerQuery) use ($search) {
@@ -1065,20 +1074,21 @@ class ReportController extends Controller
 
     public function tasksExport()
     {
-        $tasks = $this->visibleTasks()->with(['project.customer'])->latest()->get();
+        $tasks = $this->visibleTasks()->with(['project.customer', 'customer', 'policyType', 'policySubType'])->latest()->get();
         $headers = ['Content-Type' => 'text/csv', 'Content-Disposition' => 'attachment; filename="tasks_export_' . date('Y-m-d') . '.csv"'];
         $callback = function () use ($tasks) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Sr.No', 'Customer Name', 'Project Name', 'Task Title', 'Priority', 'Status', 'Due Date']);
+            fputcsv($handle, ['Sr.No', 'Customer Name', 'Policy Type', 'Policy Sub Type', 'Task Title', 'Priority', 'Status', 'Due Date']);
             foreach ($tasks as $index => $task) {
                 fputcsv($handle, [
                     $index + 1,
-                    $task->project?->customer?->name ?? '--',
-                    $task->project?->name ?? '--',
+                    $task->customer?->name ?? ($task->project?->customer?->name ?? '--'),
+                    $task->policyType?->name ?? ($task->project?->name ?? '--'),
+                    $task->policySubType?->name ?? '--',
                     $task->title ?? '--',
                     $task->priority ?? '--',
                     $task->status ?? '--',
-                        $task->due_date ? $task->due_date->format('Y-m-d') : '--'
+                    $task->due_date ? $task->due_date->format('Y-m-d') : '--'
                 ]);
             }
             fclose($handle);

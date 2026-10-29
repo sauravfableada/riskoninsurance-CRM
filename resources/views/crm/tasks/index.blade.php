@@ -93,7 +93,7 @@
                         <tr>
                             <th class="ps-4" style="width: 80px;">Sr.No</th>
                             <th>Task Info</th>
-                            <th class="d-none d-md-table-cell">Project Name</th>
+                            <th class="d-none d-md-table-cell">Policy Type</th>
                             <th class="d-none d-md-table-cell">Priority</th>
                             <th class="d-none d-md-table-cell">Status</th>
                             <th class="d-none d-md-table-cell">Due Date</th>

@@ -35,7 +35,7 @@
                         'pending' => 'bg-warning text-dark',
                         default => 'bg-secondary',
                     };
-                    $createdBy = $task->project?->creator?->name ?? '--';
+                    $createdBy = $task->creator?->name ?? ($task->owner?->name ?? ($task->project?->creator?->name ?? '--'));
                 @endphp
 
                 <div class="detail-view-block">
@@ -52,8 +52,17 @@
                         </div>
 
                         <div class="col-md-6 detail-view-row">
-                            <span class="detail-view-label">Project Name:</span>
-                            <span class="detail-view-value">{{ $task->project?->name ?? '--' }}</span>
+                            <span class="detail-view-label">Policy Type:</span>
+                            <span class="detail-view-value fw-semibold">{{ $task->policyType?->name ?? ($task->project?->name ?? '--') }}</span>
+                        </div>
+                        <div class="col-md-6 detail-view-row">
+                            <span class="detail-view-label">Policy Sub Type:</span>
+                            <span class="detail-view-value">{{ $task->policySubType?->name ?? '--' }}</span>
+                        </div>
+
+                        <div class="col-md-6 detail-view-row">
+                            <span class="detail-view-label">Assigned To:</span>
+                            <span class="detail-view-value">{{ $task->assignedUser?->name ?? '--' }}</span>
                         </div>
                         <div class="col-md-6 detail-view-row">
                             <span class="detail-view-label">Status:</span>
@@ -67,13 +76,13 @@
                             <span class="detail-view-value text-uppercase">{{ $task->priority ?? '--' }}</span>
                         </div>
                         <div class="col-md-6 detail-view-row">
-                            <span class="detail-view-label">Description:</span>
-                            <span class="detail-view-value">{{ $task->description ?: '--' }}</span>
-                        </div>
-
-                        <div class="col-md-6 detail-view-row">
                             <span class="detail-view-label">Due Date:</span>
                             <span class="detail-view-value">{{ $task->due_date?->format('d M Y') ?? '--' }}</span>
+                        </div>
+
+                        <div class="col-12 detail-view-row">
+                            <span class="detail-view-label">Description:</span>
+                            <span class="detail-view-value">{{ $task->description ?: '--' }}</span>
                         </div>
                     </div>
                 </div>

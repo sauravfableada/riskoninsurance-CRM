@@ -141,7 +141,8 @@
 
             tableBody.innerHTML = items.map(function (task, index) {
                 const customerName = escapeHtml(task.customer?.name || task.project?.customer?.name || "--");
-                const projectName = escapeHtml(task.project?.name || "--");
+                const policyTypeName = escapeHtml(task.policy_type?.name || task.project?.name || "--");
+                const subTypeName = escapeHtml(task.policy_sub_type?.name || "");
                 const taskTitle = escapeHtml(task.title ?? "--");
                 const priorityBadgeHtml = getPriorityBadge(task.priority, task.id, permissions.edit);
                 const statusBadgeHtml = getStatusBadge(task.status, task.id, permissions.edit);
@@ -157,7 +158,10 @@
                             <div class="fw-bold small">${taskTitle}</div>
                             <div class="text-muted small mt-1">${customerName}</div>
                         </td>
-                        <td class="d-none d-md-table-cell">${projectName}</td>
+                        <td class="d-none d-md-table-cell">
+                            <div class="fw-semibold small">${policyTypeName}</div>
+                            ${subTypeName ? `<div class="text-muted small">${subTypeName}</div>` : ""}
+                        </td>
                         <td class="d-none d-md-table-cell">
                             ${priorityBadgeHtml}
                         </td>
@@ -187,8 +191,8 @@
                                         <div class="expand-value text-end">${customerName}</div>
                                     </div>
                                     <div class="col-12 d-flex justify-content-between align-items-center gap-3">
-                                        <div class="expand-label"><i class="fa-regular fa-folder-open"></i> Project :</div>
-                                        <div class="expand-value text-end">${projectName}</div>
+                                        <div class="expand-label"><i class="fa-solid fa-shield-halved"></i> Policy Type :</div>
+                                        <div class="expand-value text-end">${policyTypeName}${subTypeName ? ` (${subTypeName})` : ""}</div>
                                     </div>
                                     <div class="col-12 d-flex justify-content-between align-items-center gap-3">
                                         <div class="expand-label"><i class="fa-solid fa-flag"></i> Priority :</div>
@@ -948,6 +952,166 @@ $(document).ready(function () {
         const $field = $(this);
         clearFieldInvalid($field);
         $(`#${$(this).attr("id")}-error`).html("");
+    });
+
+    function loadPolicySubTypes(policyTypeId, selectedSubTypeId) {
+        const $subTypeSelect = $("#policy_sub_type_id");
+        if (!$subTypeSelect.length) return;
+
+        $subTypeSelect.empty().append('<option value="">-- Select Policy Sub Type --</option>');
+
+        if (!policyTypeId) {
+            return;
+        }
+
+        $.ajax({
+            url: `/policy-sub-types/${policyTypeId}`,
+            type: "GET",
+            dataType: "json",
+            headers: (typeof window.crmApplyAuthHeaders === "function" ? window.crmApplyAuthHeaders({
+                "X-Requested-With": "XMLHttpRequest",
+                Accept: "application/json",
+            }) : {
+                "X-Requested-With": "XMLHttpRequest",
+                Accept: "application/json",
+            }),
+            success: function (data) {
+                if (Array.isArray(data)) {
+                    data.forEach(function (subType) {
+                        const isSelected = selectedSubTypeId && String(subType.id) === String(selectedSubTypeId);
+                        $subTypeSelect.append(new Option(subType.name, subType.id, isSelected, isSelected));
+                    });
+                }
+            },
+            error: function () {
+                console.error("Failed to fetch policy sub-types");
+            }
+        });
+    }
+
+    $(document).on("change", "#policy_type_id", function () {
+        const typeId = $(this).val();
+        loadPolicySubTypes(typeId, null);
+        $("#modal_sub_type_policy_type_id").val(typeId);
+    });
+
+    $(document).on("show.bs.modal", "#modalAddPolicySubType", function () {
+        const currentTypeId = $("#policy_type_id").val();
+        if (currentTypeId) {
+            $("#modal_sub_type_policy_type_id").val(currentTypeId);
+        }
+    });
+
+    // Handle Add Policy Type Modal Submit
+    $("#formAddPolicyType").on("submit", function (e) {
+        e.preventDefault();
+        const $form = $(this);
+        const url = $form.attr("action");
+        const btn = $form.find('button[type="submit"]');
+        const spinner = btn.find('.spinner-border');
+
+        btn.prop('disabled', true);
+        spinner.removeClass('d-none');
+        clearErrors($form);
+
+        $.ajax({
+            url: url,
+            type: "POST",
+            data: $form.serialize(),
+            headers: (typeof window.crmApplyAuthHeaders === "function" ? window.crmApplyAuthHeaders({
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
+                Accept: "application/json",
+            }) : {
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
+                Accept: "application/json",
+            }),
+            success: function (response) {
+                btn.prop('disabled', false);
+                spinner.addClass('d-none');
+
+                if (response.status && response.id) {
+                    const newOpt = new Option(response.name, response.id, true, true);
+                    $("#policy_type_id").append(newOpt).trigger("change");
+
+                    $("#modal_sub_type_policy_type_id").append(new Option(response.name, response.id, true, true));
+
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById("modalAddPolicyType")).hide();
+                    $form[0].reset();
+                    if (typeof window.showAlert === "function") {
+                        window.showAlert("success", response.message || "Policy type added successfully.");
+                    }
+                }
+            },
+            error: function (xhr) {
+                btn.prop('disabled', false);
+                spinner.addClass('d-none');
+
+                if (xhr.status === 422 && xhr.responseJSON?.errors) {
+                    showErrors($form, xhr.responseJSON.errors);
+                } else if (typeof window.showAlert === "function") {
+                    window.showAlert("error", xhr.responseJSON?.message || "Error adding policy type.");
+                }
+            }
+        });
+    });
+
+    // Handle Add Policy Sub Type Modal Submit
+    $("#formAddPolicySubType").on("submit", function (e) {
+        e.preventDefault();
+        const $form = $(this);
+        const url = $form.attr("action");
+        const btn = $form.find('button[type="submit"]');
+        const spinner = btn.find('.spinner-border');
+
+        btn.prop('disabled', true);
+        spinner.removeClass('d-none');
+        clearErrors($form);
+
+        $.ajax({
+            url: url,
+            type: "POST",
+            data: $form.serialize(),
+            headers: (typeof window.crmApplyAuthHeaders === "function" ? window.crmApplyAuthHeaders({
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
+                Accept: "application/json",
+            }) : {
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
+                Accept: "application/json",
+            }),
+            success: function (response) {
+                btn.prop('disabled', false);
+                spinner.addClass('d-none');
+
+                if (response.status && response.id) {
+                    const currentTypeId = $("#policy_type_id").val();
+                    const submittedTypeId = $form.find('[name="type_id"]').val();
+
+                    if (String(currentTypeId) === String(submittedTypeId)) {
+                        $("#policy_sub_type_id").append(new Option(response.name, response.id, true, true));
+                    }
+
+                    bootstrap.Modal.getOrCreateInstance(document.getElementById("modalAddPolicySubType")).hide();
+                    $form[0].reset();
+                    if (typeof window.showAlert === "function") {
+                        window.showAlert("success", response.message || "Policy sub-type added successfully.");
+                    }
+                }
+            },
+            error: function (xhr) {
+                btn.prop('disabled', false);
+                spinner.addClass('d-none');
+
+                if (xhr.status === 422 && xhr.responseJSON?.errors) {
+                    showErrors($form, xhr.responseJSON.errors);
+                } else if (typeof window.showAlert === "function") {
+                    window.showAlert("error", xhr.responseJSON?.message || "Error adding policy sub-type.");
+                }
+            }
+        });
     });
 
     // Handle Add Project Modal Submit

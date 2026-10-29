@@ -34,23 +34,42 @@
 
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">Project <span class="text-danger">*</span></label>
+                            <label class="form-label">Policy Type <span class="text-danger">*</span></label>
                             <div class="d-flex gap-2">
                                 <div class="flex-grow-1">
-                                    <select name="project_id" id="project_id"
-                                        class="form-select @error('project_id') is-invalid @enderror"
-                                        data-can-delete="{{ auth()->user()?->hasMatrixPermission('delete_projects') ? '1' : '0' }}" required>
-                                        <option value="">Select Project</option>
-                                        @foreach($projects as $project)
-                                            <option value="{{ $project->id }}" @selected(old('project_id', $task->project_id) == $project->id)>{{ $project->name }}</option>
+                                    <select name="policy_type_id" id="policy_type_id"
+                                        class="form-select @error('policy_type_id') is-invalid @enderror" required>
+                                        <option value="">-- Select Policy Type --</option>
+                                        @foreach($policyTypes as $type)
+                                            <option value="{{ $type->id }}" @selected(old('policy_type_id', $task->policy_type_id) == $type->id)>
+                                                {{ $type->name }}</option>
                                         @endforeach
                                     </select>
-                                    <div class="invalid-feedback" id="project_id-error">{{ $errors->first('project_id') }}</div>
+                                    <div class="invalid-feedback" id="policy_type_id-error">{{ $errors->first('policy_type_id') }}</div>
                                 </div>
                                 <div>
-                                    <button type="button" class="btn btn-dark-blue px-3" data-bs-toggle="modal" data-bs-target="#modalAddProject" title="Add New Project"><i class="fa-solid fa-plus"></i></button>
+                                    <button type="button" class="btn btn-dark-blue px-3" data-bs-toggle="modal" data-bs-target="#modalAddPolicyType" title="Add Policy Type"><i class="fa-solid fa-plus"></i></button>
                                 </div>
-                                <div><button type="button" class="btn btn-outline-dark-blue px-3 edit-selected-project" title="Edit Selected Project"><i class="fa-solid fa-pen"></i></button></div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Policy Sub Type <span class="text-muted small fw-normal">(Optional)</span></label>
+                            <div class="d-flex gap-2">
+                                <div class="flex-grow-1">
+                                    <select name="policy_sub_type_id" id="policy_sub_type_id"
+                                        class="form-select @error('policy_sub_type_id') is-invalid @enderror">
+                                        <option value="">-- Select Policy Sub Type --</option>
+                                        @foreach($policySubTypes as $subType)
+                                            <option value="{{ $subType->id }}" @selected(old('policy_sub_type_id', $task->policy_sub_type_id) == $subType->id)>
+                                                {{ $subType->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    <div class="invalid-feedback" id="policy_sub_type_id-error">{{ $errors->first('policy_sub_type_id') }}</div>
+                                </div>
+                                <div>
+                                    <button type="button" class="btn btn-dark-blue px-3" data-bs-toggle="modal" data-bs-target="#modalAddPolicySubType" title="Add Policy Sub Type"><i class="fa-solid fa-plus"></i></button>
+                                </div>
                             </div>
                         </div>
 
@@ -89,13 +108,6 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label">Description</label>
-                            <textarea name="description" id="description" rows="2"
-                                class="form-control @error('description') is-invalid @enderror">{{ old('description', $task->description) }}</textarea>
-                            <div class="invalid-feedback" id="description-error">{{ $errors->first('description') }}</div>
-                        </div>
-
-                        <div class="col-md-6">
                             <label class="form-label">Due Date</label>
                             <input type="text" name="due_date" id="due_date"
                                 value="{{ old('due_date', optional($task->due_date)->format('Y-m-d')) }}"
@@ -131,6 +143,13 @@
                             </select>
                             <div class="invalid-feedback" id="status-error">{{ $errors->first('status') }}</div>
                         </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Description</label>
+                            <textarea name="description" id="description" rows="2"
+                                class="form-control @error('description') is-invalid @enderror">{{ old('description', $task->description) }}</textarea>
+                            <div class="invalid-feedback" id="description-error">{{ $errors->first('description') }}</div>
+                        </div>
                     </div>
 
                     <div class="mt-4 pt-4 border-top d-flex flex-sm-row justify-content-end gap-2 form-actions">
@@ -148,56 +167,25 @@
         @include('crm.partials.status-history-table', ['histories' => $task->statusHistories])
     </div>
 
-    <!-- Modal: Add Project -->
-    <div class="modal fade" id="modalAddProject" tabindex="-1" aria-labelledby="modalAddProjectLabel" aria-hidden="true">
+    <!-- Modal: Add Policy Type -->
+    <div class="modal fade" id="modalAddPolicyType" tabindex="-1" aria-labelledby="modalAddPolicyTypeLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header" style="background:#0a2540;">
-                    <h5 class="modal-title text-white fw-bold" id="modalAddProjectLabel">Add Project</h5>
+                    <h5 class="modal-title text-white fw-bold" id="modalAddPolicyTypeLabel">Add Policy Type</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <form id="formAddProject" action="/api/projects" method="POST">
+                <form id="formAddPolicyType" action="{{ url('policy-type/store') }}" method="POST">
                     @csrf
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Project Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="name" placeholder="Project Name">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Customer <span class="text-danger">*</span></label>
-                            <select name="customer_id" class="form-select">
-                                <option value="">Select Customer</option>
-                                @foreach ($customers as $customer)
-                                    <option value="{{ $customer->id }}">{{ $customer->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Status <span class="text-danger">*</span></label>
-                            <select name="status" class="form-select">
-                                <option value="pending">Pending</option>
-                                <option value="ongoing">Active</option>
-                                <option value="completed">Completed</option>
-                                <option value="canceled">Cancelled</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Assigned User</label>
-                            <select name="assigned_user_id" class="form-select"><option value="">Select User</option>@foreach($users as $user)<option value="{{ $user->id }}">{{ $user->name }}</option>@endforeach</select>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Start Date <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" name="start_date">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">End Date <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" name="end_date">
-                            </div>
+                            <label class="form-label fw-bold">Policy Type Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="policy_type_name" id="modal_policy_type_name" placeholder="e.g. HEALTH INSURANCE, MOTOR" required>
+                            <div class="invalid-feedback" id="policy_type_name-error"></div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold">Description</label>
-                            <textarea name="description" class="form-control" rows="2"></textarea>
+                            <textarea name="policy_description" class="form-control" rows="2" placeholder="Optional description"></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -212,7 +200,48 @@
         </div>
     </div>
 
-    @include('crm.tasks.partials.edit-project-modal')
+    <!-- Modal: Add Policy Sub Type -->
+    <div class="modal fade" id="modalAddPolicySubType" tabindex="-1" aria-labelledby="modalAddPolicySubTypeLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header" style="background:#0a2540;">
+                    <h5 class="modal-title text-white fw-bold" id="modalAddPolicySubTypeLabel">Add Policy Sub Type</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="formAddPolicySubType" action="{{ url('policy-sub-type/store') }}" method="POST">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Policy Type <span class="text-danger">*</span></label>
+                            <select name="type_id" id="modal_sub_type_policy_type_id" class="form-select" required>
+                                <option value="">-- Select Policy Type --</option>
+                                @foreach($policyTypes as $type)
+                                    <option value="{{ $type->id }}">{{ $type->name }}</option>
+                                @endforeach
+                            </select>
+                            <div class="invalid-feedback" id="type_id-error"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Sub Type Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="name" id="modal_sub_type_name" placeholder="e.g. COMPREHENSIVE, FLOATER" required>
+                            <div class="invalid-feedback" id="name-error"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Description</label>
+                            <textarea name="description" class="form-control" rows="2" placeholder="Optional description"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-dark-blue">
+                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                            <span class="btn-text">Save</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- Modal: Add Customer -->
     <div class="modal fade" id="modalAddCustomer" tabindex="-1" aria-labelledby="modalAddCustomerLabel" aria-hidden="true">
