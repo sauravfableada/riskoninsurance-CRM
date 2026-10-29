@@ -488,7 +488,7 @@ class DashboardController extends Controller
             $entriesQuery = CommissionEntry::with([
                 'user:id,name,email,type',
                 'agent:id,name,email,type',
-                'policy:id,policy_number,policy_number_no,premium_amount,company_id,user_id,created_by,staff_name,start_date,created_at',
+                'policy:id,policy_number,policy_number_no,premium_amount,company_id,user_id,created_by,staff_name,start_date,created_at,pay_in_amount,pay_out_amount',
                 'policy.company:id,name',
                 'policy.user:id,name,type',
                 'policy.creator:id,name,type',
@@ -520,7 +520,7 @@ class DashboardController extends Controller
                     ?: ($entry->agent?->name
                     ?: ($entry->policy?->staff_name
                     ?: ($entry->policy?->user?->name
-                    ?: ($entry->policy?->creator?->name ?: 'Agent'))));
+                    ?: ($entry->policy?->creator?->name ?: 'Staff'))));
 
                 $rawType = strtolower($entry->user?->type
                     ?: ($entry->policy?->user?->type
@@ -542,15 +542,13 @@ class DashboardController extends Controller
 
                 $premium = (float) ($entry->premium_amount > 0 ? $entry->premium_amount : ($entry->policy?->premium_amount ?? 0));
 
-                $commissionAmount = (float) ($entry->pay_out_amount > 0
-                    ? $entry->pay_out_amount
-                    : ($entry->commission_amount > 0
-                        ? $entry->commission_amount
-                        : ($entry->pay_in_amount > 0 ? $entry->pay_in_amount : 0)));
+                $adminComm = (float) ($entry->pay_in_amount > 0 ? $entry->pay_in_amount : ($entry->policy?->pay_in_amount > 0 ? $entry->policy?->pay_in_amount : $entry->commission_amount));
+                $staffComm = (float) ($entry->pay_out_amount > 0 ? $entry->pay_out_amount : ($entry->policy?->pay_out_amount > 0 ? $entry->policy?->pay_out_amount : $entry->commission_amount));
+                $adminProfit = (float) ($entry->net_admin_profit > 0 ? $entry->net_admin_profit : max(0, round($adminComm - $staffComm, 2)));
 
                 $commissionPct = (float) ($entry->commission_percentage ?? $entry->pay_out_percentage ?? 0);
-                if ($commissionPct <= 0 && $premium > 0 && $commissionAmount > 0) {
-                    $commissionPct = round(($commissionAmount / $premium) * 100, 1);
+                if ($commissionPct <= 0 && $premium > 0 && $staffComm > 0) {
+                    $commissionPct = round(($staffComm / $premium) * 100, 1);
                 }
 
                 $status = strtolower($entry->payment_status ?: 'pending');
@@ -566,24 +564,20 @@ class DashboardController extends Controller
                     'policy_number' => $policyNumber,
                     'company' => $companyName,
                     'premium' => $premium,
-                    'commission_amount' => $commissionAmount,
+                    'commission_amount' => $staffComm,
                     'commission_percentage' => $commissionPct,
+                    'admin_commission' => $adminComm,
+                    'admin_profit' => $adminProfit,
                     'status' => ucfirst($status),
                     'date' => $date,
                 ];
             }
         }
 
-        // 2. Fallback: If fewer than 5 records, check Policies table
-        if (count($commissionList) < 5 && Schema::hasTable('policies')) {
-            $policyQuery = Policy::with(['company:id,name', 'user:id,name,type', 'creator:id,name,type'])
-                ->whereNull('deleted_at')
-                ->where(function ($pq) {
-                    $pq->where('pay_out_amount', '>', 0)
-                       ->orWhere('pay_in_amount', '>', 0)
-                       ->orWhereNotNull('staff_name')
-                       ->orWhere('premium_amount', '>', 0);
-                });
+        // 2. Fallback: Check Policies table for policies without commission entries
+        if (Schema::hasTable('policies')) {
+            $policyQuery = Policy::with(['latestCommissionEntry', 'company:id,name', 'user:id,name,type', 'creator:id,name,type'])
+                ->whereNull('deleted_at');
 
             if (!empty($existingPolicyIds)) {
                 $policyQuery->whereNotIn('id', array_unique(array_filter($existingPolicyIds)));
@@ -595,8 +589,7 @@ class DashboardController extends Controller
                 });
             }
 
-            $needed = 5 - count($commissionList);
-            $additionalPolicies = $policyQuery->latest('id')->take($needed)->get();
+            $additionalPolicies = $policyQuery->latest('id')->get();
 
             foreach ($additionalPolicies as $pol) {
                 $personName = !empty($pol->staff_name)
@@ -613,11 +606,20 @@ class DashboardController extends Controller
                 }
 
                 $premium = (float) ($pol->premium_amount ?? 0);
-                $commissionAmount = (float) ($pol->pay_out_amount > 0
-                    ? $pol->pay_out_amount
-                    : ($pol->pay_in_amount > 0 ? $pol->pay_in_amount : round($premium * 0.10, 2)));
+                $commEntry = $pol->latestCommissionEntry;
+                if ($commEntry) {
+                    $adminComm = (float) ($commEntry->pay_in_amount > 0 ? $commEntry->pay_in_amount : $commEntry->commission_amount);
+                    $staffComm = (float) ($commEntry->pay_out_amount > 0 ? $commEntry->pay_out_amount : $commEntry->commission_amount);
+                    $adminProfit = (float) ($commEntry->net_admin_profit > 0 ? $commEntry->net_admin_profit : max(0, round($adminComm - $staffComm, 2)));
+                    $status = ucfirst($commEntry->payment_status ?: 'Pending');
+                } else {
+                    $adminComm = (float) ($pol->pay_in_amount ?? 0);
+                    $staffComm = (float) ($pol->pay_out_amount ?? 0);
+                    $adminProfit = max(0, round($adminComm - $staffComm, 2));
+                    $status = 'Pending';
+                }
 
-                $commissionPct = (float) ($pol->pay_out_percentage ?: ($premium > 0 ? round(($commissionAmount / $premium) * 100, 1) : 10.0));
+                $commissionPct = (float) ($pol->pay_out_percentage ?: ($premium > 0 && $staffComm > 0 ? round(($staffComm / $premium) * 100, 1) : 0));
                 $dateObj = $pol->start_date ?: $pol->created_at;
                 $date = $dateObj ? Carbon::parse($dateObj)->format('d M, Y') : now()->format('d M, Y');
 
@@ -630,74 +632,95 @@ class DashboardController extends Controller
                     'policy_number' => $pol->policy_number ?: ($pol->policy_number_no ?: ('POL-' . str_pad($pol->id, 4, '0', STR_PAD_LEFT))),
                     'company' => $pol->company?->name ?: 'General Insurance',
                     'premium' => $premium,
-                    'commission_amount' => $commissionAmount,
+                    'commission_amount' => $staffComm,
                     'commission_percentage' => $commissionPct,
-                    'status' => 'Pending',
+                    'admin_commission' => $adminComm,
+                    'admin_profit' => $adminProfit,
+                    'status' => $status,
                     'date' => $date,
                 ];
             }
         }
 
-        // 3. Compute Summary & Distribution
-        $totalCommission = 0;
-        $staffCommissionTotal = 0;
-        $subAgentCommissionTotal = 0;
-        $staffCount = 0;
-        $subAgentCount = 0;
+        // 3. Compute Totals across all policies (matching ReportController)
+        $totalPoliciesQuery = Policy::with(['latestCommissionEntry'])->whereNull('deleted_at');
+        if ($isSubAgentOrStaff && $currentUid > 0) {
+            $totalPoliciesQuery->where(function ($q) use ($currentUid) {
+                $q->where('user_id', $currentUid)->orWhere('created_by', $currentUid);
+            });
+        }
+        $allPolList = $totalPoliciesQuery->get();
 
-        foreach ($commissionList as $item) {
-            $amt = (float) ($item['commission_amount'] ?? 0);
-            $totalCommission += $amt;
-            if ($item['role_type'] === 'staff') {
-                $staffCommissionTotal += $amt;
-                $staffCount++;
+        $totalPoliciesCount = $allPolList->count();
+        $totalGrossPremium = 0.0;
+        $totalAdminCommission = 0.0;
+        $totalStaffCommission = 0.0;
+        $totalAdminProfit = 0.0;
+
+        foreach ($allPolList as $p) {
+            $prem = (float) ($p->premium_amount ?? 0);
+            $totalGrossPremium += $prem;
+
+            $cEntry = $p->latestCommissionEntry;
+            if ($cEntry) {
+                $aComm = (float) ($cEntry->pay_in_amount > 0 ? $cEntry->pay_in_amount : $cEntry->commission_amount);
+                $sComm = (float) ($cEntry->pay_out_amount > 0 ? $cEntry->pay_out_amount : $cEntry->commission_amount);
+                $aProf = (float) ($cEntry->net_admin_profit > 0 ? $cEntry->net_admin_profit : max(0, round($aComm - $sComm, 2)));
             } else {
-                $subAgentCommissionTotal += $amt;
-                $subAgentCount++;
+                $aComm = (float) ($p->pay_in_amount ?? 0);
+                $sComm = (float) ($p->pay_out_amount ?? 0);
+                $aProf = max(0, round($aComm - $sComm, 2));
             }
+
+            $totalAdminCommission += $aComm;
+            $totalStaffCommission += $sComm;
+            $totalAdminProfit += $aProf;
         }
 
-        $distribution = [];
-        if ($subAgentCommissionTotal > 0 || ($staffCommissionTotal === 0.0 && $totalCommission > 0)) {
-            $subShare = $totalCommission > 0 ? round(($subAgentCommissionTotal / $totalCommission) * 100) : 50;
-            $distribution[] = [
-                'name' => 'Sub-Agents',
-                'role_type' => 'sub_agent',
-                'amount' => round($subAgentCommissionTotal, 2),
-                'count' => $subAgentCount,
-                'share' => $subShare,
-                'color' => '#2563EB',
-            ];
+        // Fallback to commissionList if allPolList is empty
+        if ($totalPoliciesCount === 0 && !empty($commissionList)) {
+            $totalPoliciesCount = count($commissionList);
+            $totalGrossPremium = array_sum(array_column($commissionList, 'premium'));
+            $totalAdminCommission = array_sum(array_column($commissionList, 'admin_commission'));
+            $totalStaffCommission = array_sum(array_column($commissionList, 'commission_amount'));
+            $totalAdminProfit = array_sum(array_column($commissionList, 'admin_profit'));
         }
-        if ($staffCommissionTotal > 0 || empty($distribution)) {
-            $staffShare = $totalCommission > 0 ? round(($staffCommissionTotal / $totalCommission) * 100) : ($distribution ? 100 - $distribution[0]['share'] : 50);
-            $distribution[] = [
-                'name' => 'Staff Members',
-                'role_type' => 'staff',
-                'amount' => round($staffCommissionTotal, 2),
-                'count' => $staffCount,
+
+        // Donut Chart Distribution: Admin Net Profit vs Staff/Agent Commission
+        $totalCommissionsAndProfit = $totalAdminCommission > 0 ? $totalAdminCommission : ($totalAdminProfit + $totalStaffCommission);
+        $profitShare = $totalCommissionsAndProfit > 0 ? round(($totalAdminProfit / $totalCommissionsAndProfit) * 100) : 85;
+        $staffShare = $totalCommissionsAndProfit > 0 ? (100 - $profitShare) : 15;
+
+        $distribution = [
+            [
+                'name' => 'Admin Net Profit',
+                'role_type' => 'admin_profit',
+                'amount' => round($totalAdminProfit, 2),
+                'share' => $profitShare,
+                'color' => '#10B981', // Emerald green
+            ],
+            [
+                'name' => 'Staff / Agent Comm.',
+                'role_type' => 'staff_comm',
+                'amount' => round($totalStaffCommission, 2),
                 'share' => $staffShare,
-                'color' => '#10B981',
-            ];
-        }
-
-        $topGroup = 'Sub-Agents';
-        $topGroupShare = 0;
-        if (!empty($distribution)) {
-            $sorted = $distribution;
-            usort($sorted, fn ($a, $b) => $b['amount'] <=> $a['amount']);
-            $topGroup = $sorted[0]['name'];
-            $topGroupShare = $sorted[0]['share'];
-        }
+                'color' => '#2563EB', // Royal blue
+            ],
+        ];
 
         $last5 = array_slice($commissionList, 0, 5);
 
         return [
             'commissions' => $last5,
             'summary' => [
-                'total_commission' => round($totalCommission, 2),
-                'top_group' => $topGroup,
-                'top_group_share' => $topGroupShare,
+                'total_policies' => $totalPoliciesCount,
+                'total_gross_premium' => round($totalGrossPremium, 2),
+                'total_admin_commission' => round($totalAdminCommission, 2),
+                'total_staff_commission' => round($totalStaffCommission, 2),
+                'total_admin_profit' => round($totalAdminProfit, 2),
+                'total_commission' => round($totalAdminProfit, 2),
+                'top_group' => 'Admin Net Profit',
+                'top_group_share' => $profitShare,
                 'distribution' => $distribution,
             ],
         ];

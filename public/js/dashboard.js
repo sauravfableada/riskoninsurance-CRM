@@ -726,22 +726,28 @@
     function renderCommissionDistribution(canvas, rows, summary) {
         if (!canvas) return;
         if (commissionDistributionChart) commissionDistributionChart.destroy();
-        const colors = ["#2563EB", "#10B981", "#F59E0B", "#06B6D4", "#8B5CF6", "#F43F5E", "#64748B"];
-        const totalCommission = Number(summary.total_commission || 0);
+        const colors = ["#10B981", "#2563EB", "#F59E0B", "#06B6D4", "#8B5CF6", "#F43F5E", "#64748B"];
+        const totalProfit = Number(summary.total_admin_profit || 0);
+        const totalAdminComm = Number(summary.total_admin_commission || 0);
         const legend = document.getElementById("commissionDistributionLegend");
-        const totalEl = document.getElementById("commissionTotalAmount");
-        const topGroupEl = document.getElementById("commissionTopGroup");
 
-        if (totalEl) {
-            totalEl.textContent = formatCompactCurrency(summary.total_commission);
-        }
-        if (topGroupEl) {
-            topGroupEl.textContent = (summary.top_group || "--") + " · " + formatNumber(summary.top_group_share) + "%";
-            topGroupEl.title = summary.top_group || "";
-        }
+        // Update the 5 metric cards matching Image 2
+        const totalPolEl = document.getElementById("commWidgetTotalPolicies");
+        const grossPremEl = document.getElementById("commWidgetGrossPremium");
+        const adminCommEl = document.getElementById("commWidgetAdminCommission");
+        const staffCommEl = document.getElementById("commWidgetStaffCommission");
+        const adminProfitEl = document.getElementById("commWidgetAdminProfit");
+
+        if (totalPolEl) totalPolEl.textContent = formatNumber(summary.total_policies || 0);
+        if (grossPremEl) grossPremEl.textContent = "₹" + formatCurrency(summary.total_gross_premium || 0);
+        if (adminCommEl) adminCommEl.textContent = "₹" + formatCurrency(summary.total_admin_commission || 0);
+        if (staffCommEl) staffCommEl.textContent = "₹" + formatCurrency(summary.total_staff_commission || 0);
+        if (adminProfitEl) adminProfitEl.textContent = "₹" + formatCurrency(summary.total_admin_profit || 0);
+
         if (legend) {
             legend.innerHTML = rows.length ? rows.map(function (row, index) {
-                const share = totalCommission ? Math.round((Number(row.amount) / totalCommission) * 100) : (row.share || 0);
+                const base = totalAdminComm > 0 ? totalAdminComm : (totalProfit + Number(summary.total_staff_commission || 0));
+                const share = base ? Math.round((Number(row.amount) / base) * 100) : (row.share || 0);
                 return '<div class="portfolio-category-row">'
                     + '<span class="portfolio-category-dot" style="background:' + (row.color || colors[index % colors.length]) + '"></span>'
                     + '<div class="portfolio-category-name" title="' + escapeHtml(row.name) + '">' + escapeHtml(row.name) + '</div>'
@@ -763,21 +769,21 @@
                 ctx.textBaseline = "middle";
                 ctx.fillStyle = isDark ? "#F8FAFC" : "#0F172A";
                 ctx.font = "700 20px Arial";
-                ctx.fillText(formatCompactCurrency(totalCommission), x, y - 7);
+                ctx.fillText(formatCompactCurrency(totalProfit), x, y - 7);
                 ctx.fillStyle = isDark ? "#94A3B8" : "#64748B";
                 ctx.font = "600 10px Arial";
-                ctx.fillText("COMMISSION", x, y + 14);
+                ctx.fillText("NET PROFIT", x, y + 14);
                 ctx.restore();
             },
         };
 
-        const chartData = rows.length && totalCommission > 0
+        const chartData = rows.length && (totalProfit > 0 || totalAdminComm > 0)
             ? rows.map(function (r) { return Number(r.amount || 0); })
             : [1];
-        const chartColors = rows.length && totalCommission > 0
+        const chartColors = rows.length && (totalProfit > 0 || totalAdminComm > 0)
             ? rows.map(function (r, i) { return r.color || colors[i % colors.length]; })
             : ["#E2E8F0"];
-        const chartLabels = rows.length && totalCommission > 0
+        const chartLabels = rows.length && (totalProfit > 0 || totalAdminComm > 0)
             ? rows.map(function (r) { return r.name; })
             : ["No Data"];
 
@@ -803,7 +809,7 @@
                     tooltip: {
                         callbacks: {
                             label: function (context) {
-                                if (totalCommission <= 0) return " No commission data";
+                                if (totalProfit <= 0 && totalAdminComm <= 0) return " No commission data";
                                 const row = rows[context.dataIndex] || {};
                                 return " " + formatCompactCurrency(row.amount) + " (" + (row.share || 0) + "%)";
                             },
@@ -817,7 +823,7 @@
     function renderCommissionRecords(tbody, rows) {
         if (!tbody) return;
         if (!rows || !rows.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No commission records available.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No commission records available.</td></tr>';
             return;
         }
 
@@ -848,8 +854,12 @@
                 + '</td>'
                 + '<td class="text-end fw-semibold">' + formatCompactCurrency(row.premium) + '</td>'
                 + '<td class="text-end">'
-                +   '<strong class="text-success d-block">' + formatCompactCurrency(row.commission_amount) + '</strong>'
+                +   '<strong class="text-dark d-block">' + formatCompactCurrency(row.commission_amount) + '</strong>'
                 +   '<small class="text-muted">' + (row.commission_percentage ? row.commission_percentage + '%' : '') + '</small>'
+                + '</td>'
+                + '<td class="text-end">'
+                +   '<strong class="text-success d-block">' + formatCompactCurrency(row.admin_profit) + '</strong>'
+                +   '<small class="text-muted" style="font-size: 0.65rem;">Profit</small>'
                 + '</td>'
                 + '<td class="text-center">' + statusBadge + '</td>'
                 + '</tr>';
