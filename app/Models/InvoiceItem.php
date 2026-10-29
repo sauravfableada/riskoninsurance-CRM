@@ -12,6 +12,13 @@ class InvoiceItem extends Model
 
     protected $fillable = [
         'invoice_id',
+        'policy_id',
+        'policy_number',
+        'holder_name',
+        'policy_type_name',
+        'gross_premium',
+        'pay_in_percentage',
+        'pay_in_amount',
         'product_id',
         'product_name',
         'amount',
@@ -22,6 +29,9 @@ class InvoiceItem extends Model
     ];
 
     protected $casts = [
+        'gross_premium' => 'decimal:2',
+        'pay_in_percentage' => 'decimal:2',
+        'pay_in_amount' => 'decimal:2',
         'amount' => 'decimal:2',
         'total_price' => 'decimal:2',
     ];
@@ -29,6 +39,11 @@ class InvoiceItem extends Model
     public function invoice()
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    public function policy()
+    {
+        return $this->belongsTo(Policy::class, 'policy_id');
     }
 
     public function product()

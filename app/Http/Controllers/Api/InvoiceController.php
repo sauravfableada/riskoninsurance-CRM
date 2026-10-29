@@ -33,7 +33,7 @@ class InvoiceController extends ApiBaseController
             ], 401);
         }
 
-        $query = Invoice::with(['customer', 'creator', 'items']);
+        $query = Invoice::with(['customer', 'company', 'creator', 'items']);
         
         // Apply explicit ownership filter for non-admin users
         // Note: Invoice model also has a global scope, but this is a safety measure
@@ -42,6 +42,14 @@ class InvoiceController extends ApiBaseController
                 $q->where('user_id', $user->id)
                     ->orWhere('created_by', $user->id);
             });
+        }
+
+        if ($request->filled('invoice_type')) {
+            $query->where('invoice_type', $request->invoice_type);
+        }
+
+        if ($request->filled('company_id')) {
+            $query->where('company_id', $request->company_id);
         }
 
         if ($request->has('customer_id') && $request->customer_id) {
@@ -54,6 +62,8 @@ class InvoiceController extends ApiBaseController
 
             $query->where(function ($q) use ($search) {
                 $q->where('number', 'like', "%{$search}%")
+                    ->orWhere('account_id_code', 'like', "%{$search}%")
+                    ->orWhereHas('company', fn($q2) => $q2->where('name', 'like', "%{$search}%"))
                     ->orWhereHas('customer', fn($q2) => $q2->where('name', 'like', "%{$search}%"));
             });
         }
@@ -90,51 +100,30 @@ class InvoiceController extends ApiBaseController
 
     public function store(Request $request)
     {
-        $validator = Validator::make(
-            $request->all(),
-            [
-                'customer_id' => ['required', 'integer', 'exists:customers,id'],
-                'invoice_date' => ['required', 'date'],
-                'due_date' => ['required', 'date', 'after_or_equal:invoice_date'],
-                'currency_id' => ['required', 'integer', 'exists:currencies,id'],
-                'comment' => ['nullable', 'string', 'max:2000'],
-                'number' => ['nullable', 'string', 'max:255', 'unique:invoices,number'],
-                'items' => ['required', 'array', 'min:1'],
-                'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
-                'items.*.amount' => ['required', 'numeric'],
-                'items.*.quantity' => ['required', 'integer', 'min:1'],
-            ],
-            [
-                'customer_id.required' => 'Customer is required.',
-                'customer_id.integer' => 'Customer must be an integer.',
-                'customer_id.exists' => 'Customer does not exist.',
-                'invoice_date.required' => 'Invoice date is required.',
-                'invoice_date.date' => 'Invoice date must be a valid date.',
-                'due_date.required' => 'Due date is required.',
-                'due_date.date' => 'Due date must be a valid date.',
-                'due_date.after_or_equal' => 'Due date must be after or equal to the invoice date.',
-                'currency_id.required' => 'Currency is required.',
-                'currency_id.integer' => 'Currency must be an integer.',
-                'currency_id.exists' => 'Currency does not exist.',
-                'comment.string' => 'Comment must be a string.',
-                'comment.max' => 'Comment must not be greater than 2000 characters.',
-                'number.string' => 'Invoice number must be a valid text value.',
-                'number.max' => 'Number must not be greater than 255.',
-                'number.unique' => 'Invoice number already exists.',
-                'items.required' => 'Items are required.',
-                'items.array' => 'Items must be an array.',
-                'items.min' => 'Items must have at least 1 item.',
-                'items.*.product_id.required' => 'Product is required.',
-                'items.*.product_id.integer' => 'Product must be an integer.',
-                'items.*.product_id.exists' => 'Product does not exist.',
-                'items.*.amount.required' => 'Amount is required.',
-                'items.*.amount.numeric' => 'Amount must be a numeric.',
-                'items.*.amount.min' => 'Amount must be at least 0.',
-                'items.*.quantity.required' => 'Quantity is required.',
-                'items.*.quantity.integer' => 'Quantity must be an integer.',
-                'items.*.quantity.min' => 'Quantity must be at least 1.',
-            ]
-        );
+        $invoiceType = $request->input('invoice_type', 'company_pay_in');
+
+        $rules = [
+            'invoice_type'   => ['required', 'in:company_pay_in,customer'],
+            'invoice_date'   => ['required', 'date'],
+            'due_date'       => ['nullable', 'date'],
+            'currency_id'    => ['nullable', 'integer', 'exists:currencies,id'],
+            'comment'        => ['nullable', 'string', 'max:2000'],
+            'number'         => ['nullable', 'string', 'max:255', 'unique:invoices,number'],
+            'account_name'   => ['nullable', 'string', 'max:255'],
+            'account_id_code'=> ['nullable', 'string', 'max:255'],
+            'account_type'   => ['nullable', 'string', 'max:255'],
+            'organization'   => ['nullable', 'string', 'max:255'],
+            'tax_percentage' => ['nullable', 'numeric', 'min:0'],
+            'items'          => ['required', 'array', 'min:1'],
+        ];
+
+        if ($invoiceType === 'company_pay_in') {
+            $rules['company_id'] = ['required', 'integer', 'exists:company_master,id'];
+        } else {
+            $rules['customer_id'] = ['required', 'integer', 'exists:customers,id'];
+        }
+
+        $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
@@ -144,7 +133,9 @@ class InvoiceController extends ApiBaseController
             DB::beginTransaction();
 
             $data = $validator->validated();
-            $this->ensureVisibleCustomer((int) $data['customer_id']);
+            if (!empty($data['customer_id'])) {
+                $this->ensureVisibleCustomer((int) $data['customer_id']);
+            }
             $data['created_by'] = auth()->id();
             $data['updated_by'] = auth()->id();
             if (Invoice::supportsOwnedByUserColumn()) {
@@ -152,39 +143,65 @@ class InvoiceController extends ApiBaseController
             }
 
             if (empty($data['number'])) {
-                $data['number'] = $this->generateNextInvoiceNumber();
+                $prefix = ($invoiceType === 'company_pay_in') ? 'INV-PAYIN-' : 'INV-';
+                $lastInv = Invoice::orderByDesc('id')->first();
+                $seq = $lastInv ? ($lastInv->id + 1) : 1;
+                $data['number'] = $prefix . date('Ymd') . '-' . str_pad($seq, 4, '0', STR_PAD_LEFT);
             }
 
             $itemsData = $data['items'];
             unset($data['items']);
 
-            $products = Product::query()
-                ->whereIn('id', collect($itemsData)->pluck('product_id')->unique()->all())
-                ->get()
-                ->keyBy('id');
-
-            $totalAmount = 0;
+            $subtotal = 0;
             foreach ($itemsData as $item) {
-                $product = $products->get($item['product_id']);
-                if (!$product) {
-                    throw new \RuntimeException('One or more invoice products could not be found.');
-                }
-
-                $totalAmount += $product->price * $item['quantity'];
+                $qty = max(1, (int) ($item['quantity'] ?? 1));
+                $amount = (float) ($item['amount'] ?? ($item['pay_in_amount'] ?? 0));
+                $subtotal += round($amount * $qty, 2);
             }
-            $data['total_amount'] = $totalAmount;
+
+            $taxPct = (float) ($data['tax_percentage'] ?? 0);
+            $taxAmount = round(($subtotal * $taxPct) / 100, 2);
+            $grandTotal = round($subtotal + $taxAmount, 2);
+
+            $data['subtotal'] = $subtotal;
+            $data['tax_percentage'] = $taxPct;
+            $data['tax_amount'] = $taxAmount;
+            $data['total_amount'] = $grandTotal;
+            $data['grand_total'] = $grandTotal;
+            $data['status'] = $request->input('status', 'unpaid');
+            $data['account_name'] = $data['account_name'] ?? 'My Billing Account';
+            $data['account_id_code'] = $data['account_id_code'] ?? '01E2F9-74AFE8-B222F4';
+            $data['account_type'] = $data['account_type'] ?? 'Direct';
+            $data['organization'] = $data['organization'] ?? 'Riskon Insurance';
 
             $invoice = Invoice::create($data);
 
             foreach ($itemsData as $item) {
-                $product = $products->get($item['product_id']);
+                $qty = max(1, (int) ($item['quantity'] ?? 1));
+                $amount = (float) ($item['amount'] ?? ($item['pay_in_amount'] ?? 0));
+                $lineTotal = round($amount * $qty, 2);
+
+                $productName = $item['product_name'] ?? ($item['description'] ?? null);
+                if (empty($productName)) {
+                    $productName = !empty($item['policy_number'])
+                        ? ('Pay-In Commission for Policy ' . $item['policy_number'])
+                        : 'Commission Remittance';
+                }
 
                 $invoice->items()->create([
-                    'product_name' => $product->name,
-                    'amount' => $product->price,
-                    'quantity' => $item['quantity'],
-                    'total_price' => $product->price * $item['quantity'],
-                    'product_id' => $item['product_id'] ?? null,
+                    'product_name'      => $productName,
+                    'amount'            => $amount,
+                    'quantity'          => $qty,
+                    'total_price'       => $lineTotal,
+                    'product_id'        => $item['product_id'] ?? null,
+                    'policy_id'         => $item['policy_id'] ?? null,
+                    'policy_number'     => $item['policy_number'] ?? null,
+                    'holder_name'       => $item['holder_name'] ?? null,
+                    'policy_type_name'  => $item['policy_type_name'] ?? null,
+                    'gross_premium'     => !empty($item['gross_premium']) ? (float) $item['gross_premium'] : null,
+                    'pay_in_percentage' => !empty($item['pay_in_percentage']) ? (float) $item['pay_in_percentage'] : null,
+                    'pay_in_amount'     => $amount,
+                    'created_by'        => auth()->id(),
                 ]);
             }
 
@@ -213,7 +230,7 @@ class InvoiceController extends ApiBaseController
 
     public function show(Invoice $invoice)
     {
-        $invoice->load(['customer', 'items', 'creator']);
+        $invoice->load(['company', 'customer', 'items.policy', 'creator', 'currency']);
 
         return response()->json([
             'success' => true,
@@ -224,51 +241,30 @@ class InvoiceController extends ApiBaseController
 
     public function update(Request $request, Invoice $invoice)
     {
-        $validator = Validator::make(
-            $request->all(),
-            [
-                'customer_id' => ['required', 'integer', 'exists:customers,id'],
-                'invoice_date' => ['required', 'date'],
-                'due_date' => ['required', 'date', 'after_or_equal:invoice_date'],
-                'currency_id' => ['required', 'integer', 'exists:currencies,id'],
-                'comment' => ['nullable', 'string', 'max:2000'],
-                'number' => ['nullable', 'string', 'max:255', 'unique:invoices,number,' . $invoice->id],
-                'items' => ['required', 'array', 'min:1'],
-                'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
-                'items.*.amount' => ['required', 'numeric', 'min:0'],
-                'items.*.quantity' => ['required', 'integer', 'min:1'],
-            ],
-            [
-                'customer_id.required' => 'Customer is required.',
-                'customer_id.integer' => 'Customer must be an integer.',
-                'customer_id.exists' => 'Customer does not exist.',
-                'invoice_date.required' => 'Invoice date is required.',
-                'invoice_date.date' => 'Invoice date must be a valid date.',
-                'due_date.required' => 'Due date is required.',
-                'due_date.date' => 'Due date must be a valid date.',
-                'due_date.after_or_equal' => 'Due date must be after or equal to the invoice date.',
-                'currency_id.required' => 'Currency is required.',
-                'currency_id.integer' => 'Currency must be an integer.',
-                'currency_id.exists' => 'Currency does not exist.',
-                'comment.string' => 'Comment must be a string.',
-                'comment.max' => 'Comment must not be greater than 2000 characters.',
-                'number.string' => 'Invoice number must be a valid text value.',
-                'number.max' => 'Number must not be greater than 255.',
-                'number.unique' => 'Invoice number already exists.',
-                'items.required' => 'Items are required.',
-                'items.array' => 'Items must be an array.',
-                'items.min' => 'Items must have at least 1 item.',
-                'items.*.product_id.required' => 'Product is required.',
-                'items.*.product_id.integer' => 'Product must be an integer.',
-                'items.*.product_id.exists' => 'Product does not exist.',
-                'items.*.amount.required' => 'Amount is required.',
-                'items.*.amount.numeric' => 'Amount must be a numeric.',
-                'items.*.amount.min' => 'Amount must be at least 0.',
-                'items.*.quantity.required' => 'Quantity is required.',
-                'items.*.quantity.integer' => 'Quantity must be an integer.',
-                'items.*.quantity.min' => 'Quantity must be at least 1.',
-            ]
-        );
+        $invoiceType = $request->input('invoice_type', $invoice->invoice_type ?? 'company_pay_in');
+
+        $rules = [
+            'invoice_type'   => ['required', 'in:company_pay_in,customer'],
+            'invoice_date'   => ['required', 'date'],
+            'due_date'       => ['nullable', 'date'],
+            'currency_id'    => ['nullable', 'integer', 'exists:currencies,id'],
+            'comment'        => ['nullable', 'string', 'max:2000'],
+            'number'         => ['nullable', 'string', 'max:255', 'unique:invoices,number,' . $invoice->id],
+            'account_name'   => ['nullable', 'string', 'max:255'],
+            'account_id_code'=> ['nullable', 'string', 'max:255'],
+            'account_type'   => ['nullable', 'string', 'max:255'],
+            'organization'   => ['nullable', 'string', 'max:255'],
+            'tax_percentage' => ['nullable', 'numeric', 'min:0'],
+            'items'          => ['required', 'array', 'min:1'],
+        ];
+
+        if ($invoiceType === 'company_pay_in') {
+            $rules['company_id'] = ['required', 'integer', 'exists:company_master,id'];
+        } else {
+            $rules['customer_id'] = ['required', 'integer', 'exists:customers,id'];
+        }
+
+        $validator = Validator::make($request->all(), $rules);
 
         if ($validator->fails()) {
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
@@ -278,7 +274,9 @@ class InvoiceController extends ApiBaseController
             DB::beginTransaction();
 
             $data = $validator->validated();
-            $this->ensureVisibleCustomer((int) $data['customer_id']);
+            if (!empty($data['customer_id'])) {
+                $this->ensureVisibleCustomer((int) $data['customer_id']);
+            }
             $data['updated_by'] = auth()->id();
             if (Invoice::supportsOwnedByUserColumn()) {
                 $data['user_id'] = $invoice->user_id ?? auth()->id();
@@ -287,35 +285,53 @@ class InvoiceController extends ApiBaseController
             $itemsData = $data['items'];
             unset($data['items']);
 
-            $products = Product::query()
-                ->whereIn('id', collect($itemsData)->pluck('product_id')->unique()->all())
-                ->get()
-                ->keyBy('id');
-
-            $totalAmount = 0;
+            $subtotal = 0;
             foreach ($itemsData as $item) {
-                $product = $products->get($item['product_id']);
-                if (!$product) {
-                    throw new \RuntimeException('One or more invoice products could not be found.');
-                }
-
-                $totalAmount += $product->price * $item['quantity'];
+                $qty = max(1, (int) ($item['quantity'] ?? 1));
+                $amount = (float) ($item['amount'] ?? ($item['pay_in_amount'] ?? 0));
+                $subtotal += round($amount * $qty, 2);
             }
-            $data['total_amount'] = $totalAmount;
+
+            $taxPct = (float) ($data['tax_percentage'] ?? 0);
+            $taxAmount = round(($subtotal * $taxPct) / 100, 2);
+            $grandTotal = round($subtotal + $taxAmount, 2);
+
+            $data['subtotal'] = $subtotal;
+            $data['tax_percentage'] = $taxPct;
+            $data['tax_amount'] = $taxAmount;
+            $data['total_amount'] = $grandTotal;
+            $data['grand_total'] = $grandTotal;
 
             $invoice->update($data);
 
             // Replace items
             $invoice->items()->delete();
             foreach ($itemsData as $item) {
-                $product = $products->get($item['product_id']);
+                $qty = max(1, (int) ($item['quantity'] ?? 1));
+                $amount = (float) ($item['amount'] ?? ($item['pay_in_amount'] ?? 0));
+                $lineTotal = round($amount * $qty, 2);
+
+                $productName = $item['product_name'] ?? ($item['description'] ?? null);
+                if (empty($productName)) {
+                    $productName = !empty($item['policy_number'])
+                        ? ('Pay-In Commission for Policy ' . $item['policy_number'])
+                        : 'Commission Remittance';
+                }
 
                 $invoice->items()->create([
-                    'product_name' => $product->name,
-                    'amount' => $product->price,
-                    'quantity' => $item['quantity'],
-                    'total_price' => $product->price * $item['quantity'],
-                    'product_id' => $item['product_id'] ?? null,
+                    'product_name'      => $productName,
+                    'amount'            => $amount,
+                    'quantity'          => $qty,
+                    'total_price'       => $lineTotal,
+                    'product_id'        => $item['product_id'] ?? null,
+                    'policy_id'         => $item['policy_id'] ?? null,
+                    'policy_number'     => $item['policy_number'] ?? null,
+                    'holder_name'       => $item['holder_name'] ?? null,
+                    'policy_type_name'  => $item['policy_type_name'] ?? null,
+                    'gross_premium'     => !empty($item['gross_premium']) ? (float) $item['gross_premium'] : null,
+                    'pay_in_percentage' => !empty($item['pay_in_percentage']) ? (float) $item['pay_in_percentage'] : null,
+                    'pay_in_amount'     => $amount,
+                    'created_by'        => auth()->id(),
                 ]);
             }
 

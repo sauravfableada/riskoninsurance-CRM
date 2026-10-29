@@ -194,6 +194,7 @@ Route::middleware('auth.api')->group(function () {
     Route::post('tasks/{id}/update-status', [TaskController::class, 'updateStatus']);
     Route::post('tasks/{id}/update-priority', [TaskController::class, 'updatePriority']);
 
+    Route::match(['patch', 'post'], 'invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->name('api.invoices.status');
     Route::apiResource('invoices', InvoiceController::class)->names([
         'index' => 'api.invoices.index',
         'store' => 'api.invoices.store',

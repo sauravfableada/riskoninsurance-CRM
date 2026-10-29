@@ -2,156 +2,137 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Invoice {{ $invoice->number }}</title>
     <style>
         @page {
             size: A4 portrait;
-            margin: 18mm 16mm 18mm;
+            margin: 14mm 14mm 14mm;
         }
 
         body {
-            font-family: DejaVu Sans, Arial, sans-serif;
-            font-size: 11px;
-            color: #0f172a;
+            font-family: DejaVu Sans, Arial, Helvetica, sans-serif;
+            font-size: 10px;
+            color: #1e293b;
             margin: 0;
-            line-height: 1.45;
+            line-height: 1.4;
             background: #ffffff;
         }
 
-        .invoice-shell {
-            width: 100%;
-        }
-
-        .top-band {
-            height: 8px;
-            background: #f59e0b;
-            border-radius: 10px 10px 0 0;
-        }
-
-        .hero {
-            border: 1px solid #e2e8f0;
-            border-top: 0;
-            border-radius: 0 0 12px 12px;
-            padding: 16px 18px 14px;
-            background: #f8fbff;
-            margin-bottom: 14px;
-        }
-
-        .table-layout {
+        .header-table, .meta-table, .items-table, .summary-table, .footer-table {
             width: 100%;
             border-collapse: collapse;
-        }
-
-        .brand-logo {
-            height: 26px;
-            width: auto;
         }
 
         .brand-name {
-            font-size: 16px;
-            font-weight: 700;
+            font-size: 20px;
+            font-weight: bold;
             color: #0f172a;
-            margin: 0 0 3px;
+            margin: 0 0 2px;
+            letter-spacing: 0.5px;
         }
 
-        .brand-copy,
-        .muted {
-            color: #475569;
+        .brand-tagline {
             font-size: 10px;
-        }
-
-        .invoice-kicker {
-            text-align: right;
-        }
-
-        .invoice-label {
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            color: #f59e0b;
-            text-transform: uppercase;
-            margin-bottom: 6px;
-        }
-
-        .invoice-number {
-            font-size: 16px;
-            font-weight: 800;
-            color: #0f172a;
-            margin: 0 0 5px;
-        }
-
-        .section-card {
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 14px 14px 10px;
-            background: #ffffff;
-            margin-bottom: 12px;
-        }
-
-        .section-title {
-            font-size: 10px;
-            font-weight: 800;
-            letter-spacing: 1px;
-            color: #64748b;
-            text-transform: uppercase;
-            margin: 0 0 8px;
-        }
-
-        .block-title {
-            font-size: 13px;
-            font-weight: 700;
-            margin: 0 0 6px;
-            color: #0f172a;
-        }
-
-        .meta-grid td {
-            vertical-align: top;
-        }
-
-        .meta-box {
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 12px;
-            background: #ffffff;
-        }
-
-        .meta-line {
+            color: #0284c7;
+            font-weight: bold;
+            font-style: italic;
             margin-bottom: 4px;
         }
 
-        .meta-line strong {
-            color: #1e293b;
+        .brand-details {
+            font-size: 9px;
+            color: #475569;
         }
 
-        .invoice-items {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 2px;
+        .invoice-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0369a1;
+            text-align: right;
+            text-transform: uppercase;
+            margin: 0 0 4px;
         }
 
-        .invoice-items thead th {
+        .invoice-sub {
+            font-size: 11px;
+            font-weight: bold;
+            color: #0f172a;
+            text-align: right;
+        }
+
+        .badge-box {
+            display: inline-block;
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: bold;
+        }
+
+        .band {
+            height: 4px;
+            background: #0284c7;
+            margin: 12px 0 14px;
+        }
+
+        .section-card {
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            padding: 10px 12px;
+            border-radius: 6px;
+        }
+
+        .section-heading {
+            font-size: 9px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #475569;
+            margin-bottom: 6px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 3px;
+            letter-spacing: 0.5px;
+        }
+
+        .info-label {
+            color: #64748b;
+            font-size: 9px;
+        }
+
+        .info-value {
+            color: #0f172a;
+            font-weight: bold;
+            font-size: 9.5px;
+        }
+
+        .items-table {
+            margin-top: 14px;
+            border: 1px solid #cbd5e1;
+        }
+
+        .items-table th {
             background: #0f172a;
             color: #ffffff;
-            font-size: 10px;
-            font-weight: 700;
-            padding: 9px 10px;
+            font-size: 9px;
+            font-weight: bold;
+            text-transform: uppercase;
+            padding: 7px 8px;
             text-align: left;
-            border-right: 1px solid #1e293b;
+            border-right: 1px solid #334155;
         }
 
-        .invoice-items thead th:last-child {
+        .items-table th:last-child {
             border-right: none;
         }
 
-        .invoice-items tbody td {
-            padding: 9px 10px;
+        .items-table td {
+            padding: 7px 8px;
             border-bottom: 1px solid #e2e8f0;
-            color: #1e293b;
+            font-size: 9px;
             vertical-align: top;
         }
 
-        .invoice-items tbody tr:nth-child(even) td {
+        .items-table tr:nth-child(even) td {
             background: #f8fafc;
         }
 
@@ -163,201 +144,229 @@
             text-align: center;
         }
 
-        .summary-wrap {
-            margin-top: 10px;
-        }
-
         .summary-box {
-            width: 240px;
+            width: 250px;
             margin-left: auto;
-            border: 1px solid #dbe4ef;
-            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
             overflow: hidden;
+            margin-top: 12px;
         }
 
-        .summary-row {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .summary-row td {
-            padding: 8px 12px;
+        .summary-box td {
+            padding: 6px 10px;
             border-bottom: 1px solid #e2e8f0;
-            background: #ffffff;
+            font-size: 9.5px;
         }
 
-        .summary-row tr:last-child td {
+        .summary-box .grand-total td {
+            background: #f0f9ff;
+            font-size: 11px;
+            font-weight: bold;
+            color: #0369a1;
             border-bottom: none;
         }
 
-        .summary-total td {
-            background: #eff6ff;
-            font-size: 13px;
-            font-weight: 800;
-            color: #0f172a;
-        }
-
-        .note-box,
-        .terms-box {
+        .notes-box {
             border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 12px 14px;
-            background: #ffffff;
-            margin-top: 12px;
+            border-radius: 6px;
+            padding: 10px;
+            background: #fbfcfe;
+            margin-top: 14px;
         }
 
-        .terms-list {
-            margin: 8px 0 0;
-            padding-left: 16px;
+        .sign-area {
+            text-align: right;
+            padding-top: 25px;
+        }
+
+        .sign-line {
+            display: inline-block;
+            border-top: 1px solid #94a3b8;
+            width: 180px;
+            text-align: center;
+            padding-top: 4px;
+            font-weight: bold;
             color: #334155;
-        }
-
-        .terms-list li {
-            margin-bottom: 4px;
-        }
-
-        .footer-bar {
-            margin-top: 12px;
-            padding-top: 10px;
-            border-top: 1px solid #e2e8f0;
-            font-size: 10px;
-            color: #64748b;
-        }
-
-        .avoid-break {
-            page-break-inside: avoid;
+            font-size: 9px;
         }
     </style>
 </head>
 <body>
     @php
-        $logoPath = public_path('logo/fableadcrmLogo.png');
-        $currencyCode = $invoice->currency?->code ?: 'INR';
-        $customer = $invoice->customer;
-        $invoiceDate = optional($invoice->invoice_date)->format('d M Y');
-        $dueDate = optional($invoice->due_date)->format('d M Y');
-        $subTotal = collect($invoice->items)->sum(fn ($item) => (float) $item->total_price);
+        $isCompanyPayIn = ($invoice->invoice_type === 'company_pay_in' || !empty($invoice->company_id));
+        $billedEntityName = $isCompanyPayIn ? ($invoice->company?->name ?? 'Insurance Company') : ($invoice->customer?->name ?? 'Customer');
     @endphp
 
-    <div class="invoice-shell">
-        <div class="top-band"></div>
+    {{-- Top Header --}}
+    <table class="header-table">
+        <tr>
+            <td style="width: 55%; vertical-align: top;">
+                <div class="brand-name">RISKON INSURANCE</div>
+                <div class="brand-tagline">Trust... We Build</div>
+                <div class="brand-details">
+                    Insurance Brokerage &amp; Commission Management<br>
+                    Organization: <strong>{{ $invoice->organization ?? 'Riskon Insurance' }}</strong><br>
+                    Direct Account: <strong>{{ $invoice->account_name ?? 'My Billing Account' }}</strong>
+                </div>
+            </td>
+            <td style="width: 45%; vertical-align: top; text-align: right;">
+                <div class="invoice-title">
+                    {{ $isCompanyPayIn ? 'COMMISSION TAX INVOICE' : 'TAX INVOICE' }}
+                </div>
+                <div class="invoice-sub">{{ $invoice->number }}</div>
+                <div style="margin-top: 4px;">
+                    <span class="badge-box">
+                        {{ $isCompanyPayIn ? 'Company Pay-In Commission' : 'Customer Billing' }}
+                    </span>
+                    <span class="badge-box" style="background: {{ $invoice->status === 'paid' ? '#dcfce7; color: #15803d;' : '#fef3c7; color: #b45309;' }}">
+                        {{ strtoupper($invoice->status ?? 'UNPAID') }}
+                    </span>
+                </div>
+                <div style="font-size: 9px; color: #64748b; margin-top: 5px;">
+                    Invoice Date: <strong>{{ optional($invoice->invoice_date)->format('d M Y') ?? '—' }}</strong><br>
+                    Due Date: <strong>{{ optional($invoice->due_date)->format('d M Y') ?? '—' }}</strong>
+                </div>
+            </td>
+        </tr>
+    </table>
 
-        <div class="hero avoid-break">
-            <table class="table-layout">
-                <tr>
-                    <td style="width: 56%; vertical-align: top;">
-                        @if(file_exists($logoPath))
-                            <img src="{{ $logoPath }}" alt="Fablead CRM" class="brand-logo">
+    <div class="band"></div>
+
+    {{-- Meta Details: Billed To & Remittance Account (Accounts.csv) --}}
+    <table class="meta-table">
+        <tr>
+            <td style="width: 49%; vertical-align: top;">
+                <div class="section-card">
+                    <div class="section-heading">Billed To ({{ $isCompanyPayIn ? 'Insurance Company' : 'Customer' }})</div>
+                    <div style="font-size: 12px; font-weight: bold; color: #0f172a; margin-bottom: 3px;">
+                        {{ $billedEntityName }}
+                    </div>
+                    @if($isCompanyPayIn)
+                        <div class="info-label">Partner Classification: <span class="info-value">Authorized Insurer</span></div>
+                        <div class="info-label">Billing Purpose: <span class="info-value">Policy Pay-In Brokerage Commission</span></div>
+                    @else
+                        @if($invoice->customer?->email)
+                            <div class="info-label">Email: <span class="info-value">{{ $invoice->customer->email }}</span></div>
                         @endif
-                        <div class="brand-name">Fablead CRM</div>
-                        <div class="brand-copy">Smart travel CRM for sales, invoicing, meetings, and customer operations.</div>
-                        <div class="brand-copy">support@fablead.com</div>
-                    </td>
-                    <td class="invoice-kicker" style="width: 44%; vertical-align: top;">
-                        <div class="invoice-label">Tax Invoice</div>
-                        <div class="invoice-number">{{ $invoice->number ?: ('INV-' . $invoice->id) }}</div>
-                    </td>
-                </tr>
-            </table>
-        </div>
-
-        <table class="table-layout meta-grid avoid-break" style="margin-bottom: 12px;">
-            <tr>
-                <td style="width: 52%; padding-right: 10px;">
-                    <div class="meta-box">
-                        <div class="section-title">Bill To</div>
-                        <div class="block-title">{{ $customer?->name ?: 'Walk-in Customer' }}</div>
-                        <div class="meta-line"><strong>Email:</strong> {{ $customer?->email ?: 'Not available' }}</div>
-                        <div class="meta-line"><strong>Phone:</strong> {{ $customer?->phone ?: 'Not available' }}</div>
-                        <div class="meta-line"><strong>Address:</strong> {{ $customer?->address ?: 'Not available' }}</div>
-                    </div>
-                </td>
-                <td style="width: 48%; padding-left: 10px;">
-                    <div class="meta-box">
-                        <div class="section-title">Invoice Details</div>
-                        <div class="meta-line"><strong>Invoice Date:</strong> {{ $invoiceDate ?: '--' }}</div>
-                        <div class="meta-line"><strong>Due Date:</strong> {{ $dueDate ?: '--' }}</div>
-                        <div class="meta-line"><strong>Currency:</strong> {{ $currencyCode }}</div>
-                        <div class="meta-line"><strong>Prepared By:</strong> {{ $invoice->creator?->name ?: 'Administrator' }}</div>
-                    </div>
-                </td>
-            </tr>
-        </table>
-
-        <div class="section-card">
-            <div class="section-title">Invoice Items</div>
-            <table class="invoice-items">
-                <thead>
-                    <tr>
-                        <th style="width: 6%;">#</th>
-                        <th style="width: 42%;">Description</th>
-                        <th style="width: 16%;" class="text-right">Unit Price</th>
-                        <th style="width: 12%;" class="text-center">Qty</th>
-                        <th style="width: 24%;" class="text-right">Line Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($invoice->items as $index => $item)
+                        @if($invoice->customer?->phone)
+                            <div class="info-label">Phone: <span class="info-value">{{ $invoice->customer->phone }}</span></div>
+                        @endif
+                    @endif
+                </div>
+            </td>
+            <td style="width: 2%;"></td>
+            <td style="width: 49%; vertical-align: top;">
+                <div class="section-card">
+                    <div class="section-heading">Remittance Billing Account (Accounts.csv)</div>
+                    <table style="width: 100%; border-collapse: collapse;">
                         <tr>
-                            <td>{{ $index + 1 }}</td>
-                            <td>
-                                <strong>{{ $item->product_name ?: 'Invoice Item' }}</strong>
-                                <div class="muted">Professional CRM service line item</div>
-                            </td>
-                            <td class="text-right">{{ number_format((float) $item->amount, 2) }}</td>
-                            <td class="text-center">{{ $item->quantity }}</td>
-                            <td class="text-right">{{ number_format((float) $item->total_price, 2) }}</td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="text-center muted">No invoice items available.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-
-            <div class="summary-wrap avoid-break">
-                <div class="summary-box">
-                    <table class="summary-row">
-                        <tr>
-                            <td>Subtotal</td>
-                            <td class="text-right">{{ $currencyCode }} {{ number_format($subTotal, 2) }}</td>
+                            <td class="info-label" style="width: 45%;">Account Name:</td>
+                            <td class="info-value">{{ $invoice->account_name ?? 'My Billing Account' }}</td>
                         </tr>
                         <tr>
-                            <td>Tax</td>
-                            <td class="text-right">{{ $currencyCode }} 0.00</td>
+                            <td class="info-label">Account ID:</td>
+                            <td class="info-value" style="font-family: monospace; color: #0284c7;">{{ $invoice->account_id_code ?? '01E2F9-74AFE8-B222F4' }}</td>
                         </tr>
                         <tr>
-                            <td>Discount</td>
-                            <td class="text-right">{{ $currencyCode }} 0.00</td>
+                            <td class="info-label">Account Type:</td>
+                            <td class="info-value">{{ $invoice->account_type ?? 'Direct' }}</td>
                         </tr>
-                        <tr class="summary-total">
-                            <td>Total Due</td>
-                            <td class="text-right">{{ $currencyCode }} {{ number_format((float) $invoice->total_amount, 2) }}</td>
+                        <tr>
+                            <td class="info-label">Organization:</td>
+                            <td class="info-value">{{ $invoice->organization ?? 'Riskon Insurance' }}</td>
                         </tr>
                     </table>
                 </div>
-            </div>
-        </div>
+            </td>
+        </tr>
+    </table>
 
-        <div class="note-box avoid-break">
-            <div class="section-title">Notes</div>
-            <div>{{ $invoice->comment ?: 'Thank you for choosing Fablead CRM. Please review the invoice details and contact us if any clarification is required.' }}</div>
-        </div>
+    {{-- Line Items Table --}}
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th style="width: 5%; text-align: center;">#</th>
+                <th style="width: 32%;">Item / Policy Description</th>
+                <th style="width: 17%;">Holder Name</th>
+                <th style="width: 13%;" class="text-right">Gross Premium</th>
+                <th style="width: 10%;" class="text-center">Pay-In %</th>
+                <th style="width: 11%;" class="text-right">Commission</th>
+                <th style="width: 12%;" class="text-right">Total (₹)</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($invoice->items as $idx => $item)
+                <tr>
+                    <td class="text-center" style="color: #64748b;">{{ $idx + 1 }}</td>
+                    <td>
+                        <strong>{{ $item->product_name }}</strong>
+                        @if($item->policy_number)
+                            <div style="font-size: 8.5px; color: #475569; font-family: monospace;">Policy # {{ $item->policy_number }}</div>
+                        @endif
+                    </td>
+                    <td>{{ $item->holder_name ?? '—' }}</td>
+                    <td class="text-right">
+                        {{ $item->gross_premium ? '₹' . number_format($item->gross_premium, 2) : '—' }}
+                    </td>
+                    <td class="text-center">
+                        {{ $item->pay_in_percentage ? number_format($item->pay_in_percentage, 2) . '%' : '—' }}
+                    </td>
+                    <td class="text-right">
+                        ₹{{ number_format($item->pay_in_amount ?? $item->amount, 2) }}
+                    </td>
+                    <td class="text-right" style="font-weight: bold;">
+                        ₹{{ number_format($item->total_price ?: (($item->pay_in_amount ?? $item->amount) * $item->quantity), 2) }}
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="7" class="text-center" style="padding: 15px; color: #64748b;">No line items found.</td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
 
-        <div class="terms-box avoid-break">
-            <div class="section-title">Terms & Conditions</div>
-            <ol class="terms-list">
-                <li>Payment is due on or before the due date mentioned on this invoice unless otherwise agreed in writing.</li>
-                <li>Services and deliverables will be considered accepted unless discrepancies are reported within 3 business days.</li>
-                <li>Late payments may be subject to additional charges as per the applicable commercial agreement.</li>
-                <li>This invoice is system generated and valid without physical signature or stamp.</li>
-            </ol>
-        </div>
+    {{-- Financial Summary --}}
+    <table class="summary-table" style="margin-top: 10px;">
+        <tr>
+            <td style="width: 55%; vertical-align: top;">
+                <div class="notes-box">
+                    <div style="font-weight: bold; font-size: 9px; margin-bottom: 4px; color: #0f172a;">Remittance Instructions:</div>
+                    <div style="font-size: 8.5px; color: #475569;">
+                        {{ $invoice->comment ?: 'Brokerage Pay-In commission invoice payable by direct remittance referencing Account ID 01E2F9-74AFE8-B222F4.' }}
+                    </div>
+                </div>
+            </td>
+            <td style="width: 45%; vertical-align: top;">
+                <table class="summary-box">
+                    <tr>
+                        <td class="info-label">Subtotal:</td>
+                        <td class="text-right" style="font-weight: bold;">
+                            ₹{{ number_format($invoice->subtotal ?: $invoice->items->sum('total_price'), 2) }}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="info-label">GST / Tax ({{ $invoice->tax_percentage ?? 18 }}%):</td>
+                        <td class="text-right" style="font-weight: bold;">
+                            ₹{{ number_format($invoice->tax_amount, 2) }}
+                        </td>
+                    </tr>
+                    <tr class="grand-total">
+                        <td>Total Amount:</td>
+                        <td class="text-right">
+                            ₹{{ number_format($invoice->grand_total ?: $invoice->total_amount, 2) }}
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
 
-        <div class="footer-bar avoid-break">
-            <strong>Fablead CRM</strong> | Generated on {{ now()->format('d M Y, h:i A') }} | This is a computer-generated invoice document.
-        </div>
+    {{-- Signatory Footer --}}
+    <div class="sign-area">
+        <div style="font-size: 9px; color: #64748b; margin-bottom: 25px;">For <strong>RISKON INSURANCE</strong></div>
+        <div class="sign-line">Authorized Signatory</div>
     </div>
 </body>
 </html>

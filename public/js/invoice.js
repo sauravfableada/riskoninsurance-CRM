@@ -99,7 +99,7 @@
             if (!items || items.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="text-center py-5">
+                        <td colspan="8" class="text-center py-5">
                             <div class="text-muted mb-3">
                                 <i class="bi bi-file-earmark-text display-1 opacity-25"></i>
                             </div>
@@ -113,14 +113,24 @@
             }
 
             tableBody.innerHTML = items.map((invoice, index) => {
-                const customer = invoice.customer;
-                const customerName = escapeHtml(customer?.name ?? "Unknown");
-                const customerEmail = escapeHtml(customer?.email ?? "");
+                const isCompanyPayIn = (invoice.invoice_type === 'company_pay_in' || invoice.company_id);
+                const billedTitle = isCompanyPayIn 
+                    ? escapeHtml(invoice.company?.name ?? "Insurance Company") 
+                    : escapeHtml(invoice.customer?.name ?? "Customer");
+                const billedSub = isCompanyPayIn
+                    ? `<span class="badge bg-light text-primary border me-1"><i class="fa-solid fa-building me-1"></i>Insurer</span><span class="font-monospace text-muted small">Acct: <strong class="text-primary">${escapeHtml(invoice.account_id_code || '01E2F9-74AFE8-B222F4')}</strong></span>`
+                    : `<span class="text-muted small">${escapeHtml(invoice.customer?.email || invoice.customer?.phone || '')}</span>`;
+                const typeBadge = isCompanyPayIn
+                    ? `<span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill small me-1"><i class="fa-solid fa-file-invoice-dollar me-1"></i>Company Pay-In</span>`
+                    : `<span class="badge bg-secondary-subtle text-secondary rounded-pill small me-1"><i class="fa-solid fa-user me-1"></i>Customer</span>`;
+
                 const invoiceNumber = escapeHtml(invoice.number ?? "--");
                 const invDate = escapeHtml(formatInvoiceDate(invoice.invoice_date));
                 const dueDate = escapeHtml(formatInvoiceDate(invoice.due_date));
                 const statusLabel = escapeHtml(invoice.status ? invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) : "Unpaid");
                 const rowNumber = meta && meta.from ? meta.from + index : index + 1;
+                const grandTotal = parseFloat(invoice.grand_total || invoice.total_amount || 0);
+                const formattedAmount = '₹' + grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
                 return `
                 <tr>
@@ -129,11 +139,13 @@
                     </td>
 
                     <td>
-                        <div class="fw-bold small">${invoiceNumber}</div>
-                        <div class="text-muted small mt-1">${customerName}</div>
-                        <div class="text-muted" style="font-size: 0.7rem;">
-                            ${customerEmail}
-                        </div>
+                        <div class="fw-bold small text-dark">${invoiceNumber}</div>
+                        <div class="mt-1">${typeBadge}</div>
+                    </td>
+
+                    <td>
+                        <div class="fw-bold small text-dark">${billedTitle}</div>
+                        <div class="mt-1">${billedSub}</div>
                     </td>
 
                     <td class="d-none d-md-table-cell">
@@ -144,16 +156,20 @@
                         <div class="small fw-semibold text-dark">${dueDate}</div>
                     </td>
 
-                    <td class="d-none d-md-table-cell">
-                        <button class="btn ${invoice.status === 'paid' ? 'btn-success' : 'btn-secondary'} btn-sm rounded-pill w-100 toggle-status" data-id="${invoice.id}">
+                    <td class="text-end">
+                        <div class="small fw-bold text-dark">${formattedAmount}</div>
+                    </td>
+
+                    <td class="text-center d-none d-md-table-cell">
+                        <button class="btn ${invoice.status === 'paid' ? 'btn-success' : 'btn-secondary'} btn-sm rounded-pill px-3 toggle-status" data-id="${invoice.id}">
                              ${statusLabel}
                         </button>
                     </td>
 
-                    <td class="text-end pe-4 d-none d-md-table-cell">
-                        <div class="d-inline-flex align-items-center gap-2">
+                    <td class="text-center pe-4 d-none d-md-table-cell">
+                        <div class="d-inline-flex align-items-center gap-1">
                             ${permissions.view ? `<a href="/invoices/${invoice.id}/pdf" class="btn crm-action-btn btn-sm" target="_blank" title="Download PDF">
-                                <i class="bi bi-filetype-pdf"></i>
+                                <i class="bi bi-filetype-pdf text-danger"></i>
                             </a>` : ''}
                             ${permissions.view ? `<a href="/invoices/${invoice.id}" class="btn crm-action-btn btn-sm" title="View">
                                 <i class="bi bi-eye"></i>
@@ -174,34 +190,33 @@
                     </td>
                 </tr>
                 <tr class="details-row d-md-none border-0" id="details-${invoice.id}" style="display: none;">
-                    <td colspan="7" class="p-0 border">
-                        <div class="details-content">
-                            <div class="row g-3">
-                                <div class="col-12 d-flex justify-content-between align-items-center gap-3">
-                                    <div class="expand-label"><i class="fa-solid fa-calendar-days"></i> Date :</div>
-                                    <div class="expand-value text-end">${invDate}</div>
+                    <td colspan="8" class="p-0 border">
+                        <div class="details-content p-3">
+                            <div class="row g-2">
+                                <div class="col-12 d-flex justify-content-between align-items-center">
+                                    <span class="text-muted small">Date:</span>
+                                    <span class="fw-semibold small">${invDate}</span>
                                 </div>
-                                <div class="col-12 d-flex justify-content-between align-items-center gap-3">
-                                    <div class="expand-label"><i class="fa-regular fa-clock"></i> Due Date :</div>
-                                    <div class="expand-value text-end">${dueDate}</div>
+                                <div class="col-12 d-flex justify-content-between align-items-center">
+                                    <span class="text-muted small">Due Date:</span>
+                                    <span class="fw-semibold small">${dueDate}</span>
                                 </div>
-                                <div class="col-12 d-flex justify-content-between align-items-center gap-3">
-                                    <div class="expand-label"><i class="fa-solid fa-signal"></i> Status :</div>
-                                    <div class="expand-value text-end">
-                                        <button class="btn ${invoice.status === 'paid' ? 'btn-success' : 'btn-secondary'} btn-sm rounded-pill toggle-status px-4" data-id="${invoice.id}">
-                                            ${statusLabel}
-                                        </button>
-                                    </div>
+                                <div class="col-12 d-flex justify-content-between align-items-center">
+                                    <span class="text-muted small">Amount:</span>
+                                    <span class="fw-bold text-dark small">${formattedAmount}</span>
+                                </div>
+                                <div class="col-12 d-flex justify-content-between align-items-center">
+                                    <span class="text-muted small">Status:</span>
+                                    <button class="btn ${invoice.status === 'paid' ? 'btn-success' : 'btn-secondary'} btn-sm rounded-pill toggle-status px-3" data-id="${invoice.id}">
+                                        ${statusLabel}
+                                    </button>
                                 </div>
                             </div>
-                            <div class="col-12 d-flex justify-content-between align-items-center pt-3 mt-3 border-top">
-                                <div class="expand-label"><i class="fa-solid fa-gear"></i> Actions :</div>
-                                <div class="d-flex flex-wrap gap-2 justify-content-end">
-                                    ${permissions.view ? `<a href="/invoices/${invoice.id}/pdf" class="btn crm-action-btn btn-sm" target="_blank" title="Download PDF"><i class="bi bi-filetype-pdf"></i></a>` : ""}
-                                    ${permissions.view ? `<a href="/invoices/${invoice.id}" class="btn crm-action-btn btn-sm" title="View"><i class="bi bi-eye"></i></a>` : ""}
-                                    ${permissions.edit ? `<a href="/invoices/${invoice.id}/edit" class="btn crm-action-btn btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>` : ""}
-                                    ${permissions.delete ? `<button class="btn crm-action-btn btn-sm text-danger delete-btn" data-id="${invoice.id}"><i class="bi bi-trash text-danger"></i></button>` : ""}
-                                </div>
+                            <div class="pt-2 mt-2 border-top d-flex justify-content-end gap-1">
+                                ${permissions.view ? `<a href="/invoices/${invoice.id}/pdf" class="btn crm-action-btn btn-sm" target="_blank" title="Download PDF"><i class="bi bi-filetype-pdf text-danger"></i></a>` : ""}
+                                ${permissions.view ? `<a href="/invoices/${invoice.id}" class="btn crm-action-btn btn-sm" title="View"><i class="bi bi-eye"></i></a>` : ""}
+                                ${permissions.edit ? `<a href="/invoices/${invoice.id}/edit" class="btn crm-action-btn btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>` : ""}
+                                ${permissions.delete ? `<button class="btn crm-action-btn btn-sm text-danger delete-btn" data-id="${invoice.id}"><i class="bi bi-trash text-danger"></i></button>` : ""}
                             </div>
                         </div>
                     </td>
@@ -271,18 +286,30 @@
 
 
         let timer;
+        let activeInvoiceType = '';
         const searchInput = document.getElementById("invoiceSearch");
         const startDateInput = document.getElementById("invoiceStartDate");
         const endDateInput = document.getElementById("invoiceEndDate");
         const statusSelect = document.getElementById("invoiceStatusFilter");
+        const companySelect = document.getElementById("invoiceCompanyFilter");
         const exportBtn = document.getElementById("invoiceExportBtn");
+
+        // Tabs
+        document.querySelectorAll('.invoice-tab-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                document.querySelectorAll('.invoice-tab-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                activeInvoiceType = this.dataset.type || '';
+                refreshInvoices();
+            });
+        });
 
         function refreshInvoices() {
             clearTimeout(timer);
             timer = setTimeout(() => fetchInvoices(1), 300);
         }
 
-        [searchInput, startDateInput, endDateInput, statusSelect].forEach(el => {
+        [searchInput, startDateInput, endDateInput, statusSelect, companySelect].forEach(el => {
             if (!el) return;
             el.addEventListener("change", refreshInvoices);
             if (el === searchInput) {
@@ -297,7 +324,9 @@
                 if (startDateInput?.value) params.push(`start_date=${encodeURIComponent(startDateInput.value)}`);
                 if (endDateInput?.value) params.push(`end_date=${encodeURIComponent(endDateInput.value)}`);
                 if (statusSelect?.value) params.push(`status=${encodeURIComponent(statusSelect.value)}`);
-                let url = '/invoices/export';
+                if (companySelect?.value) params.push(`company_id=${encodeURIComponent(companySelect.value)}`);
+                if (activeInvoiceType) params.push(`invoice_type=${encodeURIComponent(activeInvoiceType)}`);
+                let url = '/invoices-export';
                 if (params.length) url += `?${params.join('&')}`;
                 window.location.href = url;
             });
@@ -309,6 +338,12 @@
 
             if (searchInput && searchInput.value.trim()) {
                 url += `&search=${encodeURIComponent(searchInput.value.trim())}`;
+            }
+            if (activeInvoiceType) {
+                url += `&invoice_type=${encodeURIComponent(activeInvoiceType)}`;
+            }
+            if (companySelect && companySelect.value) {
+                url += `&company_id=${encodeURIComponent(companySelect.value)}`;
             }
             if (startDateInput && startDateInput.value) {
                 url += `&start_date=${encodeURIComponent(startDateInput.value)}`;
@@ -330,10 +365,11 @@
                 beforeSend: function () {
                     tableBody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="text-center py-5">
+                    <td colspan="8" class="text-center py-5">
                         <div class="spinner-border text-primary"></div>
                     </td>
                 </tr>`;
+                },
                 },
                 success: function (res) {
                     if (res.success && res.data) {

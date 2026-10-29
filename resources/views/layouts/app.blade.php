@@ -641,11 +641,21 @@
                     @endif
 
                     @if(!$isCustomerUser && ($authUser?->isAdmin() || $authUser?->type === 'admin' || $authUser?->type === 'super_admin'))
-                    <!-- Admin Withdrawal Requests link -->
+                    <!-- Admin Withdrawal link -->
                     <li class="nav-item mt-2" data-requires-perm="false">
                         <a class="nav-link ccc ddd @if(request()->is('admin/withdrawals*')) active @endif" href="{{ route('admin.withdrawals.index') }}">
                             <i class="fa-solid fa-money-bill-transfer me-2 text-info"></i>
-                            <span>Withdrawal Requests</span>
+                            <span>Withdrawal</span>
+                        </a>
+                    </li>
+                    @endif
+
+                    @if(!$isCustomerUser && ($authUser?->isAdmin() || $authUser?->hasMatrixPermission('view_invoices') || $authUser?->type === 'admin'))
+                    <!-- Company Pay-In Invoices -->
+                    <li class="nav-item mt-2" data-permission="view_invoices" data-requires-perm="false">
+                        <a class="nav-link ccc ddd @if(request()->is('invoices*')) active @endif" href="{{ route('invoices.index') }}">
+                            <i class="fa-solid fa-file-invoice-dollar me-2 text-danger"></i>
+                            <span>Invoices</span>
                         </a>
                     </li>
                     @endif
