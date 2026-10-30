@@ -21,6 +21,11 @@
                 <tr>
                     <td class="ps-4">
                         <span class="fw-bold text-dark">{{ $item->ref_no }}</span>
+                        @if(!empty($item->withdrawal_ref) && $item->withdrawal_ref !== $item->ref_no)
+                            <div class="mt-1">
+                                <span class="badge bg-light text-secondary border font-monospace" style="font-size: 0.72rem;">Req: {{ $item->withdrawal_ref }}</span>
+                            </div>
+                        @endif
                         <div class="text-muted" style="font-size: 0.72rem;">{{ $item->created_at ? $item->created_at->format('d M Y, h:i A') : '—' }}</div>
                     </td>
                     <td>
@@ -94,56 +99,69 @@
                         {{ $item->created_at ? $item->created_at->format('d M Y') : '—' }}
                     </td>
                     <td class="text-end pe-4">
-                        @if($item->is_withdrawal && $item->status === 'pending')
-                            <div class="d-inline-flex gap-2">
-                                <form method="POST" id="approveWithdrawalForm{{ $item->id }}" action="{{ route('admin.withdrawals.approve', $item->id) }}">
+                        @if($item->status === 'pending')
+                            @if(!empty($item->is_withdrawal))
+                                <div class="d-inline-flex gap-2">
+                                    <form method="POST" id="approveWithdrawalForm{{ $item->id }}" action="{{ route('admin.withdrawals.approve', $item->id) }}">
+                                        @csrf
+                                        <input type="hidden" name="admin_remarks" value="Approved by Admin">
+                                        <button type="button" class="btn btn-sm btn-success px-3 btn-approve-withdrawal"
+                                                data-id="{{ $item->id }}"
+                                                data-amount="{{ number_format($item->pay_out_amount, 2) }}"
+                                                data-agent="{{ $item->user_name }}"
+                                                title="Approve Withdrawal">
+                                            <i class="fas fa-check me-1"></i> Approve
+                                        </button>
+                                    </form>
+
+                                    <button type="button" class="btn btn-sm btn-outline-danger px-2" data-bs-toggle="modal" data-bs-target="#rejectModal{{ $item->id }}" title="Reject Withdrawal">
+                                        <i class="fas fa-times me-1"></i> Reject
+                                    </button>
+                                </div>
+
+                                <!-- Reject Modal -->
+                                <div class="modal fade text-start" id="rejectModal{{ $item->id }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content rounded-4 border-0 shadow">
+                                            <div class="modal-header border-bottom">
+                                                <h5 class="modal-title fw-bold text-danger">
+                                                    <i class="fas fa-times-circle me-1"></i> Reject Withdrawal {{ $item->withdrawal_ref ?? $item->ref_no }}
+                                                </h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <form action="{{ route('admin.withdrawals.reject', $item->id) }}" method="POST">
+                                                @csrf
+                                                <div class="modal-body p-4">
+                                                    <p class="small text-muted mb-3">
+                                                        Rejecting withdrawal of <strong>₹{{ number_format($item->pay_out_amount, 2) }}</strong> for <strong>{{ $item->user_name }}</strong>. Please provide a reason below.
+                                                    </p>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-semibold">Reason for Rejection <span class="text-danger">*</span></label>
+                                                        <textarea name="admin_remarks" rows="3" class="form-control" placeholder="e.g. Incorrect bank account details / insufficient settled policy balance" required></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer border-top bg-light">
+                                                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-danger btn-sm px-3">Confirm Rejection</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            @else
+                                <form method="POST" id="approveCommissionForm{{ $item->id }}" action="{{ route('admin.commissions.approve', $item->id) }}">
                                     @csrf
-                                    <input type="hidden" name="admin_remarks" value="Approved by Admin">
-                                    <button type="button" class="btn btn-sm btn-success px-3 btn-approve-withdrawal"
+                                    <button type="button" class="btn btn-sm btn-success px-3 btn-approve-commission"
                                             data-id="{{ $item->id }}"
                                             data-amount="{{ number_format($item->pay_out_amount, 2) }}"
                                             data-agent="{{ $item->user_name }}"
-                                            title="Approve Withdrawal">
+                                            title="Approve Commission">
                                         <i class="fas fa-check me-1"></i> Approve
                                     </button>
                                 </form>
-
-                                <button type="button" class="btn btn-sm btn-outline-danger px-2" data-bs-toggle="modal" data-bs-target="#rejectModal{{ $item->id }}" title="Reject Withdrawal">
-                                    <i class="fas fa-times me-1"></i> Reject
-                                </button>
-                            </div>
-
-                            <!-- Reject Modal -->
-                            <div class="modal fade text-start" id="rejectModal{{ $item->id }}" tabindex="-1" aria-hidden="true">
-                                <div class="modal-dialog modal-dialog-centered">
-                                    <div class="modal-content rounded-4 border-0 shadow">
-                                        <div class="modal-header border-bottom">
-                                            <h5 class="modal-title fw-bold text-danger">
-                                                <i class="fas fa-times-circle me-1"></i> Reject Withdrawal {{ $item->ref_no }}
-                                            </h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                        </div>
-                                        <form action="{{ route('admin.withdrawals.reject', $item->id) }}" method="POST">
-                                            @csrf
-                                            <div class="modal-body p-4">
-                                                <p class="small text-muted mb-3">
-                                                    Rejecting withdrawal of <strong>₹{{ number_format($item->pay_out_amount, 2) }}</strong> for <strong>{{ $item->user_name }}</strong>. Please provide a reason below.
-                                                </p>
-                                                <div class="mb-3">
-                                                    <label class="form-label fw-semibold">Reason for Rejection <span class="text-danger">*</span></label>
-                                                    <textarea name="admin_remarks" rows="3" class="form-control" placeholder="e.g. Incorrect bank account details / insufficient settled policy balance" required></textarea>
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer border-top bg-light">
-                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                                                <button type="submit" class="btn btn-danger btn-sm px-3">Confirm Rejection</button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
+                            @endif
                         @else
-                            <span class="text-muted small">—</span>
+                            <span class="text-success small fw-semibold"><i class="fas fa-check-double me-1"></i>Completed</span>
                         @endif
                     </td>
                 </tr>

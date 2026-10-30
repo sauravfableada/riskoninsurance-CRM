@@ -250,6 +250,43 @@
                     }
                 });
             });
+
+            document.querySelectorAll('.btn-approve-commission').forEach(function (button) {
+                const newBtn = button.cloneNode(true);
+                button.parentNode.replaceChild(newBtn, button);
+
+                newBtn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const id = this.getAttribute('data-id');
+                    const amount = this.getAttribute('data-amount');
+                    const agent = this.getAttribute('data-agent');
+                    const form = document.getElementById('approveCommissionForm' + id);
+
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({
+                            title: 'Approve Commission?',
+                            html: `Are you sure you want to approve commission payout of <strong>₹${amount}</strong> for <strong>${agent}</strong>?`,
+                            icon: 'question',
+                            showCancelButton: true,
+                            confirmButtonText: '<i class="fas fa-check me-1"></i> Yes, approve it!',
+                            cancelButtonText: 'Cancel',
+                            confirmButtonColor: '#198754',
+                            cancelButtonColor: '#6c757d',
+                            customClass: {
+                                popup: 'rounded-4 shadow'
+                            }
+                        }).then((result) => {
+                            if (result.isConfirmed && form) {
+                                form.submit();
+                            }
+                        });
+                    } else if (confirm(`Are you sure you want to approve commission payout of ₹${amount}?`)) {
+                        if (form) form.submit();
+                    }
+                });
+            });
         }
 
         // Clean URL to keep address bar free of query strings

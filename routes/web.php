@@ -636,6 +636,7 @@ Route::middleware('auth.api')->group(function () {
         Route::get('/admin/withdrawals', [\App\Http\Controllers\AdminWithdrawalController::class, 'index'])->name('admin.withdrawals.index');
         Route::post('/admin/withdrawals/{id}/approve', [\App\Http\Controllers\AdminWithdrawalController::class, 'approve'])->name('admin.withdrawals.approve');
         Route::post('/admin/withdrawals/{id}/reject', [\App\Http\Controllers\AdminWithdrawalController::class, 'reject'])->name('admin.withdrawals.reject');
+        Route::post('/admin/commissions/{id}/approve', [\App\Http\Controllers\AdminWithdrawalController::class, 'approveCommission'])->name('admin.commissions.approve');
 
         // AJAX routes for commission form
         Route::get('/commission/get-policies/{typeId}', [CommissionRulesController::class, 'getPoliciesByType'])->name('commission.get-policies');

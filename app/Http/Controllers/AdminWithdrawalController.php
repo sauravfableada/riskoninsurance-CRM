@@ -10,6 +10,7 @@ use App\Models\WithdrawalRequest;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class AdminWithdrawalController extends Controller
 {
@@ -28,6 +29,31 @@ class AdminWithdrawalController extends Controller
         $status = $request->query('status', 'all');
         $subagentId = $request->query('subagent_id');
 
+        // Self-healing Auto-Sync:
+        // If a subagent has an approved withdrawal request, automatically sync their matching pending commission entries to 'paid'.
+        // This instantly reconciles past entries where a withdrawal was approved but the underlying commission remained 'pending'.
+        $approvedWithdrawals = WithdrawalRequest::where('status', 'approved')->get();
+        foreach ($approvedWithdrawals as $w) {
+            $uId = $w->user_id;
+            $unpaidEntries = CommissionEntry::where(function ($q) use ($uId) {
+                if (Schema::hasColumn('commission_entries', 'user_id')) {
+                    $q->where('user_id', $uId);
+                }
+                if (Schema::hasColumn('commission_entries', 'agent_id')) {
+                    $q->orWhere('agent_id', $uId);
+                }
+            })->where('payment_status', 'pending')->get();
+
+            $remAmt = (float) $w->amount;
+            foreach ($unpaidEntries as $entry) {
+                $eAmt = (float) ($entry->pay_out_amount > 0 ? $entry->pay_out_amount : $entry->commission_amount);
+                if (abs($eAmt - (float) $w->amount) < 0.05 || $unpaidEntries->count() === 1 || $remAmt >= ($eAmt - 0.05)) {
+                    $entry->update(['payment_status' => 'paid']);
+                    $remAmt -= $eAmt;
+                }
+            }
+        }
+
         // Fetch companies for the company-wise filter dropdown
         $companies = CompanyMaster::select('id', 'name')->orderBy('name')->get();
         if ($companies->isEmpty()) {
@@ -37,7 +63,7 @@ class AdminWithdrawalController extends Controller
         // Fetch subagents for the filter dropdown
         $subagents = User::where('type', 'sub_agents')->orderBy('name')->get(['id', 'name', 'email']);
 
-        // Query Withdrawal Requests (which are inherently Pay-Out)
+        // Query Withdrawal Requests (which are inherently Pay-Out applications)
         $wQuery = WithdrawalRequest::with(['user', 'reviewer'])->latest();
         if ($status !== 'all' && in_array($status, ['pending', 'approved', 'rejected'], true)) {
             $wQuery->where('status', $status);
@@ -45,9 +71,18 @@ class AdminWithdrawalController extends Controller
         if (!empty($subagentId)) {
             $wQuery->where('user_id', $subagentId);
         }
+        $allWithdrawals = $wQuery->get();
 
-        // Query Commission Entries (which have Pay-In, Pay-Out, and Company)
-        $cQuery = CommissionEntry::with(['commissionRule.company', 'policy.company', 'user', 'agent', 'policy.holder', 'policy.creator'])->latest();
+        // Query Commission Entries (which contain Gross Premium, Pay-In, Pay-Out, and Insurer details)
+        $cQuery = CommissionEntry::with([
+            'commissionRule.company',
+            'policy.company',
+            'user',
+            'agent',
+            'policy.holder',
+            'policy.creator'
+        ])->latest();
+
         if (!empty($subagentId)) {
             $cQuery->where(function ($cq) use ($subagentId) {
                 if (Schema::hasColumn('commission_entries', 'user_id')) {
@@ -79,57 +114,157 @@ class AdminWithdrawalController extends Controller
                 $cQuery->whereIn('payment_status', ['rejected', 'cancelled']);
             }
         }
+        $allCommissions = $cQuery->get();
 
+        $claimedCommissionIds = [];
         $merged = collect();
 
-        // 1. Add Withdrawal Requests (Pay-Out applications) if type is 'all' or 'pay_out', and no company is filtered (or wallet)
-        if (($type === 'all' || $type === 'pay_out') && empty($companyId)) {
-            foreach ($wQuery->get() as $w) {
-                $merged->push((object)[
-                    'kind' => 'withdrawal',
-                    'id' => $w->id,
-                    'ref_no' => '#WR-' . str_pad($w->id, 5, '0', STR_PAD_LEFT),
-                    'type_label' => 'Withdrawal',
-                    'type_class' => 'warning',
-                    'user' => $w->user,
-                    'user_name' => $w->user?->name ?? 'Sub-Agent #' . $w->user_id,
-                    'user_email' => $w->user?->email,
-                    'company_name' => 'Wallet Payout',
-                    'company_id' => null,
-                    'gross_premium' => null,
-                    'pay_in_amount' => null,
-                    'pay_in_percentage' => null,
-                    'pay_out_amount' => (float) $w->amount,
-                    'pay_out_percentage' => null,
-                    'net_profit' => null,
-                    'payout_method' => $w->payout_method,
-                    'payout_details' => $w->payout_details,
-                    'subagent_note' => $w->subagent_note,
-                    'admin_remarks' => $w->admin_remarks,
-                    'status' => $w->status,
-                    'status_badge' => $w->status_badge,
-                    'reviewer' => $w->reviewer,
-                    'reviewed_at' => $w->reviewed_at,
-                    'created_at' => $w->created_at,
-                    'raw' => $w,
-                    'is_withdrawal' => true,
-                ]);
+        // 1. Process Withdrawal Requests:
+        // Pair withdrawal requests with the sub-agent's policy commissions so that
+        // Gross Premium, Pay-In (Admin), Net Profit, and Insurer Name are displayed,
+        // avoiding confusing blank dashes ("—") and preventing duplicate pending rows.
+        if ($type === 'all' || $type === 'pay_out') {
+            foreach ($allWithdrawals as $w) {
+                // Find matching commission entry for this subagent by amount and user_id
+                $matchingCommission = $allCommissions->first(function ($c) use ($w, $claimedCommissionIds) {
+                    if (in_array($c->id, $claimedCommissionIds, true)) {
+                        return false;
+                    }
+                    $cUserId = $c->user_id ?? $c->agent_id ?? $c->policy?->user_id ?? $c->policy?->created_by;
+                    if ((int) $cUserId !== (int) $w->user_id) {
+                        return false;
+                    }
+                    $cOut = (float) ($c->pay_out_amount > 0 ? $c->pay_out_amount : $c->commission_amount);
+                    return abs($cOut - (float) $w->amount) < 0.05;
+                });
+
+                // Fallback: match by subagent user_id if any unclaimed commission entry exists
+                if (!$matchingCommission) {
+                    $matchingCommission = $allCommissions->first(function ($c) use ($w, $claimedCommissionIds) {
+                        if (in_array($c->id, $claimedCommissionIds, true)) {
+                            return false;
+                        }
+                        $cUserId = $c->user_id ?? $c->agent_id ?? $c->policy?->user_id ?? $c->policy?->created_by;
+                        return (int) $cUserId === (int) $w->user_id;
+                    });
+                }
+
+                // If filtering by company, check matching policy company
+                if (!empty($companyId)) {
+                    if (!$matchingCommission) {
+                        continue;
+                    }
+                    $cCompId = $matchingCommission->policy?->company_id ?? $matchingCommission->commissionRule?->company_id;
+                    if ((int) $cCompId !== (int) $companyId) {
+                        continue;
+                    }
+                }
+
+                $wRef = '#WR-' . str_pad($w->id, 5, '0', STR_PAD_LEFT);
+
+                if ($matchingCommission) {
+                    $claimedCommissionIds[] = $matchingCommission->id;
+
+                    $inAmt = (float) ($matchingCommission->pay_in_amount > 0 ? $matchingCommission->pay_in_amount : 0);
+                    $outAmt = (float) $w->amount;
+                    $profit = (float) ($matchingCommission->net_admin_profit > 0 ? $matchingCommission->net_admin_profit : max(0, $inAmt - $outAmt));
+                    $compName = $matchingCommission->policy?->company?->name 
+                        ?? $matchingCommission->commissionRule?->company?->name 
+                        ?? 'Direct Insurance';
+                    $polNum = $matchingCommission->policy?->policy_number ?? ('POL-' . $matchingCommission->policy_id);
+
+                    // If withdrawal is approved, show the clean Approved badge
+                    $isApproved = ($w->status === 'approved');
+                    $statusBadge = $isApproved
+                        ? '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fas fa-check-circle me-1"></i>Approved</span>'
+                        : $w->status_badge;
+
+                    $merged->push((object)[
+                        'kind' => 'withdrawal',
+                        'id' => $w->id,
+                        'commission_entry_id' => $matchingCommission->id,
+                        'ref_no' => $polNum,
+                        'policy_ref' => $polNum,
+                        'withdrawal_ref' => $wRef,
+                        'type_label' => 'Withdrawal',
+                        'type_class' => 'warning',
+                        'user' => $w->user,
+                        'user_name' => $w->user?->name ?? 'Sub-Agent #' . $w->user_id,
+                        'user_email' => $w->user?->email,
+                        'company_name' => $compName,
+                        'company_id' => $matchingCommission->policy?->company_id ?? $matchingCommission->commissionRule?->company_id,
+                        'gross_premium' => (float) $matchingCommission->premium_amount,
+                        'pay_in_amount' => $inAmt,
+                        'pay_in_percentage' => (float) $matchingCommission->pay_in_percentage,
+                        'pay_out_amount' => $outAmt,
+                        'pay_out_percentage' => (float) $matchingCommission->pay_out_percentage,
+                        'net_profit' => $profit,
+                        'payout_method' => $w->payout_method ?: 'bank_transfer',
+                        'payout_details' => $w->payout_details ?: ('Policy Commission (' . ($matchingCommission->policy?->holder?->name ?? 'Customer') . ')'),
+                        'subagent_note' => $w->subagent_note ?: $matchingCommission->remarks,
+                        'admin_remarks' => $w->admin_remarks,
+                        'status' => $w->status,
+                        'status_badge' => $statusBadge,
+                        'reviewer' => $w->reviewer,
+                        'reviewed_at' => $w->reviewed_at,
+                        'created_at' => $w->created_at ?: $matchingCommission->created_at,
+                        'raw' => $w,
+                        'is_withdrawal' => true,
+                        'is_commission' => false,
+                    ]);
+                } else {
+                    // Standalone wallet withdrawal without associated commission entry
+                    $merged->push((object)[
+                        'kind' => 'withdrawal',
+                        'id' => $w->id,
+                        'commission_entry_id' => null,
+                        'ref_no' => $wRef,
+                        'policy_ref' => null,
+                        'withdrawal_ref' => $wRef,
+                        'type_label' => 'Withdrawal',
+                        'type_class' => 'warning',
+                        'user' => $w->user,
+                        'user_name' => $w->user?->name ?? 'Sub-Agent #' . $w->user_id,
+                        'user_email' => $w->user?->email,
+                        'company_name' => 'Wallet Payout',
+                        'company_id' => null,
+                        'gross_premium' => null,
+                        'pay_in_amount' => null,
+                        'pay_in_percentage' => null,
+                        'pay_out_amount' => (float) $w->amount,
+                        'pay_out_percentage' => null,
+                        'net_profit' => null,
+                        'payout_method' => $w->payout_method,
+                        'payout_details' => $w->payout_details,
+                        'subagent_note' => $w->subagent_note,
+                        'admin_remarks' => $w->admin_remarks,
+                        'status' => $w->status,
+                        'status_badge' => $w->status_badge,
+                        'reviewer' => $w->reviewer,
+                        'reviewed_at' => $w->reviewed_at,
+                        'created_at' => $w->created_at,
+                        'raw' => $w,
+                        'is_withdrawal' => true,
+                        'is_commission' => false,
+                    ]);
+                }
             }
         }
 
-        // 2. Add Commission Entries (Pay-In and Pay-Out)
+        // 2. Process Remaining Commission Entries (entries not already claimed by a withdrawal request)
         if ($type === 'all' || $type === 'pay_in' || $type === 'pay_out') {
-            $cEntries = $cQuery->get();
-            foreach ($cEntries as $c) {
+            foreach ($allCommissions as $c) {
+                if (in_array($c->id, $claimedCommissionIds, true)) {
+                    continue;
+                }
+
                 $inAmt = (float) ($c->pay_in_amount > 0 ? $c->pay_in_amount : $c->commission_amount);
                 $outAmt = (float) ($c->pay_out_amount > 0 ? $c->pay_out_amount : $c->commission_amount);
                 $profit = (float) ($c->net_admin_profit > 0 ? $c->net_admin_profit : max(0, $inAmt - $outAmt));
 
-                // If filtering by pay_in only and pay_in is 0, skip
                 if ($type === 'pay_in' && $inAmt <= 0) {
                     continue;
                 }
-                // If filtering by pay_out only and pay_out is 0, skip
                 if ($type === 'pay_out' && $outAmt <= 0) {
                     continue;
                 }
@@ -139,18 +274,21 @@ class AdminWithdrawalController extends Controller
                     ?? 'Direct Insurance';
 
                 $polNum = $c->policy?->policy_number ?? ('#POL-' . $c->policy_id);
-                $statusVal = in_array($c->payment_status, ['approved', 'paid'], true) ? 'approved' : ($c->payment_status ?: 'pending');
-                $isPaid = in_array($statusVal, ['approved', 'paid'], true);
+                $isPaid = in_array(strtolower($c->payment_status ?: ''), ['approved', 'paid'], true);
+                $statusVal = $isPaid ? 'approved' : ($c->payment_status ?: 'pending');
 
                 $statusBadge = $isPaid 
-                    ? '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fas fa-check-circle me-1"></i>' . ucfirst($c->payment_status ?: 'Paid') . '</span>'
+                    ? '<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"><i class="fas fa-check-circle me-1"></i>Approved</span>'
                     : '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1"><i class="fas fa-clock me-1"></i>Pending</span>';
 
                 $merged->push((object)[
                     'kind' => ($inAmt > 0 && $outAmt > 0) ? 'commission' : ($inAmt > 0 ? 'pay_in' : 'pay_out'),
                     'id' => $c->id,
+                    'commission_entry_id' => $c->id,
                     'ref_no' => $polNum,
-                    'type_label' => ($inAmt > 0 && $outAmt > 0) ? 'Pay-In & Out' : ($inAmt > 0 ? 'Pay-In' : 'Pay-Out'),
+                    'policy_ref' => $polNum,
+                    'withdrawal_ref' => null,
+                    'type_label' => ($inAmt > 0 && $outAmt > 0) ? 'Commission' : ($inAmt > 0 ? 'Pay-In' : 'Pay-Out'),
                     'type_class' => ($inAmt > 0 && $outAmt > 0) ? 'info' : ($inAmt > 0 ? 'primary' : 'warning'),
                     'user' => $c->user ?? $c->agent ?? $c->policy?->user ?? $c->policy?->creator,
                     'user_name' => $c->user?->name ?? $c->agent?->name ?? $c->policy?->user?->name ?? $c->policy?->creator?->name ?? 'Staff / Sub-Agent',
@@ -174,6 +312,7 @@ class AdminWithdrawalController extends Controller
                     'created_at' => $c->created_at ?: now(),
                     'raw' => $c,
                     'is_withdrawal' => false,
+                    'is_commission' => true,
                 ]);
             }
         }
@@ -181,7 +320,7 @@ class AdminWithdrawalController extends Controller
         // Sort by created_at descending
         $sorted = $merged->sortByDesc('created_at')->values();
 
-        // Calculate KPI metrics
+        // Calculate KPI metrics without double-counting
         $totalPendingCount = $sorted->where('status', 'pending')->count();
         $totalPendingAmount = (float) $sorted->where('status', 'pending')->sum('pay_out_amount');
         $totalApprovedAmount = (float) $sorted->whereIn('status', ['approved', 'paid'])->sum('pay_out_amount');
@@ -256,7 +395,53 @@ class AdminWithdrawalController extends Controller
             'reviewed_at' => now(),
         ]);
 
+        // Synchronize corresponding commission entries for this subagent to 'paid'
+        $subagentId = $withdrawal->user_id;
+        $unpaidEntries = CommissionEntry::where(function ($q) use ($subagentId) {
+            if (Schema::hasColumn('commission_entries', 'user_id')) {
+                $q->where('user_id', $subagentId);
+            }
+            if (Schema::hasColumn('commission_entries', 'agent_id')) {
+                $q->orWhere('agent_id', $subagentId);
+            }
+        })->where('payment_status', 'pending')->get();
+
+        $remainingAmt = (float) $withdrawal->amount;
+        foreach ($unpaidEntries as $entry) {
+            $eAmt = (float) ($entry->pay_out_amount > 0 ? $entry->pay_out_amount : $entry->commission_amount);
+            if (abs($eAmt - (float) $withdrawal->amount) < 0.05 || $unpaidEntries->count() === 1 || $remainingAmt >= ($eAmt - 0.05)) {
+                $entry->update(['payment_status' => 'paid']);
+                $remainingAmt -= $eAmt;
+            }
+        }
+
         return back()->with('success', 'Withdrawal request of ₹' . number_format($withdrawal->amount, 2) . ' approved successfully.');
+    }
+
+    /**
+     * Approve a standalone commission entry payout directly.
+     */
+    public function approveCommission(Request $request, $id)
+    {
+        $entry = CommissionEntry::findOrFail($id);
+        $entry->update(['payment_status' => 'paid']);
+
+        // Check if there is an associated pending withdrawal request for this agent and approve it
+        $subagentId = $entry->user_id ?? $entry->agent_id;
+        if ($subagentId) {
+            $payoutAmt = (float) ($entry->pay_out_amount > 0 ? $entry->pay_out_amount : $entry->commission_amount);
+            WithdrawalRequest::where('user_id', $subagentId)
+                ->where('status', 'pending')
+                ->where('amount', $payoutAmt)
+                ->update([
+                    'status' => 'approved',
+                    'admin_remarks' => 'Approved by Admin via Commission entry',
+                    'reviewed_by' => Auth::id(),
+                    'reviewed_at' => now(),
+                ]);
+        }
+
+        return back()->with('success', 'Commission entry approved successfully.');
     }
 
     /**
