@@ -298,10 +298,22 @@
                 {{-- 6. Summary & Notes Calculation --}}
                 <div class="row g-4 mb-4">
                     <div class="col-lg-6">
-                        <label class="form-label fw-bold">Comments / Remittance Instructions</label>
-                        <textarea name="comment" class="form-control" rows="4" 
-                            placeholder="e.g. Tax invoice for insurance Pay-In brokerage commission. Direct remittance to Account 01E2F9-74AFE8-B222F4.">{{ old('comment', 'Tax invoice for brokerage pay-in commission as per agreement.') }}</textarea>
-                        <div class="form-text text-muted small">These notes will appear on the printed/PDF invoice.</div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold d-flex align-items-center justify-content-between mb-1">
+                                <span><i class="fa-solid fa-file-contract text-primary me-1"></i> Terms and Conditions</span>
+                                <span class="badge bg-light text-muted border fw-normal small">Appears on PDF</span>
+                            </label>
+                            <textarea name="terms_and_conditions" class="form-control font-monospace small" rows="5" 
+                                placeholder="Enter terms, declarations, and bank details...">{{ old('terms_and_conditions', "1. We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.\n2. Subject to 'Delhi' Jurisdiction Only\n3. Bank Details :\n   Bank Name: ICICI Bank (Tagore Garden)\n   A/C No: 335905001025\n   IFSC CODE: ICIC0003359") }}</textarea>
+                            <div class="form-text text-muted small">Standard declarations, legal jurisdiction, and company payout bank details.</div>
+                        </div>
+
+                        <div>
+                            <label class="form-label fw-bold mb-1"><i class="fa-solid fa-comment-dots text-secondary me-1"></i> Comments / Remittance Instructions</label>
+                            <textarea name="comment" class="form-control" rows="3" 
+                                placeholder="e.g. Tax invoice for insurance Pay-In brokerage commission. Direct remittance to Account 01E2F9-74AFE8-B222F4.">{{ old('comment', 'Tax invoice for brokerage pay-in commission as per agreement.') }}</textarea>
+                            <div class="form-text text-muted small">These notes will appear on the printed/PDF invoice.</div>
+                        </div>
                     </div>
 
                     <div class="col-lg-6">
@@ -314,7 +326,7 @@
                                     <span class="fw-semibold">₹ <span id="displaySubtotal">0.00</span></span>
                                 </div>
 
-                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
                                     <div class="d-flex align-items-center gap-2">
                                         <span class="text-muted">GST / Tax:</span>
                                         <div class="input-group input-group-sm" style="width: 100px;">
@@ -324,6 +336,18 @@
                                         </div>
                                     </div>
                                     <span class="fw-semibold">₹ <span id="displayTaxAmount">0.00</span></span>
+                                </div>
+
+                                {{-- CGST & SGST Breakdown --}}
+                                <div class="ps-3 border-start border-2 border-primary-subtle my-2 bg-light bg-opacity-50 py-1 rounded-end">
+                                    <div class="d-flex justify-content-between align-items-center small py-1">
+                                        <span class="text-secondary"><i class="fa-solid fa-angle-right me-1 text-primary"></i>CGST (<span id="displayCgstRate">9</span>%):</span>
+                                        <span class="text-dark fw-medium">₹ <span id="displayCgstAmount">0.00</span></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center small py-1">
+                                        <span class="text-secondary"><i class="fa-solid fa-angle-right me-1 text-primary"></i>SGST (<span id="displaySgstRate">9</span>%):</span>
+                                        <span class="text-dark fw-medium">₹ <span id="displaySgstAmount">0.00</span></span>
+                                    </div>
                                 </div>
 
                                 <div class="border-top pt-3 d-flex justify-content-between align-items-center">
@@ -533,6 +557,20 @@
         const taxPct = parseFloat(document.getElementById('taxPercentageInput')?.value) || 0;
         const taxAmount = Math.round((subtotal * taxPct / 100) * 100) / 100;
         const grandTotal = Math.round((subtotal + taxAmount) * 100) / 100;
+
+        const halfPct = Math.round((taxPct / 2) * 100) / 100;
+        const cgstAmount = Math.round((taxAmount / 2) * 100) / 100;
+        const sgstAmount = Math.round((taxAmount - cgstAmount) * 100) / 100;
+
+        const cgstRateEl = document.getElementById('displayCgstRate');
+        const sgstRateEl = document.getElementById('displaySgstRate');
+        const cgstAmountEl = document.getElementById('displayCgstAmount');
+        const sgstAmountEl = document.getElementById('displaySgstAmount');
+
+        if (cgstRateEl) cgstRateEl.textContent = halfPct;
+        if (sgstRateEl) sgstRateEl.textContent = halfPct;
+        if (cgstAmountEl) cgstAmountEl.textContent = cgstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        if (sgstAmountEl) sgstAmountEl.textContent = sgstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
         document.getElementById('displaySubtotal').textContent = subtotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         document.getElementById('displayTaxAmount').textContent = taxAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});

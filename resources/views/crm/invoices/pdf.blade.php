@@ -256,10 +256,16 @@
         $grandTotalRounded = round($grandTotal);
 
         // Check if Delhi (intra-state)
-        $isDelhi = str_contains(strtolower($buyerState), 'delhi') || str_starts_with(strtoupper(trim($buyerGstin)), '07');
+        $isDelhi = str_contains(strtolower($buyerState), 'delhi') || str_starts_with(strtoupper(trim($buyerGstin)), '07') || empty($buyerGstin) || $buyerGstin === '—';
         $cgst = $isDelhi ? round($totalTax / 2, 2) : 0.00;
-        $sgst = $isDelhi ? round($totalTax / 2, 2) : 0.00;
+        $sgst = $isDelhi ? round($totalTax - $cgst, 2) : 0.00;
         $igst = $isDelhi ? 0.00 : $totalTax;
+
+        // If not Delhi but no IGST, default to standard CGST & SGST
+        if ($cgst == 0 && $sgst == 0 && $igst == 0 && $totalTax > 0) {
+            $cgst = round($totalTax / 2, 2);
+            $sgst = round($totalTax - $cgst, 2);
+        }
 
         // Resolve logo dynamically
         if (!isset($logoBase64) || empty($logoBase64)) {
@@ -449,18 +455,25 @@
                 <td class="border-right fw-bold">Total Taxable Value of Goods &amp; Services</td>
                 <td style="text-align: right; padding-right: 8px;" class="fw-bold">{{ number_format($taxableValue, 2) }}</td>
             </tr>
+            @php
+                $halfTaxRate = round($taxRate / 2, 2);
+            @endphp
+            @if($igst > 0)
             <tr>
-                <td class="border-right">IGST @18%</td>
+                <td class="border-right">IGST @ {{ $taxRate }}%</td>
                 <td style="text-align: right; padding-right: 8px;">{{ number_format($igst, 2) }}</td>
             </tr>
+            @endif
+            @if($cgst > 0 || $igst == 0)
             <tr>
-                <td class="border-right">CGST @ 9%</td>
+                <td class="border-right">CGST @ {{ $halfTaxRate }}%</td>
                 <td style="text-align: right; padding-right: 8px;">{{ number_format($cgst, 2) }}</td>
             </tr>
             <tr>
-                <td class="border-right">SGST @ 9%</td>
+                <td class="border-right">SGST @ {{ $halfTaxRate }}%</td>
                 <td style="text-align: right; padding-right: 8px;">{{ number_format($sgst, 2) }}</td>
             </tr>
+            @endif
             <tr class="border-top border-bottom" style="background-color: #f1f5f9;">
                 <td class="border-right fw-bold" style="font-size: 10.5px;">Amount Chargeable (r/o)</td>
                 <td style="text-align: right; padding-right: 8px; font-size: 11px;" class="fw-bold">₹{{ number_format($grandTotalRounded, 2) }}</td>
@@ -473,18 +486,18 @@
         </table>
 
         <!-- 6. Terms and Conditions, Bank Details, and Signatures -->
+        @php
+            $defaultTerms = "1. We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.\n2. Subject to 'Delhi' Jurisdiction Only\n3. Bank Details :\n    Bank Name: ICICI Bank (Tagore Garden)\n    A/C No: 335905001025\n    IFSC CODE: ICIC0003359";
+            $rawTerms = !empty(trim($invoice->terms_and_conditions ?? '')) ? $invoice->terms_and_conditions : $defaultTerms;
+            $formattedTerms = nl2br(str_replace('  ', '&nbsp;&nbsp;', e($rawTerms)));
+        @endphp
         <table class="terms-table">
             <tr>
                 <td style="width: 58%; padding: 6px 8px;" class="border-right">
                     <div class="fw-bold" style="text-decoration: underline; margin-bottom: 2px;">Terms and Conditions</div>
                     <div class="fw-bold" style="margin-bottom: 3px;">E. &amp; O.E.</div>
-                    <div style="line-height: 1.4; color: #111;">
-                        1. We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.<br>
-                        2. Subject to 'Delhi' Jurisdiction Only<br>
-                        3. Bank Details :<br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;Bank Name: <strong>ICICI Bank (Tagore Garden)</strong><br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;A/C No: <strong>335905001025</strong><br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;IFSC CODE: <strong>ICIC0003359</strong>
+                    <div style="line-height: 1.35; color: #111; font-size: 8px;">
+                        {!! $formattedTerms !!}
                     </div>
                 </td>
                 <td style="width: 42%; padding: 6px 8px; text-align: right; vertical-align: top;">

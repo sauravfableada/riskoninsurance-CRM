@@ -35,6 +35,7 @@ class Invoice extends Model
         'status',
         'notes',
         'comment',
+        'terms_and_conditions',
         'created_by',
         'updated_by',
         'user_id',

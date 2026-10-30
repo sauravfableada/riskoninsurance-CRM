@@ -148,6 +148,7 @@ class InvoiceController extends Controller
             'due_date'       => 'nullable|date',
             'currency_id'    => 'nullable|exists:currencies,id',
             'comment'        => 'nullable|string|max:2000',
+            'terms_and_conditions' => 'nullable|string|max:5000',
             'number'         => 'nullable|string|max:255|unique:invoices,number',
             'account_name'   => 'nullable|string|max:255',
             'account_id_code'=> 'nullable|string|max:255',
@@ -211,6 +212,7 @@ class InvoiceController extends Controller
                 'grand_total'     => $grandTotal,
                 'status'          => $request->input('status', 'unpaid'),
                 'comment'         => $validated['comment'] ?? null,
+                'terms_and_conditions' => $validated['terms_and_conditions'] ?? null,
                 'created_by'      => auth()->id(),
                 'user_id'         => auth()->id(),
             ]);
@@ -303,6 +305,7 @@ class InvoiceController extends Controller
             'due_date'       => 'nullable|date',
             'currency_id'    => 'nullable|exists:currencies,id',
             'comment'        => 'nullable|string|max:2000',
+            'terms_and_conditions' => 'nullable|string|max:5000',
             'number'         => 'nullable|string|max:255|unique:invoices,number,' . $invoice->id,
             'account_name'   => 'nullable|string|max:255',
             'account_id_code'=> 'nullable|string|max:255',
@@ -354,6 +357,7 @@ class InvoiceController extends Controller
                 'grand_total'     => $grandTotal,
                 'status'          => $request->input('status', $invoice->status),
                 'comment'         => $validated['comment'] ?? null,
+                'terms_and_conditions' => $validated['terms_and_conditions'] ?? null,
                 'updated_by'      => auth()->id(),
             ]);
 

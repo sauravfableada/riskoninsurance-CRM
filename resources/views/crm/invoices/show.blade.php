@@ -245,13 +245,25 @@
 
             {{-- 5. Notes & Financial Summary --}}
             <div class="row g-4 mb-3">
-                <div class="col-lg-7">
-                    <div class="card border rounded-3 p-3 h-100 bg-light bg-opacity-25">
-                        <h6 class="fw-bold text-dark small text-uppercase mb-2">Remittance Instructions & Notes</h6>
-                        <p class="text-muted small mb-3">
+                <div class="col-lg-7 d-flex flex-column gap-3">
+                    <div class="card border rounded-3 p-3 bg-light bg-opacity-25">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold text-dark small text-uppercase mb-0">
+                                <i class="fa-solid fa-file-contract text-primary me-1"></i> Terms and Conditions
+                            </h6>
+                            <span class="badge bg-light text-muted border small">E. &amp; O.E.</span>
+                        </div>
+                        <div class="text-secondary small font-monospace" style="line-height: 1.5; white-space: pre-line;">{!! nl2br(e($invoice->terms_and_conditions ?: "1. We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.\n2. Subject to 'Delhi' Jurisdiction Only\n3. Bank Details :\n   Bank Name: ICICI Bank (Tagore Garden)\n   A/C No: 335905001025\n   IFSC CODE: ICIC0003359")) !!}</div>
+                    </div>
+
+                    <div class="card border rounded-3 p-3 bg-light bg-opacity-25">
+                        <h6 class="fw-bold text-dark small text-uppercase mb-2">
+                            <i class="fa-solid fa-comment-dots text-secondary me-1"></i> Remittance Instructions & Notes
+                        </h6>
+                        <p class="text-muted small mb-2">
                             {{ $invoice->comment ?: 'Brokerage Pay-In commission invoice payable by direct remittance to the specified Riskon Insurance billing account.' }}
                         </p>
-                        <div class="border-top pt-2 mt-auto">
+                        <div class="border-top pt-2">
                             <span class="text-muted small">
                                 <i class="fa-solid fa-lock text-success me-1"></i>Remittance Verification Code: 
                                 <strong class="font-monospace text-dark">{{ $invoice->account_id_code ?? '01E2F9-74AFE8-B222F4' }}</strong>
@@ -269,6 +281,25 @@
                         <div class="d-flex justify-content-between mb-2">
                             <span class="text-muted">GST ({{ $invoice->tax_percentage ?? 18 }}%):</span>
                             <span class="fw-semibold">₹{{ number_format($invoice->tax_amount, 2) }}</span>
+                        </div>
+
+                        {{-- CGST & SGST Breakdown --}}
+                        @php
+                            $taxRate = (float) ($invoice->tax_percentage ?? 18);
+                            $halfRate = round($taxRate / 2, 2);
+                            $totalTax = (float) ($invoice->tax_amount ?? 0);
+                            $cgstAmt = round($totalTax / 2, 2);
+                            $sgstAmt = round($totalTax - $cgstAmt, 2);
+                        @endphp
+                        <div class="ps-3 border-start border-2 border-primary-subtle my-2 bg-white bg-opacity-75 py-1 rounded-end">
+                            <div class="d-flex justify-content-between small py-1">
+                                <span class="text-secondary"><i class="fa-solid fa-angle-right me-1 text-primary"></i>CGST ({{ $halfRate }}%):</span>
+                                <span class="text-dark fw-medium">₹{{ number_format($cgstAmt, 2) }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between small py-1">
+                                <span class="text-secondary"><i class="fa-solid fa-angle-right me-1 text-primary"></i>SGST ({{ $halfRate }}%):</span>
+                                <span class="text-dark fw-medium">₹{{ number_format($sgstAmt, 2) }}</span>
+                            </div>
                         </div>
                         <div class="border-top pt-2 mt-2 d-flex justify-content-between align-items-center">
                             <span class="fw-bold fs-5 text-dark">Grand Total:</span>
