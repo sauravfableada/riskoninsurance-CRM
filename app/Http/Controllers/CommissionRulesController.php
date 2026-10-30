@@ -611,16 +611,45 @@ class CommissionRulesController extends Controller
 
         // 2. Fix attribution for any existing entries created for this sub-agent's policies
         if ($isSubAgent) {
-            CommissionEntry::where(function ($q) {
-                $q->whereNull('user_id')->orWhere('user_id', 1)->orWhere('user_id', 0);
-            })
-            ->whereHas('policy', function ($pq) use ($userId) {
-                $pq->where('created_by', $userId);
-            })
-            ->update([
-                'user_id' => $userId,
-                'agent_id' => $userId,
-            ]);
+            $attributionUpdate = [];
+            if (Schema::hasColumn('commission_entries', 'user_id')) {
+                $attributionUpdate['user_id'] = $userId;
+            }
+            if (Schema::hasColumn('commission_entries', 'agent_id')) {
+                $attributionUpdate['agent_id'] = $userId;
+            }
+
+            if (!empty($attributionUpdate)) {
+                CommissionEntry::where(function ($q) {
+                    $hasAny = false;
+                    if (Schema::hasColumn('commission_entries', 'user_id')) {
+                        $q->where(function ($subQ) {
+                            $subQ->whereNull('user_id')->orWhere('user_id', 1)->orWhere('user_id', 0);
+                        });
+                        $hasAny = true;
+                    }
+                    if (Schema::hasColumn('commission_entries', 'agent_id')) {
+                        if ($hasAny) {
+                            $q->orWhere(function ($subQ) {
+                                $subQ->whereNull('agent_id')->orWhere('agent_id', 1)->orWhere('agent_id', 0);
+                            });
+                        } else {
+                            $q->where(function ($subQ) {
+                                $subQ->whereNull('agent_id')->orWhere('agent_id', 1)->orWhere('agent_id', 0);
+                            });
+                        }
+                    }
+                })
+                ->whereHas('policy', function ($pq) use ($userId) {
+                    $pq->where(function ($policyQ) use ($userId) {
+                        if (Schema::hasColumn('policies', 'user_id')) {
+                            $policyQ->where('user_id', $userId);
+                        }
+                        $policyQ->orWhere('created_by', $userId);
+                    });
+                })
+                ->update($attributionUpdate);
+            }
         }
 
         // 3. Query entries with comprehensive relations
@@ -907,7 +936,9 @@ class CommissionRulesController extends Controller
             $validated['net_admin_profit'] = max(0, round($validated['pay_in_amount'] - $validated['pay_out_amount'], 2));
         }
 
-        $entry = CommissionEntry::create($validated);
+        $entryCols = Schema::getColumnListing('commission_entries');
+        $safeValidated = array_intersect_key($validated, array_flip($entryCols));
+        $entry = CommissionEntry::create($safeValidated);
         $entry->load(['commissionRule.company', 'user', 'policy.holder']);
 
         if ($request->ajax() || $request->wantsJson()) {
@@ -1046,7 +1077,9 @@ class CommissionRulesController extends Controller
             $validated['net_admin_profit'] = max(0, round($validated['pay_in_amount'] - $validated['pay_out_amount'], 2));
         }
 
-        $entry->update($validated);
+        $entryCols = Schema::getColumnListing('commission_entries');
+        $safeValidated = array_intersect_key($validated, array_flip($entryCols));
+        $entry->update($safeValidated);
         $entry->load(['commissionRule.company', 'user', 'policy.holder']);
 
         if ($request->ajax() || $request->wantsJson()) {
