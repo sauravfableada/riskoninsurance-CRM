@@ -67,14 +67,50 @@ class InvoiceController extends Controller
     }
 
     /**
-     * AJAX endpoint to fetch policies of a specific insurance company for Pay-In invoicing.
+     * AJAX endpoint to fetch unbilled/pending policies of a specific insurance company for Pay-In invoicing.
      */
-    public function getCompanyPolicies($companyId)
+    public function getCompanyPolicies(Request $request, $companyId)
     {
-        $policies = Policy::with(['holder', 'policyType', 'latestCommissionEntry'])
-            ->where('company_id', $companyId)
-            ->latest('id')
-            ->get();
+        // When editing an invoice, allow policies from that specific invoice to remain available
+        $excludeInvoiceId = $request->query('invoice_id');
+
+        // Find policy IDs and numbers already billed in any active invoice (paid, unpaid, sent)
+        $invoicedItems = InvoiceItem::whereHas('invoice', function ($q) use ($excludeInvoiceId) {
+            $q->where('status', '!=', 'cancelled');
+            if ($excludeInvoiceId) {
+                $q->where('id', '!=', $excludeInvoiceId);
+            }
+        })->get(['policy_id', 'policy_number', 'product_name']);
+
+        $billedPolicyIds = [];
+        $billedPolicyNumbers = [];
+
+        foreach ($invoicedItems as $item) {
+            if (!empty($item->policy_id)) {
+                $billedPolicyIds[] = (int) $item->policy_id;
+            }
+            if (!empty($item->policy_number)) {
+                $billedPolicyNumbers[] = trim($item->policy_number);
+            }
+            // Also extract policy number if formatted in product_name e.g. "Pay-In Commission (POL-20261030-0001 - Test-Holder)"
+            if (!empty($item->product_name) && preg_match('/POL-[0-9]{8}-[0-9]+/i', $item->product_name, $matches)) {
+                $billedPolicyNumbers[] = trim($matches[0]);
+            }
+        }
+        $billedPolicyIds = array_unique(array_filter($billedPolicyIds));
+        $billedPolicyNumbers = array_unique(array_filter($billedPolicyNumbers));
+
+        $query = Policy::with(['holder', 'policyType', 'latestCommissionEntry'])
+            ->where('company_id', $companyId);
+
+        if (!empty($billedPolicyIds)) {
+            $query->whereNotIn('id', $billedPolicyIds);
+        }
+        if (!empty($billedPolicyNumbers)) {
+            $query->whereNotIn('policy_number', $billedPolicyNumbers);
+        }
+
+        $policies = $query->latest('id')->get();
 
         $data = $policies->map(function ($policy) {
             $premium = (float) ($policy->premium_amount ?? 0);

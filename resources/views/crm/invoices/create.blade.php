@@ -216,9 +216,12 @@
                     <div class="card-header bg-light py-2 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
                         <div class="d-flex align-items-center gap-2">
                             <span class="badge bg-primary text-white"><i class="fa-solid fa-list-check me-1"></i>Company Policies</span>
-                            <span class="fw-semibold text-dark small">Select Policies for Pay-In Commission Invoicing</span>
+                            <span class="fw-semibold text-dark small">Select Unbilled Policies for Pay-In Commission Invoicing</span>
                         </div>
-                        <div id="policyCounterBadge" class="badge bg-secondary-subtle text-secondary d-none">0 Available</div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-light text-muted border small"><i class="fa-solid fa-filter me-1"></i>Only Unbilled / Pending</span>
+                            <div id="policyCounterBadge" class="badge bg-secondary-subtle text-secondary d-none">0 Available</div>
+                        </div>
                     </div>
 
                     <div class="card-body p-3">
@@ -416,7 +419,7 @@
                 spinner.classList.add('d-none');
                 if (res.status && res.policies && res.policies.length > 0) {
                     fetchedCompanyPolicies = res.policies;
-                    counter.textContent = `${res.policies.length} Policies Found`;
+                    counter.textContent = `${res.policies.length} Unbilled Policies`;
                     counter.classList.remove('d-none');
                     container.classList.remove('d-none');
 
@@ -436,7 +439,7 @@
                         </tr>
                     `).join('');
                 } else {
-                    notice.innerHTML = `<i class="fa-solid fa-circle-exclamation text-warning fs-3 mb-2 d-block"></i> No policies found for this insurance company. You can add manual Pay-In line items below.`;
+                    notice.innerHTML = `<i class="fa-solid fa-circle-check text-success fs-3 mb-2 d-block"></i> No unbilled policies found for this insurance company. All existing policies have already been invoiced or paid. You can add manual Pay-In line items below if required.`;
                     notice.classList.remove('d-none');
                 }
             },
