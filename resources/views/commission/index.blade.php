@@ -154,69 +154,97 @@
                 padding: 6px 10px !important;
             }
 
-            /* Select2 Toolbar Filters */
-            .commission-filter-item {
-                min-width: 150px;
-                position: relative;
+            /* Tab 2 Dedicated Filter Toolbar */
+            #commissionEntriesFilterToolbar {
+                background: #f8fafc;
+                border-bottom: 1px solid #e2e8f0;
             }
-            .commission-filter-item .select2-container {
+            #commissionEntriesFilterToolbar .select2-container {
                 width: 100% !important;
             }
-            .commission-filter-item .select2-container .select2-selection--single {
-                height: 34px !important;
+            #commissionEntriesFilterToolbar .select2-container .select2-selection--single {
+                height: 38px !important;
                 border: 1px solid #cbd5e1 !important;
                 border-radius: 0.375rem !important;
-                background-color: #f8fafc !important;
-                padding: 2px 24px 2px 8px !important;
-                font-size: 0.8125rem !important;
+                background-color: #ffffff !important;
+                padding: 4px 24px 4px 10px !important;
+                font-size: 0.84rem !important;
                 display: flex !important;
                 align-items: center !important;
-                box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+                box-shadow: 0 1px 2px rgba(0,0,0,0.02);
                 transition: all 0.2s ease;
             }
-            .commission-filter-item .select2-container--open .select2-selection--single,
-            .commission-filter-item .select2-container .select2-selection--single:hover {
+            #commissionEntriesFilterToolbar .select2-container--open .select2-selection--single,
+            #commissionEntriesFilterToolbar .select2-container .select2-selection--single:hover {
                 border-color: #3b82f6 !important;
-                background-color: #ffffff !important;
+                box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12) !important;
             }
-            .commission-filter-item .select2-container .select2-selection--single .select2-selection__rendered {
+            #commissionEntriesFilterToolbar .select2-container .select2-selection--single .select2-selection__rendered {
                 line-height: 28px !important;
-                font-size: 0.8125rem !important;
-                color: #334155 !important;
+                font-size: 0.84rem !important;
+                color: #1e293b !important;
                 font-weight: 500;
+                padding-left: 0 !important;
             }
-            .commission-filter-item .select2-container .select2-selection--single .select2-selection__arrow {
-                height: 32px !important;
+            #commissionEntriesFilterToolbar .select2-container .select2-selection--single .select2-selection__arrow {
+                height: 36px !important;
                 right: 6px !important;
             }
-            .commission-filter-item .select2-container .select2-selection--single .select2-selection__clear {
+            #commissionEntriesFilterToolbar .select2-container .select2-selection--single .select2-selection__clear {
                 margin-right: 14px !important;
                 font-size: 1rem !important;
                 line-height: 28px !important;
                 color: #94a3b8 !important;
             }
-            .commission-filter-item .select2-container .select2-selection--single .select2-selection__clear:hover {
+            #commissionEntriesFilterToolbar .select2-container .select2-selection--single .select2-selection__clear:hover {
                 color: #ef4444 !important;
             }
+
             #btnResetEntryFilters {
-                height: 34px;
-                padding: 0 10px;
-                font-size: 0.8125rem;
+                height: 38px;
+                padding: 0 12px;
+                font-size: 0.84rem;
                 font-weight: 600;
                 border-radius: 0.375rem;
                 border: 1px solid #cbd5e1;
-                background-color: #f8fafc;
+                background-color: #ffffff;
                 color: #475569;
                 display: inline-flex;
                 align-items: center;
                 gap: 5px;
                 white-space: nowrap;
                 transition: all 0.2s ease;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.02);
             }
             #btnResetEntryFilters:hover {
-                background-color: #e2e8f0;
+                background-color: #f1f5f9;
                 color: #0f172a;
                 border-color: #94a3b8;
+            }
+
+            /* DataTables Length & Search unified styling */
+            #commissionEntriesTable_wrapper .dataTables_filter input {
+                height: 38px;
+                border: 1px solid #cbd5e1;
+                border-radius: 0.375rem;
+                padding: 6px 12px;
+                font-size: 0.84rem;
+                min-width: 250px;
+                background-color: #ffffff;
+                outline: none;
+                transition: all 0.2s ease;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            }
+            #commissionEntriesTable_wrapper .dataTables_filter input:focus {
+                border-color: #3b82f6;
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+            }
+            #commissionEntriesTable_wrapper .dataTables_length select {
+                height: 38px;
+                border: 1px solid #cbd5e1;
+                border-radius: 0.375rem;
+                padding: 4px 28px 4px 10px;
+                font-size: 0.84rem;
             }
 
             .commission-status {
@@ -454,97 +482,113 @@
                     </div>
                 </div>
 
-                <!-- Filter Bar for Tab 2: Commission Entries -->
-                <div id="commissionEntriesFilterToolbar" class="d-none d-flex flex-wrap align-items-center gap-2">
-                    <!-- Filter 1: Company / Insurer (Select2) -->
-                    <div class="commission-filter-item" style="width: 170px;">
-                        <select id="filter_entry_company" class="form-select form-select-sm" style="width: 100%;">
-                            <option value="">All Companies</option>
-                            @php
-                                $entryCompNames = $commissionEntries->map(function($e) {
-                                    return $e->commissionRule?->company?->name ?? $e->policy?->company?->name;
-                                })->filter()->unique()->values();
-                                $allComps = ($companies ?? collect());
-                            @endphp
-                            @foreach($allComps as $comp)
-                                <option value="{{ $comp->id }}" data-name="{{ strtolower($comp->name) }}">{{ $comp->name }}</option>
-                            @endforeach
-                            @foreach($entryCompNames as $cname)
-                                @if(!$allComps->contains('name', $cname))
-                                    <option value="{{ $cname }}" data-name="{{ strtolower($cname) }}">{{ $cname }}</option>
-                                @endif
-                            @endforeach
-                        </select>
+                <!-- Dedicated Filter Panel for Tab 2: Commission Entries -->
+                <div id="commissionEntriesFilterToolbar" class="px-3 py-3 border-bottom">
+                    <div class="row g-2 align-items-end">
+                        <!-- Filter 1: Company / Insurer (Select2) -->
+                        <div class="col-12 col-md-6 col-xl-3">
+                            <label class="form-label small fw-semibold text-muted mb-1 d-flex align-items-center gap-1">
+                                <i class="fa-solid fa-building-shield text-primary"></i> Company / Insurer
+                            </label>
+                            <select id="filter_entry_company" class="form-select form-select-sm" style="width: 100%;">
+                                <option value="">All Companies</option>
+                                @php
+                                    $entryCompNames = $commissionEntries->map(function($e) {
+                                        return $e->commissionRule?->company?->name ?? $e->policy?->company?->name;
+                                    })->filter()->unique()->values();
+                                    $allComps = ($companies ?? collect());
+                                @endphp
+                                @foreach($allComps as $comp)
+                                    <option value="{{ $comp->id }}" data-name="{{ strtolower($comp->name) }}">{{ $comp->name }}</option>
+                                @endforeach
+                                @foreach($entryCompNames as $cname)
+                                    @if(!$allComps->contains('name', $cname))
+                                        <option value="{{ $cname }}" data-name="{{ strtolower($cname) }}">{{ $cname }}</option>
+                                    @endif
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Filter 2: Staff / Sub Agent (Select2) -->
+                        <div class="col-12 col-md-6 col-xl-3">
+                            <label class="form-label small fw-semibold text-muted mb-1 d-flex align-items-center gap-1">
+                                <i class="fa-solid fa-user-tie text-success"></i> Staff / Sub-Agent
+                            </label>
+                            <select id="filter_entry_user" class="form-select form-select-sm" style="width: 100%;">
+                                <option value="">All Staff / Sub-Agents</option>
+                                @php
+                                    $entryUsers = $commissionEntries->map(function($e) {
+                                        $u = $e->user ?? $e->policy?->user;
+                                        return $u ? [
+                                            'id' => $u->id,
+                                            'name' => $u->name,
+                                            'type' => ($u->type === 'sub_agents') ? 'Sub-Agent' : 'Staff'
+                                        ] : null;
+                                    })->filter()->unique('id')->values();
+
+                                    $allStaffSub = ($allMembers ?? collect())->map(function($u) {
+                                        return [
+                                            'id' => $u->id,
+                                            'name' => $u->name,
+                                            'type' => ($u->type === 'sub_agents') ? 'Sub-Agent' : 'Staff'
+                                        ];
+                                    });
+
+                                    $combinedUsers = $entryUsers->concat($allStaffSub)->unique('id')->sortBy('name');
+                                @endphp
+                                @foreach($combinedUsers as $u)
+                                    <option value="{{ $u['id'] }}">
+                                        {{ $u['name'] }} ({{ $u['type'] }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Filter 3: Policy Number (Select2) -->
+                        <div class="col-12 col-md-6 col-xl-3">
+                            <label class="form-label small fw-semibold text-muted mb-1 d-flex align-items-center gap-1">
+                                <i class="fa-solid fa-file-contract text-info"></i> Policy Number
+                            </label>
+                            <select id="filter_entry_policy" class="form-select form-select-sm" style="width: 100%;">
+                                <option value="">All Policies</option>
+                                @php
+                                    $entryPolicies = $commissionEntries->map(function($e) {
+                                        return [
+                                            'id' => $e->policy_id,
+                                            'number' => $e->policy?->policy_number ?? ('#' . $e->policy_id),
+                                            'holder' => $e->policy?->holder?->name ?? ''
+                                        ];
+                                    })->unique('number')->values();
+                                @endphp
+                                @foreach($entryPolicies as $pol)
+                                    <option value="{{ $pol['id'] }}" data-number="{{ strtolower($pol['number']) }}">
+                                        {{ $pol['number'] }}{{ $pol['holder'] ? ' (' . \Illuminate\Support\Str::limit($pol['holder'], 12) . ')' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- Filter 4: Status (Select2) -->
+                        <div class="col-8 col-md-4 col-xl-2">
+                            <label class="form-label small fw-semibold text-muted mb-1 d-flex align-items-center gap-1">
+                                <i class="fa-solid fa-clock text-warning"></i> Payment Status
+                            </label>
+                            <select id="filter_entry_status" class="form-select form-select-sm" style="width: 100%;">
+                                <option value="">All Statuses</option>
+                                <option value="paid">Paid</option>
+                                <option value="pending">Pending</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+
+                        <!-- Reset Filters Button -->
+                        <div class="col-4 col-md-2 col-xl-1">
+                            <button type="button" class="btn btn-sm w-100 d-flex align-items-center justify-content-center gap-1" id="btnResetEntryFilters" title="Reset All Filters">
+                                <i class="fa-solid fa-rotate-left"></i>
+                                <span>Reset</span>
+                            </button>
+                        </div>
                     </div>
-
-                    <!-- Filter 2: Staff / Sub Agent (Select2) -->
-                    <div class="commission-filter-item" style="width: 195px;">
-                        <select id="filter_entry_user" class="form-select form-select-sm" style="width: 100%;">
-                            <option value="">All Staff / Sub-Agents</option>
-                            @php
-                                $entryUsers = $commissionEntries->map(function($e) {
-                                    $u = $e->user ?? $e->policy?->user;
-                                    return $u ? [
-                                        'id' => $u->id,
-                                        'name' => $u->name,
-                                        'type' => ($u->type === 'sub_agents') ? 'Sub-Agent' : 'Staff'
-                                    ] : null;
-                                })->filter()->unique('id')->values();
-
-                                $allStaffSub = ($allMembers ?? collect())->map(function($u) {
-                                    return [
-                                        'id' => $u->id,
-                                        'name' => $u->name,
-                                        'type' => ($u->type === 'sub_agents') ? 'Sub-Agent' : 'Staff'
-                                    ];
-                                });
-
-                                $combinedUsers = $entryUsers->concat($allStaffSub)->unique('id')->sortBy('name');
-                            @endphp
-                            @foreach($combinedUsers as $u)
-                                <option value="{{ $u['id'] }}">
-                                    {{ $u['name'] }} ({{ $u['type'] }})
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <!-- Filter 3: Policy Number (Select2) -->
-                    <div class="commission-filter-item" style="width: 175px;">
-                        <select id="filter_entry_policy" class="form-select form-select-sm" style="width: 100%;">
-                            <option value="">All Policies</option>
-                            @php
-                                $entryPolicies = $commissionEntries->map(function($e) {
-                                    return [
-                                        'id' => $e->policy_id,
-                                        'number' => $e->policy?->policy_number ?? ('#' . $e->policy_id),
-                                        'holder' => $e->policy?->holder?->name ?? ''
-                                    ];
-                                })->unique('number')->values();
-                            @endphp
-                            @foreach($entryPolicies as $pol)
-                                <option value="{{ $pol['id'] }}" data-number="{{ strtolower($pol['number']) }}">
-                                    {{ $pol['number'] }}{{ $pol['holder'] ? ' (' . \Illuminate\Support\Str::limit($pol['holder'], 12) . ')' : '' }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <!-- Filter 4: Status (Select2) -->
-                    <div class="commission-filter-item" style="width: 135px;">
-                        <select id="filter_entry_status" class="form-select form-select-sm" style="width: 100%;">
-                            <option value="">All Statuses</option>
-                            <option value="paid">Paid</option>
-                            <option value="pending">Pending</option>
-                            <option value="cancelled">Cancelled</option>
-                        </select>
-                    </div>
-
-                    <!-- Reset Filters Button -->
-                    <button type="button" class="btn btn-sm" id="btnResetEntryFilters" title="Reset All Filters">
-                        <i class="fa-solid fa-rotate-left"></i>
-                        <span>Reset</span>
-                    </button>
                 </div>
 
                 <div class="table-responsive">
@@ -1344,7 +1388,7 @@
             const tableEntries = $('#commissionEntriesTable').DataTable({
                 "pageLength": 10,
                 "lengthMenu": [5, 10, 20, 50, 100],
-                "dom": "<'d-flex flex-wrap justify-content-between align-items-center p-3 border-bottom gap-2'<'d-flex align-items-center'l><'#tableEntriesCustomFilterContainer.d-flex.flex-wrap.align-items-center.gap-2'><'d-flex align-items-center'f>>t<'d-flex justify-content-between align-items-center p-3 border-top'ip>",
+                "dom": "<'d-flex justify-content-between align-items-center p-3 border-bottom'<'d-flex align-items-center'l><'d-flex align-items-center'f>>t<'d-flex justify-content-between align-items-center p-3 border-top'ip>",
                 "language": {
                     "search": "",
                     "searchPlaceholder": "Search entries by rule, insurer, policy...",
@@ -1359,11 +1403,6 @@
                 },
                 "ordering": false
             });
-
-            // Mount the custom filters toolbar in DataTables header
-            if ($('#commissionEntriesFilterToolbar').length) {
-                $('#tableEntriesCustomFilterContainer').replaceWith($('#commissionEntriesFilterToolbar').removeClass('d-none'));
-            }
 
             // Initialize Select2 on the 4 filters
             function initCommissionEntriesFilters() {

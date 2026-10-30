@@ -63,42 +63,28 @@
         }
 
         /* Header Elements */
-        .copy-tag {
-            font-size: 8.5px;
-            font-weight: bold;
-            text-align: right;
-            padding: 3px 8px 0;
-            letter-spacing: 0.5px;
-        }
-
-        .title-tax-invoice {
+        .company-name {
             font-size: 15px;
             font-weight: bold;
-            text-align: center;
-            letter-spacing: 1px;
-            margin: 2px 0 4px;
-        }
-
-        .company-name {
-            font-size: 17px;
-            font-weight: bold;
             color: #000000;
-            text-align: center;
+            text-align: right;
             letter-spacing: 0.5px;
-            margin: 2px 0;
+            margin: 0 0 3px 0;
         }
 
         .company-address {
-            font-size: 9px;
-            text-align: center;
+            font-size: 8.5px;
+            text-align: right;
             line-height: 1.35;
+            color: #111111;
         }
 
         .company-contacts {
-            font-size: 8.5px;
+            font-size: 8px;
             font-weight: bold;
-            text-align: center;
-            padding: 3px 0 6px;
+            text-align: right;
+            padding: 3px 0 0 0;
+            color: #111111;
         }
 
         /* Meta Section */
@@ -250,28 +236,23 @@
     @endphp
 
     <div class="invoice-box">
-        <!-- 1. Top Header -->
-        <table class="border-bottom">
+        <!-- 1. Top Header (Logo Left, Company Details Right) -->
+        <table class="border-bottom" style="width: 100%;">
             <tr>
-                <td style="width: 25%; vertical-align: middle; padding: 6px 10px;">
+                <td style="width: 32%; vertical-align: middle; padding: 8px 12px;">
                     @if(!empty($logoBase64))
-                        <img src="{{ $logoBase64 }}" alt="Riskon" style="height: 48px; width: auto; max-width: 140px;">
+                        <img src="{{ $logoBase64 }}" alt="Riskon" style="height: 52px; width: auto; max-width: 180px;">
                     @endif
                 </td>
-                <td style="width: 50%; text-align: center; vertical-align: middle; padding: 4px 6px;">
-                    <div class="copy-tag" style="text-align: center; padding: 0 0 2px;">ORIGINAL COPY</div>
-                    <div class="title-tax-invoice">TAX INVOICE</div>
-                    <div class="company-name">RISKON IMF PRIVATE LIMITED</div>
-                    <div class="company-address">
+                <td style="width: 68%; text-align: right; vertical-align: middle; padding: 8px 12px;">
+                    <div class="company-name" style="text-align: right; font-size: 15px; font-weight: bold; color: #000000; margin: 0 0 3px 0; letter-spacing: 0.5px;">RISKON IMF PRIVATE LIMITED</div>
+                    <div class="company-address" style="text-align: right; font-size: 8.5px; line-height: 1.35; color: #111111;">
                         BG-513, Sanjay Gandhi, Transport Nagar<br>
                         Pehlad Pur, North West Delhi, New Delhi-110042
                     </div>
-                    <div class="company-contacts">
-                        GSTIN: 07AANCR6912L1ZU &nbsp;&nbsp;&nbsp;&nbsp; Mob: 9810152753 &nbsp;&nbsp;&nbsp;&nbsp; Email: Info.riskoninsurance@gmail.com
+                    <div class="company-contacts" style="text-align: right; font-size: 8px; font-weight: bold; padding: 3px 0 0 0; color: #111111;">
+                        GSTIN: 07AANCR6912L1ZU &nbsp;&nbsp;|&nbsp;&nbsp; Mob: 9810152753 &nbsp;&nbsp;|&nbsp;&nbsp; Email: Info.riskoninsurance@gmail.com
                     </div>
-                </td>
-                <td style="width: 25%; text-align: right; vertical-align: top; padding: 6px 10px;">
-                    <div class="copy-tag">ORIGINAL COPY</div>
                 </td>
             </tr>
         </table>
