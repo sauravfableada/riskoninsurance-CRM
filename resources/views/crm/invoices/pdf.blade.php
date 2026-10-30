@@ -205,12 +205,48 @@
 
         // Determine buyer entity
         $isCompany = !empty($invoice->company_id) || $invoice->invoice_type === 'company_pay_in';
-        $buyerName = $isCompany ? ($invoice->company?->name ?? 'IndusInd General Insurance Co. Ltd') : ($invoice->customer?->name ?? 'Customer');
+        $buyerName = $isCompany ? ($invoice->company?->name ?: 'IndusInd General Insurance Co. Ltd') : ($invoice->customer?->name ?: 'Customer');
         $buyerAddress = $isCompany 
-            ? ($invoice->company?->address ?? ($invoice->company?->description ?: 'Vijaya Building, 14th Floor, Flat No. 10-15 & 17, Barakhamba Road, New Delhi - 110001')) 
-            : ($invoice->customer?->address ?? 'New Delhi');
-        $buyerState = $isCompany ? ($invoice->company?->state ?? 'Delhi') : 'Delhi';
-        $buyerGstin = $isCompany ? ($invoice->company?->gstin ?? ($invoice->company?->tax_number ?: '07AABCR6747B1ZI')) : '07AABCR6747B1ZI';
+            ? ($invoice->company?->address ?: ($invoice->company?->description ?: '—')) 
+            : ($invoice->customer?->address ?: '—');
+        $buyerState = $isCompany ? ($invoice->company?->state ?: 'Delhi') : ($invoice->customer?->state ?: 'Delhi');
+        $buyerGstin = $isCompany ? ($invoice->company?->gstin ?: ($invoice->company?->tax_number ?: '—')) : ($invoice->customer?->tax_number ?: '—');
+
+        // Dynamic Company Profile Details (from /profile settings and Admin User)
+        $companySettings = \App\Models\Setting::query()
+            ->whereIn('key', [
+                'company_name',
+                'company_address',
+                'company_tax_id',
+                'company_logo_path',
+                'company_phone',
+                'company_email'
+            ])->pluck('value', 'key');
+
+        $adminUser = \App\Models\User::where('id', 1)->first() 
+            ?? \App\Models\User::whereIn('type', ['admin', 'super_admin'])->first() 
+            ?? $invoice->creator 
+            ?? auth()->user();
+
+        $companyName = !empty($companySettings['company_name']) 
+            ? trim($companySettings['company_name']) 
+            : 'RISKON IMF PRIVATE LIMITED';
+
+        $companyAddress = !empty($companySettings['company_address']) 
+            ? trim($companySettings['company_address']) 
+            : 'BG-513, Sanjay Gandhi, Transport Nagar, Pehlad Pur, North West Delhi, New Delhi-110042';
+
+        $companyTaxNo = !empty($companySettings['company_tax_id']) 
+            ? trim($companySettings['company_tax_id']) 
+            : '07AANCR6912L1ZU';
+
+        $companyPhone = !empty($companySettings['company_phone']) 
+            ? trim($companySettings['company_phone']) 
+            : ($adminUser?->phone ?: '+91 9650800804');
+
+        $companyEmail = !empty($companySettings['company_email']) 
+            ? trim($companySettings['company_email']) 
+            : ($adminUser?->email ?: 'Info.riskoninsurance@gmail.com');
 
         // Calculation
         $taxableValue = (float) ($invoice->subtotal ?: $invoice->items->sum('total_price'));
@@ -225,10 +261,16 @@
         $sgst = $isDelhi ? round($totalTax / 2, 2) : 0.00;
         $igst = $isDelhi ? 0.00 : $totalTax;
 
-        // Resolve logo if not passed
+        // Resolve logo dynamically
         if (!isset($logoBase64) || empty($logoBase64)) {
             $logoBase64 = null;
-            if (file_exists(public_path('logo/riskon_logo.png'))) {
+            $logoSettingPath = $companySettings['company_logo_path'] ?? null;
+            if ($logoSettingPath && \Illuminate\Support\Facades\Storage::disk('public')->exists($logoSettingPath)) {
+                $p = \Illuminate\Support\Facades\Storage::disk('public')->path($logoSettingPath);
+                $ext = strtolower(pathinfo($p, PATHINFO_EXTENSION));
+                $mime = ($ext === 'svg') ? 'image/svg+xml' : (($ext === 'png') ? 'image/png' : 'image/jpeg');
+                $logoBase64 = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($p));
+            } elseif (file_exists(public_path('logo/riskon_logo.png'))) {
                 $p = public_path('logo/riskon_logo.png');
                 $logoBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents($p));
             }
@@ -236,22 +278,29 @@
     @endphp
 
     <div class="invoice-box">
-        <!-- 1. Top Header (Logo Left, Company Details Right) -->
+        <!-- 1. Top Header (Logo Left, Dynamic Company Details Right) -->
         <table class="border-bottom" style="width: 100%;">
             <tr>
                 <td style="width: 32%; vertical-align: middle; padding: 8px 12px;">
                     @if(!empty($logoBase64))
-                        <img src="{{ $logoBase64 }}" alt="Riskon" style="height: 52px; width: auto; max-width: 180px;">
+                        <img src="{{ $logoBase64 }}" alt="{{ $companyName }}" style="height: 52px; width: auto; max-width: 180px;">
                     @endif
                 </td>
                 <td style="width: 68%; text-align: right; vertical-align: middle; padding: 8px 12px;">
-                    <div class="company-name" style="text-align: right; font-size: 15px; font-weight: bold; color: #000000; margin: 0 0 3px 0; letter-spacing: 0.5px;">RISKON IMF PRIVATE LIMITED</div>
+                    <div class="company-name" style="text-align: right; font-size: 15px; font-weight: bold; color: #000000; margin: 0 0 3px 0; letter-spacing: 0.5px;">{{ strtoupper($companyName) }}</div>
                     <div class="company-address" style="text-align: right; font-size: 8.5px; line-height: 1.35; color: #111111;">
-                        BG-513, Sanjay Gandhi, Transport Nagar<br>
-                        Pehlad Pur, North West Delhi, New Delhi-110042
+                        {!! nl2br(e($companyAddress)) !!}
                     </div>
                     <div class="company-contacts" style="text-align: right; font-size: 8px; font-weight: bold; padding: 3px 0 0 0; color: #111111;">
-                        GSTIN: 07AANCR6912L1ZU &nbsp;&nbsp;|&nbsp;&nbsp; Mob: 9810152753 &nbsp;&nbsp;|&nbsp;&nbsp; Email: Info.riskoninsurance@gmail.com
+                        @if($companyTaxNo)
+                            <span class="fw-bold">GSTIN/Tax No:</span> {{ $companyTaxNo }} &nbsp;&nbsp;|&nbsp;&nbsp;
+                        @endif
+                        @if($companyPhone)
+                            <span class="fw-bold">Mob:</span> {{ $companyPhone }} &nbsp;&nbsp;|&nbsp;&nbsp;
+                        @endif
+                        @if($companyEmail)
+                            <span class="fw-bold">Email:</span> {{ $companyEmail }}
+                        @endif
                     </div>
                 </td>
             </tr>
@@ -369,7 +418,7 @@
                     </tr>
                 @endforelse
 
-                <!-- Blank spacer rows matching the Excel template grid -->
+                <!-- Blank spacer rows to keep consistent layout height without showing 0s -->
                 @php $renderedRows = max(1, count($invoice->items)); @endphp
                 @for($i = $renderedRows; $i < 6; $i++)
                     <tr style="height: 18px;">
@@ -378,7 +427,7 @@
                         <td class="text-center">&nbsp;</td>
                         <td class="text-center">&nbsp;</td>
                         <td class="text-right">&nbsp;</td>
-                        <td class="text-right" style="padding-right: 8px;">0</td>
+                        <td class="text-right" style="padding-right: 8px;">&nbsp;</td>
                     </tr>
                 @endfor
             </tbody>
@@ -387,13 +436,15 @@
         <!-- 5. Totals & Tax Calculation Breakdown -->
         <table class="totals-table border-bottom">
             <tr>
-                <td style="width: 75%;" class="border-right fw-bold">Total Value for Goods</td>
+                <td style="width: 75%;" class="border-right fw-bold">Total Value of Goods / Services</td>
                 <td style="width: 25%; text-align: right; padding-right: 8px;" class="fw-bold">{{ number_format($taxableValue, 2) }}</td>
             </tr>
+            @if(!empty($invoice->freight_amount) && (float)$invoice->freight_amount > 0)
             <tr>
                 <td class="border-right">Add: Freight/Cartage</td>
-                <td style="text-align: right; padding-right: 8px;">0</td>
+                <td style="text-align: right; padding-right: 8px;">{{ number_format((float)$invoice->freight_amount, 2) }}</td>
             </tr>
+            @endif
             <tr class="border-top border-bottom" style="background-color: #fafafa;">
                 <td class="border-right fw-bold">Total Taxable Value of Goods &amp; Services</td>
                 <td style="text-align: right; padding-right: 8px;" class="fw-bold">{{ number_format($taxableValue, 2) }}</td>
@@ -438,7 +489,7 @@
                 </td>
                 <td style="width: 42%; padding: 6px 8px; text-align: right; vertical-align: top;">
                     <div class="fw-bold" style="font-size: 9.5px; color: #000; text-align: right;">
-                        For RISKON IMF PRIVATE LIMITED
+                        For {{ strtoupper($companyName) }}
                     </div>
                     <div style="height: 52px;"></div>
                     <div style="font-weight: bold; font-size: 9.5px; text-align: right; display: inline-block; border-top: 1px solid #333; padding-top: 3px; min-width: 140px;">

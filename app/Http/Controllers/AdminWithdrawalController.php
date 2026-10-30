@@ -601,53 +601,59 @@ class AdminWithdrawalController extends Controller
     {
         $kind = $request->query('kind', 'withdrawal');
 
-        if ($kind === 'commission') {
-            $entry = CommissionEntry::with(['user', 'agent', 'policy.holder', 'policy.company', 'commissionRule.company'])->findOrFail($id);
-            $inAmt = (float) ($entry->pay_in_amount > 0 ? $entry->pay_in_amount : $entry->commission_amount);
-            $outAmt = (float) ($entry->pay_out_amount > 0 ? $entry->pay_out_amount : $entry->commission_amount);
-            $profit = (float) ($entry->net_admin_profit > 0 ? $entry->net_admin_profit : max(0, $inAmt - $outAmt));
-            $compName = $entry->policy?->company?->name ?? $entry->commissionRule?->company?->name ?? 'Direct Insurance';
-            $user = $entry->user ?? $entry->agent ?? $entry->policy?->user;
+        try {
+            // 1. If kind indicates commission entry
+            if (in_array($kind, ['commission', 'pay_in', 'pay_out'], true)) {
+                $entry = CommissionEntry::with(['user', 'policy.holder', 'policy.company', 'commissionRule.company'])->find($id);
+                if ($entry) {
+                    return $this->formatCommissionDetailsResponse($entry);
+                }
+            }
+
+            // 2. Otherwise look for WithdrawalRequest
+            $w = WithdrawalRequest::with(['user', 'reviewer'])->find($id);
+            if ($w) {
+                return $this->formatWithdrawalDetailsResponse($w);
+            }
+
+            // 3. Fallback: if not found as WithdrawalRequest, check if it's a CommissionEntry
+            $fallbackEntry = CommissionEntry::with(['user', 'policy.holder', 'policy.company', 'commissionRule.company'])->find($id);
+            if ($fallbackEntry) {
+                return $this->formatCommissionDetailsResponse($fallbackEntry);
+            }
 
             return response()->json([
-                'success' => true,
-                'data' => [
-                    'id' => $entry->id,
-                    'kind' => 'commission',
-                    'ref_no' => $entry->policy?->policy_number ?? ('#POL-' . $entry->policy_id),
-                    'withdrawal_ref' => '—',
-                    'user_id' => $user?->id,
-                    'user_name' => $user?->name ?? '—',
-                    'user_email' => $user?->email ?? '—',
-                    'user_type' => ($user?->type === 'sub_agents') ? 'Sub-Agent' : 'Staff',
-                    'company_name' => $compName,
-                    'gross_premium' => (float) $entry->premium_amount,
-                    'pay_in_amount' => $inAmt,
-                    'pay_out_amount' => $outAmt,
-                    'net_profit' => $profit,
-                    'payout_method' => 'policy_commission',
-                    'payout_details' => 'Policy Commission (' . ($entry->policy?->holder?->name ?? 'Customer') . ')',
-                    'status' => in_array(strtolower($entry->payment_status ?: ''), ['paid', 'approved'], true) ? 'approved' : ($entry->payment_status ?: 'pending'),
-                    'subagent_note' => $entry->remarks ?? '',
-                    'admin_remarks' => '',
-                    'reviewer_name' => null,
-                    'reviewed_at' => null,
-                    'created_at' => $entry->created_at ? $entry->created_at->format('d M Y, h:i A') : '—',
-                ]
-            ]);
+                'success' => false,
+                'message' => 'Record not found for ID #' . $id,
+            ], 404);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Payout details error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading details: ' . $e->getMessage(),
+            ], 500);
         }
+    }
 
-        $w = WithdrawalRequest::with(['user', 'reviewer'])->findOrFail($id);
+    private function formatWithdrawalDetailsResponse(WithdrawalRequest $w)
+    {
         $wRef = '#WR-' . str_pad($w->id, 5, '0', STR_PAD_LEFT);
 
+        $hasAgentCol = Schema::hasColumn('commission_entries', 'agent_id');
         $matchingCommission = CommissionEntry::with(['policy.holder', 'policy.company', 'commissionRule.company'])
-            ->where(function ($q) use ($w) {
-                $q->where('user_id', $w->user_id)->orWhere('agent_id', $w->user_id);
+            ->where(function ($q) use ($w, $hasAgentCol) {
+                $q->where('user_id', $w->user_id);
+                if ($hasAgentCol) {
+                    $q->orWhere('agent_id', $w->user_id);
+                }
             })
             ->latest('id')
             ->first();
 
-        $compName = $matchingCommission?->policy?->company?->name ?? $matchingCommission?->commissionRule?->company?->name ?? 'Wallet Payout';
+        $compName = $matchingCommission?->policy?->company?->name 
+            ?? $matchingCommission?->commissionRule?->company?->name 
+            ?? 'Wallet Payout';
+
         $inAmt = $matchingCommission ? (float) ($matchingCommission->pay_in_amount > 0 ? $matchingCommission->pay_in_amount : 0) : null;
         $outAmt = (float) $w->amount;
         $profit = ($inAmt !== null) ? max(0, $inAmt - $outAmt) : null;
@@ -680,6 +686,42 @@ class AdminWithdrawalController extends Controller
         ]);
     }
 
+    private function formatCommissionDetailsResponse(CommissionEntry $entry)
+    {
+        $inAmt = (float) ($entry->pay_in_amount > 0 ? $entry->pay_in_amount : $entry->commission_amount);
+        $outAmt = (float) ($entry->pay_out_amount > 0 ? $entry->pay_out_amount : $entry->commission_amount);
+        $profit = (float) ($entry->net_admin_profit > 0 ? $entry->net_admin_profit : max(0, $inAmt - $outAmt));
+        $compName = $entry->policy?->company?->name ?? $entry->commissionRule?->company?->name ?? 'Direct Insurance';
+        $user = $entry->user ?? $entry->policy?->user ?? $entry->policy?->creator;
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $entry->id,
+                'kind' => 'commission',
+                'ref_no' => $entry->policy?->policy_number ?? ('#POL-' . $entry->policy_id),
+                'withdrawal_ref' => '—',
+                'user_id' => $user?->id,
+                'user_name' => $user?->name ?? '—',
+                'user_email' => $user?->email ?? '—',
+                'user_type' => ($user?->type === 'sub_agents') ? 'Sub-Agent' : 'Staff',
+                'company_name' => $compName,
+                'gross_premium' => (float) $entry->premium_amount,
+                'pay_in_amount' => $inAmt,
+                'pay_out_amount' => $outAmt,
+                'net_profit' => $profit,
+                'payout_method' => 'policy_commission',
+                'payout_details' => 'Policy Commission (' . ($entry->policy?->holder?->name ?? 'Customer') . ')',
+                'status' => in_array(strtolower($entry->payment_status ?: ''), ['paid', 'approved'], true) ? 'approved' : ($entry->payment_status ?: 'pending'),
+                'subagent_note' => $entry->remarks ?? '',
+                'admin_remarks' => '',
+                'reviewer_name' => null,
+                'reviewed_at' => null,
+                'created_at' => $entry->created_at ? $entry->created_at->format('d M Y, h:i A') : '—',
+            ]
+        ]);
+    }
+
     /**
      * Update payout details.
      */
@@ -687,28 +729,52 @@ class AdminWithdrawalController extends Controller
     {
         $kind = $request->input('kind', 'withdrawal');
 
-        if ($kind === 'commission') {
-            $entry = CommissionEntry::findOrFail($id);
-            $validated = $request->validate([
-                'pay_out_amount' => 'required|numeric|min:0',
-                'status' => 'required|string|in:pending,paid,approved,cancelled,rejected',
-                'admin_remarks' => 'nullable|string|max:500',
-            ]);
+        if (in_array($kind, ['commission', 'pay_in', 'pay_out'], true)) {
+            $entry = CommissionEntry::find($id);
+            if ($entry) {
+                $validated = $request->validate([
+                    'pay_out_amount' => 'required|numeric|min:0',
+                    'status' => 'required|string|in:pending,paid,approved,cancelled,rejected',
+                    'admin_remarks' => 'nullable|string|max:500',
+                ]);
 
-            $status = ($validated['status'] === 'approved') ? 'paid' : $validated['status'];
-            $entry->update([
-                'pay_out_amount' => $validated['pay_out_amount'],
-                'payment_status' => $status,
-                'remarks' => $validated['admin_remarks'] ?? $entry->remarks,
-            ]);
+                $status = ($validated['status'] === 'approved') ? 'paid' : $validated['status'];
+                $entry->update([
+                    'pay_out_amount' => $validated['pay_out_amount'],
+                    'payment_status' => $status,
+                    'remarks' => $validated['admin_remarks'] ?? $entry->remarks,
+                ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Commission transaction updated successfully.',
-            ]);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Commission transaction updated successfully.',
+                ]);
+            }
         }
 
-        $withdrawal = WithdrawalRequest::findOrFail($id);
+        $withdrawal = WithdrawalRequest::find($id);
+        if (!$withdrawal) {
+            $fallbackEntry = CommissionEntry::find($id);
+            if ($fallbackEntry) {
+                $validated = $request->validate([
+                    'pay_out_amount' => 'required|numeric|min:0',
+                    'status' => 'required|string|in:pending,paid,approved,cancelled,rejected',
+                    'admin_remarks' => 'nullable|string|max:500',
+                ]);
+                $status = ($validated['status'] === 'approved') ? 'paid' : $validated['status'];
+                $fallbackEntry->update([
+                    'pay_out_amount' => $validated['pay_out_amount'],
+                    'payment_status' => $status,
+                    'remarks' => $validated['admin_remarks'] ?? $fallbackEntry->remarks,
+                ]);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Commission transaction updated successfully.',
+                ]);
+            }
+            return response()->json(['success' => false, 'message' => 'Record not found for ID #' . $id], 404);
+        }
+
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0.01',
             'payout_method' => 'required|string|in:bank_transfer,upi,cheque,cash',
@@ -764,21 +830,35 @@ class AdminWithdrawalController extends Controller
     {
         $kind = $request->input('kind', 'withdrawal');
 
-        if ($kind === 'commission') {
-            $entry = CommissionEntry::findOrFail($id);
-            $entry->delete();
+        if (in_array($kind, ['commission', 'pay_in', 'pay_out'], true)) {
+            $entry = CommissionEntry::find($id);
+            if ($entry) {
+                $entry->delete();
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Commission transaction deleted successfully.',
+                ]);
+            }
+        }
+
+        $withdrawal = WithdrawalRequest::find($id);
+        if ($withdrawal) {
+            $withdrawal->delete();
+            return response()->json([
+                'success' => true,
+                'message' => 'Withdrawal record deleted successfully.',
+            ]);
+        }
+
+        $fallbackEntry = CommissionEntry::find($id);
+        if ($fallbackEntry) {
+            $fallbackEntry->delete();
             return response()->json([
                 'success' => true,
                 'message' => 'Commission transaction deleted successfully.',
             ]);
         }
 
-        $withdrawal = WithdrawalRequest::findOrFail($id);
-        $withdrawal->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Withdrawal record deleted successfully.',
-        ]);
+        return response()->json(['success' => false, 'message' => 'Record not found.'], 404);
     }
 }

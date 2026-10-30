@@ -36,46 +36,65 @@
     }
 
     /* Select2 filter dropdown custom styling */
-    .withdrawal-filter-wrapper {
-        min-width: 150px;
-    }
-    .withdrawal-filter-wrapper .select2-container {
+    #withdrawalFilterToolbar .select2-container {
         width: 100% !important;
     }
-    .withdrawal-filter-wrapper .select2-container .select2-selection--single {
-        height: 36px !important;
+    #withdrawalFilterToolbar .select2-container .select2-selection--single {
+        height: 38px !important;
         border: 1px solid #cbd5e1 !important;
-        border-radius: 0.5rem !important;
-        background-color: #f8fafc !important;
-        padding: 3px 24px 3px 10px !important;
+        border-radius: 0.375rem !important;
+        background-color: #ffffff !important;
+        padding: 4px 24px 4px 10px !important;
         display: flex !important;
         align-items: center !important;
-        font-size: 0.8125rem !important;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        font-size: 0.84rem !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
         transition: all 0.2s ease;
     }
-    .withdrawal-filter-wrapper .select2-container--open .select2-selection--single,
-    .withdrawal-filter-wrapper .select2-container .select2-selection--single:hover {
+    #withdrawalFilterToolbar .select2-container--open .select2-selection--single,
+    #withdrawalFilterToolbar .select2-container .select2-selection--single:hover {
         border-color: #3b82f6 !important;
-        background-color: #ffffff !important;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12) !important;
     }
-    .withdrawal-filter-wrapper .select2-container .select2-selection--single .select2-selection__rendered {
-        line-height: normal !important;
+    #withdrawalFilterToolbar .select2-container .select2-selection--single .select2-selection__rendered {
+        line-height: 28px !important;
         padding-left: 0 !important;
         color: #1e293b !important;
         font-weight: 500 !important;
+        font-size: 0.84rem !important;
     }
-    .withdrawal-filter-wrapper .select2-container .select2-selection--single .select2-selection__arrow {
-        height: 34px !important;
+    #withdrawalFilterToolbar .select2-container .select2-selection--single .select2-selection__arrow {
+        height: 36px !important;
         right: 8px !important;
     }
-    .withdrawal-filter-wrapper .select2-container .select2-selection--single .select2-selection__clear {
+    #withdrawalFilterToolbar .select2-container .select2-selection--single .select2-selection__clear {
         margin-right: 14px !important;
         font-size: 1rem !important;
         color: #94a3b8 !important;
     }
-    .withdrawal-filter-wrapper .select2-container .select2-selection--single .select2-selection__clear:hover {
+    #withdrawalFilterToolbar .select2-container .select2-selection--single .select2-selection__clear:hover {
         color: #ef4444 !important;
+    }
+
+    #btnResetWithdrawalFilters {
+        height: 38px;
+        padding: 0 12px;
+        font-size: 0.84rem;
+        font-weight: 600;
+        border-radius: 0.375rem;
+        border: 1px solid #cbd5e1;
+        background-color: #ffffff;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+    #btnResetWithdrawalFilters:hover {
+        background-color: #f1f5f9;
+        color: #0f172a;
+        border-color: #94a3b8;
     }
 
     /* Select2 inside modal styling */
@@ -241,19 +260,26 @@
                 <small class="text-muted">Verify payout details and approve or reject submissions</small>
             </div>
 
-            <div class="d-flex flex-wrap align-items-center gap-2">
+            <div class="d-flex align-items-center gap-2">
                 <!-- 3 Filter Pills: All | Pay-In | Pay-Out -->
-                <div class="commission-type-pills me-1">
+                <div class="commission-type-pills">
                     <button type="button" class="filter-type-btn {{ ($type ?? 'all') === 'all' ? 'active' : '' }}" data-type="all">All</button>
                     <button type="button" class="filter-type-btn {{ ($type ?? '') === 'pay_in' ? 'active' : '' }}" data-type="pay_in">Pay-In</button>
                     <button type="button" class="filter-type-btn {{ ($type ?? '') === 'pay_out' ? 'active' : '' }}" data-type="pay_out">Pay-Out</button>
                 </div>
+            </div>
+        </div>
 
-                <form id="withdrawalFilterForm" method="GET" action="{{ route('admin.withdrawals.index') }}" class="d-flex flex-wrap align-items-center gap-2">
-                    <input type="hidden" name="type" id="filterTypeInput" value="{{ $type ?? 'all' }}">
-
-                    <!-- Company-wise Filter (Select2) -->
-                    <div class="withdrawal-filter-wrapper" style="width: 175px;">
+        <!-- Dedicated Filter Toolbar -->
+        <div class="px-3 py-3 border-bottom" style="background-color: #f8fafc;" id="withdrawalFilterToolbar">
+            <form id="withdrawalFilterForm" method="GET" action="{{ route('admin.withdrawals.index') }}">
+                <input type="hidden" name="type" id="filterTypeInput" value="{{ $type ?? 'all' }}">
+                <div class="row g-2 align-items-end">
+                    <!-- Company Filter (Select2) -->
+                    <div class="col-12 col-md-4 col-xl-4">
+                        <label class="form-label small fw-semibold text-muted mb-1 d-flex align-items-center gap-1">
+                            <i class="fa-solid fa-building-shield text-primary"></i> Company / Insurer
+                        </label>
                         <select id="filterCompany" name="company_id" class="form-select form-select-sm" style="width: 100%;">
                             <option value="">All Companies</option>
                             @foreach($companies as $company)
@@ -265,7 +291,10 @@
                     </div>
 
                     <!-- Status Filter (Select2) -->
-                    <div class="withdrawal-filter-wrapper" style="width: 155px;">
+                    <div class="col-12 col-md-3 col-xl-3">
+                        <label class="form-label small fw-semibold text-muted mb-1 d-flex align-items-center gap-1">
+                            <i class="fa-solid fa-circle-check text-warning"></i> Status
+                        </label>
                         <select id="filterStatus" name="status" class="form-select form-select-sm" style="width: 100%;">
                             <option value="all" {{ ($status ?? 'all') === 'all' ? 'selected' : '' }}>All Statuses</option>
                             <option value="pending" {{ ($status ?? '') === 'pending' ? 'selected' : '' }}>Pending</option>
@@ -275,7 +304,10 @@
                     </div>
 
                     <!-- Sub-Agent / Staff Filter (Select2) -->
-                    <div class="withdrawal-filter-wrapper" style="width: 195px;">
+                    <div class="col-12 col-md-4 col-xl-4">
+                        <label class="form-label small fw-semibold text-muted mb-1 d-flex align-items-center gap-1">
+                            <i class="fa-solid fa-user-tie text-success"></i> Sub-Agent / Staff
+                        </label>
                         <select id="filterSubagent" name="subagent_id" class="form-select form-select-sm" style="width: 100%;">
                             <option value="">All Sub-Agents & Staff</option>
                             @foreach($subagents as $agent)
@@ -287,12 +319,14 @@
                     </div>
 
                     <!-- Reset Filters Button -->
-                    <button type="button" class="btn btn-sm" id="btnResetWithdrawalFilters" title="Reset All Filters">
-                        <i class="fa-solid fa-rotate-left"></i>
-                        <span>Reset</span>
-                    </button>
-                </form>
-            </div>
+                    <div class="col-12 col-md-1 col-xl-1">
+                        <button type="button" class="btn btn-sm w-100 d-flex align-items-center justify-content-center gap-1" id="btnResetWithdrawalFilters" title="Reset All Filters">
+                            <i class="fa-solid fa-rotate-left"></i>
+                            <span>Reset</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
 
         <!-- Table Container (updated via JS/AJAX) -->
@@ -803,8 +837,13 @@
                         $('#viewPayoutModal').modal('show');
                     }
                 },
-                error: function () {
-                    alert('Failed to load payout details.');
+                error: function (xhr) {
+                    const msg = xhr.responseJSON?.message || 'Failed to load payout details.';
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({ icon: 'error', title: 'Error', text: msg });
+                    } else {
+                        alert(msg);
+                    }
                 }
             });
         });
@@ -834,8 +873,13 @@
                         $('#editPayoutModal').modal('show');
                     }
                 },
-                error: function () {
-                    alert('Failed to load payout details.');
+                error: function (xhr) {
+                    const msg = xhr.responseJSON?.message || 'Failed to load payout details.';
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire({ icon: 'error', title: 'Error', text: msg });
+                    } else {
+                        alert(msg);
+                    }
                 }
             });
         });
