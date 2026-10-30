@@ -45,6 +45,15 @@
         $googleConnectionEnabled = ($settings['google_connection_enabled']->value ?? '0') === '1';
         $commissionMethod = $settings['commission_calculation_method']->value ?? 'company_wise';
         $commissionAllowManual = ($settings['commission_allow_manual_override']->value ?? '1') === '1';
+
+        $bankName = $settings['company_bank_name']->value ?? 'ICICI Bank (Tagore Garden)';
+        $bankAccountNo = $settings['company_bank_account_no']->value ?? '335905001025';
+        $bankIfsc = $settings['company_bank_ifsc']->value ?? 'ICIC0003359';
+        $bankBranch = $settings['company_bank_branch']->value ?? 'Tagore Garden';
+        $signaturePath = $settings['company_signature_path']->value ?? null;
+        $signatureUrl = $signaturePath && Storage::disk('public')->exists($signaturePath)
+            ? Storage::disk('public')->url($signaturePath)
+            : null;
     @endphp
 
     <div class="container-fluid px-0 settings-shell">
@@ -59,6 +68,8 @@
             <ul class="nav settings-main-tabs flex-wrap" id="settingsTabs" role="tablist">
                 <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab"
                         data-bs-target="#commission-settings" type="button" role="tab"><i class="fa-solid fa-percent me-1 text-primary"></i> Commission Settings</button></li>
+                <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab"
+                        data-bs-target="#bank-signature" type="button" role="tab"><i class="fa-solid fa-building-columns me-1 text-primary"></i> Bank &amp; Signature</button></li>
                 <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab"
                         data-bs-target="#smtp" type="button" role="tab">Email SMTP</button></li>
                 {{-- WhatsApp configuration is intentionally hidden.
@@ -698,6 +709,112 @@
                     </div>
                 </div>
 
+            </div>
+
+            <!-- BANK & SIGNATURE TAB -->
+            <div class="tab-pane fade" id="bank-signature" role="tabpanel">
+                <form action="{{ route('settings.update') }}" method="POST" enctype="multipart/form-data" id="bankSignatureSettingsForm">
+                    @csrf
+                    @method('PUT')
+                    <div class="settings-panel">
+                        <div class="settings-panel-head d-flex justify-content-between align-items-center">
+                            <span><i class="fa-solid fa-building-columns me-2 text-primary"></i> Company Bank Details &amp; Authorized Signature</span>
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 py-1 px-2">Invoice Auto-Fill</span>
+                        </div>
+                        <div class="settings-panel-body">
+                            <p class="text-muted small mb-4">
+                                Configure the official company banking details and authorized signatory image. These details are automatically included in generated Tax Invoices, Terms &amp; Conditions, and downloadable PDF invoices.
+                            </p>
+
+                            <div class="row g-4 mb-4">
+                                <!-- Bank Details Section -->
+                                <div class="col-lg-7">
+                                    <div class="card border rounded-3 p-3 bg-light bg-opacity-25 h-100">
+                                        <h6 class="fw-bold text-dark mb-3 pb-2 border-bottom d-flex align-items-center gap-2">
+                                            <i class="fa-solid fa-landmark text-primary"></i> Company Bank Details
+                                        </h6>
+
+                                        <div class="row g-3">
+                                            <div class="col-md-12">
+                                                <label class="form-label fw-semibold small">Bank Name <span class="text-danger">*</span></label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-white"><i class="fa-solid fa-building text-muted"></i></span>
+                                                    <input type="text" name="company_bank_name" class="form-control" 
+                                                        value="{{ old('company_bank_name', $bankName) }}" 
+                                                        placeholder="e.g. ICICI Bank (Tagore Garden)" required>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold small">A/C No <span class="text-danger">*</span></label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-white"><i class="fa-solid fa-credit-card text-muted"></i></span>
+                                                    <input type="text" name="company_bank_account_no" class="form-control font-monospace" 
+                                                        value="{{ old('company_bank_account_no', $bankAccountNo) }}" 
+                                                        placeholder="e.g. 335905001025" required>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold small">IFSC CODE <span class="text-danger">*</span></label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text bg-white"><i class="fa-solid fa-shield-halved text-muted"></i></span>
+                                                    <input type="text" name="company_bank_ifsc" class="form-control font-monospace text-uppercase" 
+                                                        value="{{ old('company_bank_ifsc', $bankIfsc) }}" 
+                                                        placeholder="e.g. ICIC0003359" required>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-md-12">
+                                                <label class="form-label fw-semibold small">Branch Name / Remarks</label>
+                                                <input type="text" name="company_bank_branch" class="form-control" 
+                                                    value="{{ old('company_bank_branch', $bankBranch) }}" 
+                                                    placeholder="e.g. Tagore Garden, New Delhi">
+                                                <div class="form-text text-muted small">These banking particulars populate the Remittance / Bank Details block in PDF invoices.</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Signature Image Section -->
+                                <div class="col-lg-5">
+                                    <div class="card border rounded-3 p-3 bg-light bg-opacity-25 h-100 d-flex flex-column">
+                                        <h6 class="fw-bold text-dark mb-3 pb-2 border-bottom d-flex align-items-center gap-2">
+                                            <i class="fa-solid fa-signature text-primary"></i> Authorized Signatory
+                                        </h6>
+
+                                        <div class="mb-3">
+                                            <label class="form-label fw-semibold small">Signature Image File Select</label>
+                                            <input type="file" name="company_signature_path" id="signatureFileInput" class="form-control" accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml">
+                                            <div class="form-text text-muted small">PNG/JPG with transparent/white background. Displays on invoice PDF above Authorized Signatory.</div>
+                                        </div>
+
+                                        <div class="mt-2 text-center p-3 border rounded bg-white flex-grow-1 d-flex flex-column align-items-center justify-content-center" style="min-height: 140px;">
+                                            <div id="signaturePreviewWrapper">
+                                                @if($signatureUrl)
+                                                    <img id="signaturePreview" src="{{ $signatureUrl }}" alt="Authorized Signature" class="img-fluid" style="max-height: 90px; object-fit: contain;">
+                                                    <div class="text-muted small mt-2"><i class="fa-solid fa-circle-check text-success me-1"></i>Current Signature Preview</div>
+                                                @else
+                                                    <div id="signaturePlaceholder" class="text-muted small">
+                                                        <i class="fa-solid fa-signature fs-1 opacity-25 d-block mb-2"></i>
+                                                        No signature uploaded yet.
+                                                    </div>
+                                                    <img id="signaturePreview" src="" alt="Signature Preview" class="img-fluid d-none" style="max-height: 90px; object-fit: contain;">
+                                                @endif
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end">
+                                <button type="submit" class="btn btn-dark-blue px-4">
+                                    <i class="fa-solid fa-floppy-disk me-1"></i> Save Bank &amp; Signature Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
             </div>
 
             <!-- EMAIL SMTP TAB -->
@@ -2584,6 +2701,19 @@
                             alert(msg);
                         }
                     });
+                });
+
+                // Instant signature preview on file select
+                $('#signatureFileInput').on('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(evt) {
+                            $('#signaturePlaceholder').addClass('d-none');
+                            $('#signaturePreview').attr('src', evt.target.result).removeClass('d-none');
+                        };
+                        reader.readAsDataURL(file);
+                    }
                 });
             });
         </script>

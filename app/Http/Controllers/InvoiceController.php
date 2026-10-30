@@ -527,7 +527,23 @@ class InvoiceController extends Controller
             $logoBase64 = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($logoPath));
         }
 
-        $pdf = Pdf::loadView('crm.invoices.pdf', compact('invoice', 'logoBase64'));
+        // Resolve Authorized Signature for PDF
+        $signatureBase64 = null;
+        $signaturePath = null;
+
+        try {
+            $sigSettingPath = \App\Models\Setting::query()->where('key', 'company_signature_path')->value('value');
+            if ($sigSettingPath && \Illuminate\Support\Facades\Storage::disk('public')->exists($sigSettingPath)) {
+                $signaturePath = \Illuminate\Support\Facades\Storage::disk('public')->path($sigSettingPath);
+            }
+        } catch (\Throwable $e) {}
+
+        if ($signaturePath && file_exists($signaturePath)) {
+            $sigMime = mime_content_type($signaturePath) ?: 'image/png';
+            $signatureBase64 = 'data:' . $sigMime . ';base64,' . base64_encode(file_get_contents($signaturePath));
+        }
+
+        $pdf = Pdf::loadView('crm.invoices.pdf', compact('invoice', 'logoBase64', 'signatureBase64'));
         $filename = 'invoice-' . ($invoice->number ?: $invoice->id) . '.pdf';
         return $pdf->download($filename);
     }

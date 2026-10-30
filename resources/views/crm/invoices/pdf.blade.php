@@ -494,7 +494,11 @@
 
         <!-- 6. Terms and Conditions, Bank Details, and Signatures -->
         @php
-            $defaultTerms = "1. We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.\n2. Subject to 'Delhi' Jurisdiction Only\n3. Bank Details :\n    Bank Name: ICICI Bank (Tagore Garden)\n    A/C No: 335905001025\n    IFSC CODE: ICIC0003359";
+            $settingBankName = \App\Models\Setting::query()->where('key', 'company_bank_name')->value('value') ?: 'ICICI Bank (Tagore Garden)';
+            $settingAccNo = \App\Models\Setting::query()->where('key', 'company_bank_account_no')->value('value') ?: '335905001025';
+            $settingIfsc = \App\Models\Setting::query()->where('key', 'company_bank_ifsc')->value('value') ?: 'ICIC0003359';
+
+            $defaultTerms = "1. We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.\n2. Subject to 'Delhi' Jurisdiction Only\n3. Bank Details :\n    Bank Name: {$settingBankName}\n    A/C No: {$settingAccNo}\n    IFSC CODE: {$settingIfsc}";
             $rawTerms = !empty(trim($invoice->terms_and_conditions ?? '')) ? $invoice->terms_and_conditions : $defaultTerms;
             $formattedTerms = nl2br(str_replace('  ', '&nbsp;&nbsp;', e($rawTerms)));
         @endphp
@@ -511,7 +515,13 @@
                     <div class="fw-bold" style="font-size: 9.5px; color: #000; text-align: right;">
                         For {{ strtoupper($companyName) }}
                     </div>
-                    <div style="height: 52px;"></div>
+                    @if(!empty($signatureBase64))
+                        <div style="height: 52px; text-align: right; padding-top: 4px;">
+                            <img src="{{ $signatureBase64 }}" style="max-height: 44px; max-width: 140px; object-fit: contain;">
+                        </div>
+                    @else
+                        <div style="height: 52px;"></div>
+                    @endif
                     <div style="font-weight: bold; font-size: 9.5px; text-align: right; display: inline-block; border-top: 1px solid #333; padding-top: 3px; min-width: 140px;">
                         Authorized Signatory
                     </div>

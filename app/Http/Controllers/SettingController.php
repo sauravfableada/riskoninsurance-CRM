@@ -657,6 +657,11 @@ class SettingController extends Controller
             'google_connection_enabled' => ['sometimes', 'required', 'boolean'],
             'commission_calculation_method' => ['sometimes', 'required', 'in:company_wise,category_wise,sub_type_wise,agent_wise,policy_wise,manual_override'],
             'commission_allow_manual_override' => ['sometimes', 'nullable', 'boolean'],
+            'company_bank_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'company_bank_account_no' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'company_bank_ifsc' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'company_bank_branch' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'company_signature_path' => ['sometimes', 'nullable', 'file', 'image', 'mimes:jpeg,png,jpg,webp,svg', 'max:4096'],
         ]);
 
         foreach ($validated as $key => $value) {
@@ -674,7 +679,7 @@ class SettingController extends Controller
 
                 $path = $request->file($key)->store('company', 'public');
                 $value = $path;
-            } elseif ($request->exists($key) && $request->file($key) === null && str_contains($key, 'logo')) {
+            } elseif ($request->exists($key) && $request->file($key) === null && (str_contains($key, 'logo') || str_contains($key, 'signature'))) {
                 continue;
             }
 
@@ -685,6 +690,8 @@ class SettingController extends Controller
             if (Schema::hasColumn('settings', 'group')) {
                 if (str_starts_with($key, 'commission_')) {
                     $attributes['group'] = 'commission';
+                } elseif (str_starts_with($key, 'company_bank_') || str_contains($key, 'signature')) {
+                    $attributes['group'] = 'bank_signature';
                 } elseif (str_starts_with($key, 'mail_')) {
                     $attributes['group'] = 'smtp';
                 } elseif (in_array($key, ['whatsapp_integration_enabled', 'social_integrations_enabled', 'google_connection_enabled', 'google_client_id', 'google_client_secret', 'firebase_key_file'])) {

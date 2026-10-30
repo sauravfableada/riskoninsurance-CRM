@@ -299,13 +299,19 @@
                 {{-- 6. Summary & Notes Calculation --}}
                 <div class="row g-4 mb-4">
                     <div class="col-lg-6">
+                        @php
+                            $defBank = \App\Models\Setting::query()->where('key', 'company_bank_name')->value('value') ?: 'ICICI Bank (Tagore Garden)';
+                            $defAcc = \App\Models\Setting::query()->where('key', 'company_bank_account_no')->value('value') ?: '335905001025';
+                            $defIfsc = \App\Models\Setting::query()->where('key', 'company_bank_ifsc')->value('value') ?: 'ICIC0003359';
+                            $defaultTermsText = "1. We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.\n2. Subject to 'Delhi' Jurisdiction Only\n3. Bank Details :\n   Bank Name: {$defBank}\n   A/C No: {$defAcc}\n   IFSC CODE: {$defIfsc}";
+                        @endphp
                         <div class="mb-3">
                             <label class="form-label fw-bold d-flex align-items-center justify-content-between mb-1">
                                 <span><i class="fa-solid fa-file-contract text-primary me-1"></i> Terms and Conditions</span>
                                 <span class="badge bg-light text-muted border fw-normal small">Appears on PDF</span>
                             </label>
                             <textarea name="terms_and_conditions" class="form-control font-monospace small" rows="5" 
-                                placeholder="Enter terms, declarations, and bank details...">{{ old('terms_and_conditions', "1. We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.\n2. Subject to 'Delhi' Jurisdiction Only\n3. Bank Details :\n   Bank Name: ICICI Bank (Tagore Garden)\n   A/C No: 335905001025\n   IFSC CODE: ICIC0003359") }}</textarea>
+                                placeholder="Enter terms, declarations, and bank details...">{{ old('terms_and_conditions', $defaultTermsText) }}</textarea>
                             <div class="form-text text-muted small">Standard declarations, legal jurisdiction, and company payout bank details.</div>
                         </div>
 
