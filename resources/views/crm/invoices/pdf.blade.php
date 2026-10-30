@@ -196,14 +196,45 @@
     @php
         $isCompanyPayIn = ($invoice->invoice_type === 'company_pay_in' || !empty($invoice->company_id));
         $billedEntityName = $isCompanyPayIn ? ($invoice->company?->name ?? 'Insurance Company') : ($invoice->customer?->name ?? 'Customer');
+
+        // Resolve logo if not already provided
+        if (!isset($logoBase64) || empty($logoBase64)) {
+            $logoBase64 = null;
+            $candidatePath = null;
+            try {
+                $settingPath = \App\Models\Setting::query()->where('key', 'company_logo_path')->value('value');
+                if ($settingPath && \Illuminate\Support\Facades\Storage::disk('public')->exists($settingPath)) {
+                    $candidatePath = \Illuminate\Support\Facades\Storage::disk('public')->path($settingPath);
+                }
+            } catch (\Throwable $e) {}
+
+            if (!$candidatePath || !file_exists($candidatePath)) {
+                if (file_exists(public_path('logo/riskon_logo.png'))) {
+                    $candidatePath = public_path('logo/riskon_logo.png');
+                } elseif (file_exists(public_path('logo/fableadcrmLogo.png'))) {
+                    $candidatePath = public_path('logo/fableadcrmLogo.png');
+                }
+            }
+
+            if ($candidatePath && file_exists($candidatePath)) {
+                $mime = mime_content_type($candidatePath) ?: 'image/png';
+                $logoBase64 = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($candidatePath));
+            }
+        }
     @endphp
 
     {{-- Top Header --}}
     <table class="header-table">
         <tr>
             <td style="width: 55%; vertical-align: top;">
-                <div class="brand-name">RISKON INSURANCE</div>
-                <div class="brand-tagline">Trust... We Build</div>
+                @if(!empty($logoBase64))
+                    <div style="margin-bottom: 6px;">
+                        <img src="{{ $logoBase64 }}" alt="Riskon Insurance" style="height: 44px; width: auto; max-width: 220px; vertical-align: middle;">
+                    </div>
+                @else
+                    <div class="brand-name">RISKON INSURANCE</div>
+                    <div class="brand-tagline">Trust... We Build</div>
+                @endif
                 <div class="brand-details">
                     Insurance Brokerage &amp; Commission Management<br>
                     Organization: <strong>{{ $invoice->organization ?? 'Riskon Insurance' }}</strong><br>

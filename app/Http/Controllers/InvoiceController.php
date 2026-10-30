@@ -461,7 +461,31 @@ class InvoiceController extends Controller
         $this->authorize('view', $invoice);
         $invoice->load(['company', 'customer', 'currency', 'items.policy', 'creator']);
 
-        $pdf = Pdf::loadView('crm.invoices.pdf', compact('invoice'));
+        // Resolve Company Logo for PDF
+        $logoBase64 = null;
+        $logoPath = null;
+
+        try {
+            $settingPath = \App\Models\Setting::query()->where('key', 'company_logo_path')->value('value');
+            if ($settingPath && \Illuminate\Support\Facades\Storage::disk('public')->exists($settingPath)) {
+                $logoPath = \Illuminate\Support\Facades\Storage::disk('public')->path($settingPath);
+            }
+        } catch (\Throwable $e) {}
+
+        if (!$logoPath || !file_exists($logoPath)) {
+            if (file_exists(public_path('logo/riskon_logo.png'))) {
+                $logoPath = public_path('logo/riskon_logo.png');
+            } elseif (file_exists(public_path('logo/fableadcrmLogo.png'))) {
+                $logoPath = public_path('logo/fableadcrmLogo.png');
+            }
+        }
+
+        if ($logoPath && file_exists($logoPath)) {
+            $mime = mime_content_type($logoPath) ?: 'image/png';
+            $logoBase64 = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($logoPath));
+        }
+
+        $pdf = Pdf::loadView('crm.invoices.pdf', compact('invoice', 'logoBase64'));
         $filename = 'invoice-' . ($invoice->number ?: $invoice->id) . '.pdf';
         return $pdf->download($filename);
     }
