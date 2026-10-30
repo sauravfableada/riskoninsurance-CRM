@@ -257,7 +257,25 @@
                             </h6>
                             <span class="badge bg-light text-muted border small">E. &amp; O.E.</span>
                         </div>
-                        <div class="text-secondary small font-monospace" style="line-height: 1.5; white-space: pre-line;">{!! nl2br(e($invoice->terms_and_conditions ?: "1. We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.\n2. Subject to 'Delhi' Jurisdiction Only\n3. Bank Details :\n   Bank Name: ICICI Bank (Tagore Garden)\n   A/C No: 335905001025\n   IFSC CODE: ICIC0003359")) !!}</div>
+                        @php
+                            $settingBankName = \App\Models\Setting::query()->where('key', 'company_bank_name')->value('value') ?: 'ICICI Bank (Tagore Garden)';
+                            $settingAccNo = \App\Models\Setting::query()->where('key', 'company_bank_account_no')->value('value') ?: '335905001025';
+                            $settingIfsc = \App\Models\Setting::query()->where('key', 'company_bank_ifsc')->value('value') ?: 'ICIC0003359';
+
+                            $rawTerms = !empty(trim($invoice->terms_and_conditions ?? '')) 
+                                ? trim($invoice->terms_and_conditions) 
+                                : "1. We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.\n2. Subject to 'Delhi' Jurisdiction Only";
+                            if (preg_match('/3\.\s*Bank Details/i', $rawTerms)) {
+                                $rawTerms = trim(preg_replace('/3\.\s*Bank Details[\s\S]*$/i', '', $rawTerms));
+                            }
+                        @endphp
+                        <div class="text-secondary small font-monospace" style="line-height: 1.5; white-space: pre-line;">{!! nl2br(e($rawTerms)) !!}</div>
+                        <div class="border-top pt-2 mt-2 font-monospace small">
+                            <div class="fw-bold text-dark"><i class="fa-solid fa-building-columns text-primary me-1"></i> 3. Bank Details :</div>
+                            <div class="ps-3 text-secondary">Bank Name: <strong class="text-dark">{{ $settingBankName }}</strong></div>
+                            <div class="ps-3 text-secondary">A/C No: <strong class="text-dark">{{ $settingAccNo }}</strong></div>
+                            <div class="ps-3 text-secondary">IFSC CODE: <strong class="text-dark">{{ $settingIfsc }}</strong></div>
+                        </div>
                     </div>
 
                     <div class="card border rounded-3 p-3 bg-light bg-opacity-25">

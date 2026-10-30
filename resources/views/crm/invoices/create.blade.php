@@ -303,16 +303,29 @@
                             $defBank = \App\Models\Setting::query()->where('key', 'company_bank_name')->value('value') ?: 'ICICI Bank (Tagore Garden)';
                             $defAcc = \App\Models\Setting::query()->where('key', 'company_bank_account_no')->value('value') ?: '335905001025';
                             $defIfsc = \App\Models\Setting::query()->where('key', 'company_bank_ifsc')->value('value') ?: 'ICIC0003359';
-                            $defaultTermsText = "1. We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.\n2. Subject to 'Delhi' Jurisdiction Only\n3. Bank Details :\n   Bank Name: {$defBank}\n   A/C No: {$defAcc}\n   IFSC CODE: {$defIfsc}";
+                            
+                            $defaultTermsText = "1. We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.\n2. Subject to 'Delhi' Jurisdiction Only";
                         @endphp
                         <div class="mb-3">
                             <label class="form-label fw-bold d-flex align-items-center justify-content-between mb-1">
                                 <span><i class="fa-solid fa-file-contract text-primary me-1"></i> Terms and Conditions</span>
                                 <span class="badge bg-light text-muted border fw-normal small">Appears on PDF</span>
                             </label>
-                            <textarea name="terms_and_conditions" class="form-control font-monospace small" rows="5" 
-                                placeholder="Enter terms, declarations, and bank details...">{{ old('terms_and_conditions', $defaultTermsText) }}</textarea>
-                            <div class="form-text text-muted small">Standard declarations, legal jurisdiction, and company payout bank details.</div>
+                            <textarea name="terms_and_conditions" class="form-control font-monospace small" rows="4" 
+                                placeholder="Enter terms, declarations...">{{ old('terms_and_conditions', $defaultTermsText) }}</textarea>
+                            <div class="form-text text-muted small">Standard declarations and legal jurisdiction.</div>
+
+                            <div class="mt-2 p-2 bg-light border rounded small font-monospace">
+                                <div class="fw-bold text-dark d-flex align-items-center justify-content-between">
+                                    <span><i class="fa-solid fa-building-columns text-primary me-1"></i> 3. Bank Details (Auto-attached to PDF)</span>
+                                    <a href="{{ route('settings.index') }}" target="_blank" class="text-primary text-decoration-none fw-normal"><i class="fa-solid fa-gear me-1"></i>Settings</a>
+                                </div>
+                                <div class="text-secondary ps-3 mt-1">
+                                    Bank Name: <strong class="text-dark">{{ $defBank }}</strong><br>
+                                    A/C No: <strong class="text-dark">{{ $defAcc }}</strong><br>
+                                    IFSC CODE: <strong class="text-dark">{{ $defIfsc }}</strong>
+                                </div>
+                            </div>
                         </div>
 
                         <div>

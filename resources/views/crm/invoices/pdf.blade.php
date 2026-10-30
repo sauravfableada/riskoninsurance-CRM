@@ -506,8 +506,14 @@
             $settingAccNo = \App\Models\Setting::query()->where('key', 'company_bank_account_no')->value('value') ?: '335905001025';
             $settingIfsc = \App\Models\Setting::query()->where('key', 'company_bank_ifsc')->value('value') ?: 'ICIC0003359';
 
-            $defaultTerms = "1. We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.\n2. Subject to 'Delhi' Jurisdiction Only\n3. Bank Details :\n    Bank Name: {$settingBankName}\n    A/C No: {$settingAccNo}\n    IFSC CODE: {$settingIfsc}";
-            $rawTerms = !empty(trim($invoice->terms_and_conditions ?? '')) ? $invoice->terms_and_conditions : $defaultTerms;
+            $defaultTerms = "1. We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.\n2. Subject to 'Delhi' Jurisdiction Only";
+            $rawTerms = !empty(trim($invoice->terms_and_conditions ?? '')) ? trim($invoice->terms_and_conditions) : $defaultTerms;
+
+            // If the custom terms text already includes "3. Bank Details", strip it so we render the official configured bank details cleanly
+            if (preg_match('/3\.\s*Bank Details/i', $rawTerms)) {
+                $rawTerms = trim(preg_replace('/3\.\s*Bank Details[\s\S]*$/i', '', $rawTerms));
+            }
+
             $formattedTerms = nl2br(str_replace('  ', '&nbsp;&nbsp;', e($rawTerms)));
         @endphp
         <table class="terms-table">
@@ -517,6 +523,12 @@
                     <div class="fw-bold" style="margin-bottom: 3px;">E. &amp; O.E.</div>
                     <div style="line-height: 1.35; color: #111; font-size: 8px;">
                         {!! $formattedTerms !!}
+                    </div>
+                    <div style="margin-top: 4px; line-height: 1.35; color: #111; font-size: 8px;">
+                        <div class="fw-bold">3. Bank Details :</div>
+                        <div style="padding-left: 12px;">Bank Name: <strong>{{ $settingBankName }}</strong></div>
+                        <div style="padding-left: 12px;">A/C No: <strong>{{ $settingAccNo }}</strong></div>
+                        <div style="padding-left: 12px;">IFSC CODE: <strong>{{ $settingIfsc }}</strong></div>
                     </div>
                 </td>
                 <td style="width: 42%; padding: 6px 8px; text-align: right; vertical-align: top;">
