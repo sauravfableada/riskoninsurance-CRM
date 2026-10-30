@@ -155,6 +155,9 @@ class InvoiceController extends Controller
             'account_type'   => 'nullable|string|max:255',
             'organization'   => 'nullable|string|max:255',
             'tax_percentage' => 'nullable|numeric|min:0',
+            'cgst_percentage' => 'nullable|numeric|min:0',
+            'sgst_percentage' => 'nullable|numeric|min:0',
+            'igst_percentage' => 'nullable|numeric|min:0',
             'items'          => 'required|array|min:1',
         ];
 
@@ -188,8 +191,16 @@ class InvoiceController extends Controller
             }
 
             $taxPct = (float) ($validated['tax_percentage'] ?? 0);
-            $taxAmount = round(($subtotal * $taxPct) / 100, 2);
+            $cgstPct = isset($validated['cgst_percentage']) ? (float) $validated['cgst_percentage'] : round($taxPct / 2, 2);
+            $sgstPct = isset($validated['sgst_percentage']) ? (float) $validated['sgst_percentage'] : round($taxPct - $cgstPct, 2);
+            $igstPct = (float) ($validated['igst_percentage'] ?? 0);
+
+            $cgstAmount = round(($subtotal * $cgstPct) / 100, 2);
+            $sgstAmount = round(($subtotal * $sgstPct) / 100, 2);
+            $igstAmount = round(($subtotal * $igstPct) / 100, 2);
+            $taxAmount = round($cgstAmount + $sgstAmount + $igstAmount, 2);
             $grandTotal = round($subtotal + $taxAmount, 2);
+            $totalTaxPct = round($cgstPct + $sgstPct + $igstPct, 2);
 
             $defaultCurrency = Currency::where('code', 'INR')->first() ?? Currency::first();
 
@@ -206,8 +217,14 @@ class InvoiceController extends Controller
                 'invoice_date'    => $validated['invoice_date'],
                 'due_date'        => $validated['due_date'] ?? null,
                 'subtotal'        => $subtotal,
-                'tax_percentage'  => $taxPct,
+                'tax_percentage'  => $totalTaxPct,
                 'tax_amount'      => $taxAmount,
+                'cgst_percentage' => $cgstPct,
+                'sgst_percentage' => $sgstPct,
+                'igst_percentage' => $igstPct,
+                'cgst_amount'     => $cgstAmount,
+                'sgst_amount'     => $sgstAmount,
+                'igst_amount'     => $igstAmount,
                 'total_amount'    => $grandTotal,
                 'grand_total'     => $grandTotal,
                 'status'          => $request->input('status', 'unpaid'),
@@ -313,6 +330,9 @@ class InvoiceController extends Controller
             'account_type'   => 'nullable|string|max:255',
             'organization'   => 'nullable|string|max:255',
             'tax_percentage' => 'nullable|numeric|min:0',
+            'cgst_percentage' => 'nullable|numeric|min:0',
+            'sgst_percentage' => 'nullable|numeric|min:0',
+            'igst_percentage' => 'nullable|numeric|min:0',
             'items'          => 'required|array|min:1',
         ];
 
@@ -336,8 +356,16 @@ class InvoiceController extends Controller
             }
 
             $taxPct = (float) ($validated['tax_percentage'] ?? 0);
-            $taxAmount = round(($subtotal * $taxPct) / 100, 2);
+            $cgstPct = isset($validated['cgst_percentage']) ? (float) $validated['cgst_percentage'] : round($taxPct / 2, 2);
+            $sgstPct = isset($validated['sgst_percentage']) ? (float) $validated['sgst_percentage'] : round($taxPct - $cgstPct, 2);
+            $igstPct = (float) ($validated['igst_percentage'] ?? 0);
+
+            $cgstAmount = round(($subtotal * $cgstPct) / 100, 2);
+            $sgstAmount = round(($subtotal * $sgstPct) / 100, 2);
+            $igstAmount = round(($subtotal * $igstPct) / 100, 2);
+            $taxAmount = round($cgstAmount + $sgstAmount + $igstAmount, 2);
             $grandTotal = round($subtotal + $taxAmount, 2);
+            $totalTaxPct = round($cgstPct + $sgstPct + $igstPct, 2);
 
             $invoice->update([
                 'number'          => $validated['number'] ?: $invoice->number,
@@ -352,8 +380,14 @@ class InvoiceController extends Controller
                 'invoice_date'    => $validated['invoice_date'],
                 'due_date'        => $validated['due_date'] ?? null,
                 'subtotal'        => $subtotal,
-                'tax_percentage'  => $taxPct,
+                'tax_percentage'  => $totalTaxPct,
                 'tax_amount'      => $taxAmount,
+                'cgst_percentage' => $cgstPct,
+                'sgst_percentage' => $sgstPct,
+                'igst_percentage' => $igstPct,
+                'cgst_amount'     => $cgstAmount,
+                'sgst_amount'     => $sgstAmount,
+                'igst_amount'     => $igstAmount,
                 'total_amount'    => $grandTotal,
                 'grand_total'     => $grandTotal,
                 'status'          => $request->input('status', $invoice->status),

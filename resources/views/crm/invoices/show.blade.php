@@ -289,19 +289,18 @@
 
                         {{-- CGST & SGST Breakdown --}}
                         @php
-                            $taxRate = (float) ($invoice->tax_percentage ?? 18);
-                            $halfRate = round($taxRate / 2, 2);
-                            $totalTax = (float) ($invoice->tax_amount ?? 0);
-                            $cgstAmt = round($totalTax / 2, 2);
-                            $sgstAmt = round($totalTax - $cgstAmt, 2);
+                            $cgstRate = (float) ($invoice->cgst_percentage ?? round(($invoice->tax_percentage ?? 18) / 2, 2));
+                            $sgstRate = (float) ($invoice->sgst_percentage ?? round(($invoice->tax_percentage ?? 18) - $cgstRate, 2));
+                            $cgstAmt = (float) ($invoice->cgst_amount ?? round(($invoice->tax_amount ?? 0) / 2, 2));
+                            $sgstAmt = (float) ($invoice->sgst_amount ?? round(($invoice->tax_amount ?? 0) - $cgstAmt, 2));
                         @endphp
                         <div class="ps-3 border-start border-2 border-primary-subtle my-2 bg-white bg-opacity-75 py-1 rounded-end">
                             <div class="d-flex justify-content-between small py-1">
-                                <span class="text-secondary"><i class="fa-solid fa-angle-right me-1 text-primary"></i>CGST ({{ $halfRate }}%):</span>
+                                <span class="text-secondary"><i class="fa-solid fa-angle-right me-1 text-primary"></i>CGST ({{ $cgstRate }}%):</span>
                                 <span class="text-dark fw-medium">₹{{ number_format($cgstAmt, 2) }}</span>
                             </div>
                             <div class="d-flex justify-content-between small py-1">
-                                <span class="text-secondary"><i class="fa-solid fa-angle-right me-1 text-primary"></i>SGST ({{ $halfRate }}%):</span>
+                                <span class="text-secondary"><i class="fa-solid fa-angle-right me-1 text-primary"></i>SGST ({{ $sgstRate }}%):</span>
                                 <span class="text-dark fw-medium">₹{{ number_format($sgstAmt, 2) }}</span>
                             </div>
                         </div>

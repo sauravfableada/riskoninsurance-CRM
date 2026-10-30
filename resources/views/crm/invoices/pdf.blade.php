@@ -255,16 +255,27 @@
         $grandTotal = (float) ($invoice->grand_total ?: ($taxableValue + $totalTax));
         $grandTotalRounded = round($grandTotal);
 
-        // Check if Delhi (intra-state)
-        $isDelhi = str_contains(strtolower($buyerState), 'delhi') || str_starts_with(strtoupper(trim($buyerGstin)), '07') || empty($buyerGstin) || $buyerGstin === '—';
-        $cgst = $isDelhi ? round($totalTax / 2, 2) : 0.00;
-        $sgst = $isDelhi ? round($totalTax - $cgst, 2) : 0.00;
-        $igst = $isDelhi ? 0.00 : $totalTax;
+        // Tax Rates & Amounts
+        $cgstRate = (float) ($invoice->cgst_percentage ?? round($taxRate / 2, 2));
+        $sgstRate = (float) ($invoice->sgst_percentage ?? round($taxRate - $cgstRate, 2));
+        $igstRate = (float) ($invoice->igst_percentage ?? 0);
 
-        // If not Delhi but no IGST, default to standard CGST & SGST
-        if ($cgst == 0 && $sgst == 0 && $igst == 0 && $totalTax > 0) {
-            $cgst = round($totalTax / 2, 2);
-            $sgst = round($totalTax - $cgst, 2);
+        if (!empty($invoice->cgst_amount) || !empty($invoice->sgst_amount) || !empty($invoice->igst_amount)) {
+            $cgst = (float) ($invoice->cgst_amount ?? 0);
+            $sgst = (float) ($invoice->sgst_amount ?? 0);
+            $igst = (float) ($invoice->igst_amount ?? 0);
+        } else {
+            // Check if Delhi (intra-state)
+            $isDelhi = str_contains(strtolower($buyerState), 'delhi') || str_starts_with(strtoupper(trim($buyerGstin)), '07') || empty($buyerGstin) || $buyerGstin === '—';
+            $cgst = $isDelhi ? round(($taxableValue * $cgstRate) / 100, 2) : 0.00;
+            $sgst = $isDelhi ? round(($taxableValue * $sgstRate) / 100, 2) : 0.00;
+            $igst = $isDelhi ? 0.00 : $totalTax;
+
+            // If not Delhi but no IGST, default to standard CGST & SGST
+            if ($cgst == 0 && $sgst == 0 && $igst == 0 && $totalTax > 0) {
+                $cgst = round(($taxableValue * $cgstRate) / 100, 2);
+                $sgst = round(($taxableValue * $sgstRate) / 100, 2);
+            }
         }
 
         // Resolve logo dynamically
@@ -462,22 +473,19 @@
                 <td class="border-right fw-bold">Total Taxable Value of Goods &amp; Services</td>
                 <td style="text-align: right; padding-right: 8px;" class="fw-bold">{{ number_format($taxableValue, 2) }}</td>
             </tr>
-            @php
-                $halfTaxRate = round($taxRate / 2, 2);
-            @endphp
             @if($igst > 0)
             <tr>
-                <td class="border-right">IGST @ {{ $taxRate }}%</td>
+                <td class="border-right">IGST @ {{ $igstRate ?: $taxRate }}%</td>
                 <td style="text-align: right; padding-right: 8px;">{{ number_format($igst, 2) }}</td>
             </tr>
             @endif
             @if($cgst > 0 || $igst == 0)
             <tr>
-                <td class="border-right">CGST @ {{ $halfTaxRate }}%</td>
+                <td class="border-right">CGST @ {{ $cgstRate }}%</td>
                 <td style="text-align: right; padding-right: 8px;">{{ number_format($cgst, 2) }}</td>
             </tr>
             <tr>
-                <td class="border-right">SGST @ {{ $halfTaxRate }}%</td>
+                <td class="border-right">SGST @ {{ $sgstRate }}%</td>
                 <td style="text-align: right; padding-right: 8px;">{{ number_format($sgst, 2) }}</td>
             </tr>
             @endif

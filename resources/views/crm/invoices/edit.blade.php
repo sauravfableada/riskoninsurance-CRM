@@ -330,22 +330,37 @@
                                     <span class="fw-semibold">₹ <span id="displayTaxAmount">{{ number_format($invoice->tax_amount ?? 0, 2) }}</span></span>
                                 </div>
 
-                                {{-- CGST & SGST Breakdown --}}
+                                {{-- CGST & SGST Input Breakdown --}}
                                 @php
                                     $editTaxPct = (float) old('tax_percentage', $invoice->tax_percentage ?? 18);
-                                    $editHalfPct = round($editTaxPct / 2, 2);
-                                    $editTaxAmt = (float) ($invoice->tax_amount ?? 0);
-                                    $editCgstAmt = round($editTaxAmt / 2, 2);
-                                    $editSgstAmt = round($editTaxAmt - $editCgstAmt, 2);
+                                    $editCgstRate = (float) old('cgst_percentage', $invoice->cgst_percentage ?? round($editTaxPct / 2, 2));
+                                    $editSgstRate = (float) old('sgst_percentage', $invoice->sgst_percentage ?? round($editTaxPct - $editCgstRate, 2));
+                                    $editSubtotal = (float) ($invoice->subtotal ?? 0);
+                                    $editCgstAmt = (float) ($invoice->cgst_amount ?? round(($editSubtotal * $editCgstRate) / 100, 2));
+                                    $editSgstAmt = (float) ($invoice->sgst_amount ?? round(($editSubtotal * $editSgstRate) / 100, 2));
                                 @endphp
                                 <div class="ps-3 border-start border-2 border-primary-subtle my-2 bg-light bg-opacity-50 py-1 rounded-end">
-                                    <div class="d-flex justify-content-between align-items-center small py-1">
-                                        <span class="text-secondary"><i class="fa-solid fa-angle-right me-1 text-primary"></i>CGST (<span id="displayCgstRate">{{ $editHalfPct }}</span>%):</span>
-                                        <span class="text-dark fw-medium">₹ <span id="displayCgstAmount">{{ number_format($editCgstAmt, 2) }}</span></span>
+                                    <div class="d-flex justify-content-between align-items-center py-1">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="text-secondary small fw-semibold"><i class="fa-solid fa-angle-right me-1 text-primary"></i>CGST:</span>
+                                            <div class="input-group input-group-sm" style="width: 85px;">
+                                                <input type="number" step="0.01" min="0" max="100" name="cgst_percentage" id="cgstPercentageInput" 
+                                                    class="form-control form-control-sm text-end" value="{{ $editCgstRate }}">
+                                                <span class="input-group-text p-1">%</span>
+                                            </div>
+                                        </div>
+                                        <span class="text-dark fw-medium small">₹ <span id="displayCgstAmount">{{ number_format($editCgstAmt, 2) }}</span></span>
                                     </div>
-                                    <div class="d-flex justify-content-between align-items-center small py-1">
-                                        <span class="text-secondary"><i class="fa-solid fa-angle-right me-1 text-primary"></i>SGST (<span id="displaySgstRate">{{ $editHalfPct }}</span>%):</span>
-                                        <span class="text-dark fw-medium">₹ <span id="displaySgstAmount">{{ number_format($editSgstAmt, 2) }}</span></span>
+                                    <div class="d-flex justify-content-between align-items-center py-1">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="text-secondary small fw-semibold"><i class="fa-solid fa-angle-right me-1 text-primary"></i>SGST:</span>
+                                            <div class="input-group input-group-sm" style="width: 85px;">
+                                                <input type="number" step="0.01" min="0" max="100" name="sgst_percentage" id="sgstPercentageInput" 
+                                                    class="form-control form-control-sm text-end" value="{{ $editSgstRate }}">
+                                                <span class="input-group-text p-1">%</span>
+                                            </div>
+                                        </div>
+                                        <span class="text-dark fw-medium small">₹ <span id="displaySgstAmount">{{ number_format($editSgstAmt, 2) }}</span></span>
                                     </div>
                                 </div>
 
@@ -462,21 +477,16 @@
             subtotal += lineTot;
         });
 
-        const taxPct = parseFloat(document.getElementById('taxPercentageInput')?.value) || 0;
-        const taxAmount = Math.round((subtotal * taxPct / 100) * 100) / 100;
+        const cgstPct = parseFloat(document.getElementById('cgstPercentageInput')?.value) || 0;
+        const sgstPct = parseFloat(document.getElementById('sgstPercentageInput')?.value) || 0;
+        const cgstAmount = Math.round((subtotal * cgstPct / 100) * 100) / 100;
+        const sgstAmount = Math.round((subtotal * sgstPct / 100) * 100) / 100;
+        const taxAmount = Math.round((cgstAmount + sgstAmount) * 100) / 100;
         const grandTotal = Math.round((subtotal + taxAmount) * 100) / 100;
 
-        const halfPct = Math.round((taxPct / 2) * 100) / 100;
-        const cgstAmount = Math.round((taxAmount / 2) * 100) / 100;
-        const sgstAmount = Math.round((taxAmount - cgstAmount) * 100) / 100;
-
-        const cgstRateEl = document.getElementById('displayCgstRate');
-        const sgstRateEl = document.getElementById('displaySgstRate');
         const cgstAmountEl = document.getElementById('displayCgstAmount');
         const sgstAmountEl = document.getElementById('displaySgstAmount');
 
-        if (cgstRateEl) cgstRateEl.textContent = halfPct;
-        if (sgstRateEl) sgstRateEl.textContent = halfPct;
         if (cgstAmountEl) cgstAmountEl.textContent = cgstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         if (sgstAmountEl) sgstAmountEl.textContent = sgstAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
@@ -510,7 +520,24 @@
             recalcTotals();
         });
 
-        $(document).on('input', '.item-amount, .item-qty, #taxPercentageInput', function () {
+        // When main GST changes, split evenly into CGST & SGST
+        $(document).on('input', '#taxPercentageInput', function () {
+            const totalTax = parseFloat($(this).val()) || 0;
+            const half = Math.round((totalTax / 2) * 100) / 100;
+            $('#cgstPercentageInput').val(half);
+            $('#sgstPercentageInput').val(Math.round((totalTax - half) * 100) / 100);
+            recalcTotals();
+        });
+
+        // When CGST or SGST changes, update main GST percentage
+        $(document).on('input', '#cgstPercentageInput, #sgstPercentageInput', function () {
+            const cgst = parseFloat($('#cgstPercentageInput').val()) || 0;
+            const sgst = parseFloat($('#sgstPercentageInput').val()) || 0;
+            $('#taxPercentageInput').val(Math.round((cgst + sgst) * 100) / 100);
+            recalcTotals();
+        });
+
+        $(document).on('input', '.item-amount, .item-qty', function () {
             recalcTotals();
         });
 
