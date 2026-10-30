@@ -68,11 +68,11 @@
 
                 <div class="d-flex flex-wrap gap-2 no-print">
                     <a href="{{ route('invoices.pdf', $invoice->id) }}" class="btn btn-outline-dark-blue btn-sm" target="_blank">
-                        <i class="fa-solid fa-file-pdf text-danger me-1"></i>Download PDF
+                        <i class="fa-solid fa-file-pdf text-danger me-1"></i>Download
                     </a>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+                    <!-- <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
                         <i class="fa-solid fa-print me-1"></i>Print
-                    </button>
+                    </button> -->
                     <button type="button" class="btn btn-sm {{ $invoice->status === 'paid' ? 'btn-secondary' : 'btn-success' }}" 
                         id="togglePaidBtn" data-current-status="{{ $invoice->status }}">
                         <i class="fa-solid {{ $invoice->status === 'paid' ? 'fa-rotate-left' : 'fa-check-double' }} me-1"></i>

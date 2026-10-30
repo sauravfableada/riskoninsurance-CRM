@@ -47,10 +47,11 @@
         .invoice-title {
             font-size: 18px;
             font-weight: bold;
-            color: #0369a1;
+            color: #000000;
             text-align: right;
             text-transform: uppercase;
             margin: 0 0 4px;
+            letter-spacing: 0.5px;
         }
 
         .invoice-sub {
@@ -180,12 +181,26 @@
             padding-top: 25px;
         }
 
-        .sign-line {
+        .sign-block {
             display: inline-block;
-            border-top: 1px solid #94a3b8;
-            width: 180px;
             text-align: center;
-            padding-top: 4px;
+            width: 220px;
+        }
+
+        .sign-company {
+            font-size: 10px;
+            font-weight: bold;
+            color: #0f172a;
+            margin-bottom: 55px; /* Ample space for company stamp and signature */
+            text-align: center;
+        }
+
+        .sign-line {
+            display: block;
+            border-top: 1px solid #64748b;
+            width: 100%;
+            text-align: center;
+            padding-top: 5px;
             font-weight: bold;
             color: #334155;
             font-size: 9px;
@@ -289,7 +304,7 @@
             <td style="width: 2%;"></td>
             <td style="width: 49%; vertical-align: top;">
                 <div class="section-card">
-                    <div class="section-heading">Remittance Billing Account (Accounts.csv)</div>
+                    <div class="section-heading">Remittance Billing Account</div>
                     <table style="width: 100%; border-collapse: collapse;">
                         <tr>
                             <td class="info-label" style="width: 45%;">Account Name:</td>
@@ -396,8 +411,10 @@
 
     {{-- Signatory Footer --}}
     <div class="sign-area">
-        <div style="font-size: 9px; color: #64748b; margin-bottom: 25px;">For <strong>RISKON INSURANCE</strong></div>
-        <div class="sign-line">Authorized Signatory</div>
+        <div class="sign-block">
+            <div class="sign-company">For <strong>{{ strtoupper($invoice->organization ?? 'RISKON INSURANCE') }}</strong></div>
+            <div class="sign-line">Authorized Signatory</div>
+        </div>
     </div>
 </body>
 </html>
