@@ -293,17 +293,32 @@
 
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Payout Method <span class="text-danger">*</span></label>
-                        <select name="payout_method" class="form-select" required>
-                            <option value="bank_transfer" {{ old('payout_method') == 'bank_transfer' ? 'selected' : '' }}>Bank Transfer (NEFT/IMPS)</option>
-                            <option value="upi" {{ old('payout_method') == 'upi' ? 'selected' : '' }}>UPI ID / VPA</option>
-                            <option value="cheque" {{ old('payout_method') == 'cheque' ? 'selected' : '' }}>Bank Cheque</option>
-                            <option value="cash" {{ old('payout_method') == 'cash' ? 'selected' : '' }}>Cash Settlement</option>
+                        @php
+                            $selectedMethod = old('payout_method', $lastPayoutMethod ?? 'bank_transfer');
+                        @endphp
+                        <select name="payout_method" id="withdrawalPayoutMethod" class="form-select" required>
+                            <option value="bank_transfer" {{ $selectedMethod == 'bank_transfer' ? 'selected' : '' }}>Bank Transfer (NEFT/IMPS)</option>
+                            <option value="upi" {{ $selectedMethod == 'upi' ? 'selected' : '' }}>UPI ID / VPA</option>
+                            <option value="cheque" {{ $selectedMethod == 'cheque' ? 'selected' : '' }}>Bank Cheque</option>
+                            <option value="cash" {{ $selectedMethod == 'cash' ? 'selected' : '' }}>Cash Settlement</option>
                         </select>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Payout Account / UPI Details <span class="text-danger">*</span></label>
-                        <textarea name="payout_details" rows="3" class="form-control" placeholder="Account Number, IFSC code or UPI ID" required>{{ old('payout_details') }}</textarea>
+                        <label class="form-label fw-semibold d-flex justify-content-between align-items-center">
+                            <span>Payout Account / UPI Details <span class="text-danger">*</span></span>
+                            @if(!empty($lastPayoutDetails))
+                                <span class="badge bg-success-subtle text-success border border-success-subtle fw-normal" style="font-size: 0.72rem;">
+                                    <i class="fas fa-check-circle me-1"></i>Saved Details Auto-Filled
+                                </span>
+                            @endif
+                        </label>
+                        <textarea name="payout_details" id="withdrawalPayoutDetails" rows="3" class="form-control" placeholder="Account Number, IFSC code or UPI ID" required>{{ old('payout_details', $lastPayoutDetails ?? '') }}</textarea>
+                        @if(!empty($lastPayoutDetails))
+                            <div class="form-text small text-muted">
+                                <i class="fas fa-info-circle me-1"></i>Auto-filled from your previous payout. You can edit this anytime.
+                            </div>
+                        @endif
                     </div>
 
                     <div class="mb-3">
@@ -338,6 +353,39 @@
                     { targets: [0], orderable: false }
                 ]
             });
+        }
+
+        // Auto-fill and persist Payout Details in withdrawal modal
+        const payoutDetailsEl = document.getElementById('withdrawalPayoutDetails');
+        const payoutMethodEl = document.getElementById('withdrawalPayoutMethod');
+
+        if (payoutDetailsEl) {
+            // Check localStorage if not already pre-filled from server
+            if (!payoutDetailsEl.value.trim()) {
+                const cachedDetails = localStorage.getItem('subagent_last_payout_details');
+                if (cachedDetails) {
+                    payoutDetailsEl.value = cachedDetails;
+                }
+            }
+            if (payoutMethodEl && (!payoutMethodEl.value || payoutMethodEl.value === 'bank_transfer')) {
+                const cachedMethod = localStorage.getItem('subagent_last_payout_method');
+                if (cachedMethod) {
+                    payoutMethodEl.value = cachedMethod;
+                }
+            }
+
+            // Save on form submit
+            const wForm = payoutDetailsEl.closest('form');
+            if (wForm) {
+                wForm.addEventListener('submit', function () {
+                    if (payoutDetailsEl.value.trim()) {
+                        localStorage.setItem('subagent_last_payout_details', payoutDetailsEl.value.trim());
+                    }
+                    if (payoutMethodEl && payoutMethodEl.value) {
+                        localStorage.setItem('subagent_last_payout_method', payoutMethodEl.value);
+                    }
+                });
+            }
         }
     });
 </script>

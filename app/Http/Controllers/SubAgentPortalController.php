@@ -63,6 +63,14 @@ class SubAgentPortalController extends Controller
             ->take(6)
             ->get();
 
+        $latestWithdrawal = WithdrawalRequest::where('user_id', $agent->id)
+            ->whereNotNull('payout_details')
+            ->where('payout_details', '!=', '')
+            ->latest()
+            ->first();
+        $lastPayoutDetails = $latestWithdrawal?->payout_details;
+        $lastPayoutMethod = $latestWithdrawal?->payout_method ?? 'bank_transfer';
+
         return view('portal.subagent.dashboard', compact(
             'agent',
             'commissions',
@@ -72,7 +80,9 @@ class SubAgentPortalController extends Controller
             'availableBalance',
             'recentWithdrawals',
             'search',
-            'statusFilter'
+            'statusFilter',
+            'lastPayoutDetails',
+            'lastPayoutMethod'
         ));
     }
 
@@ -94,7 +104,15 @@ class SubAgentPortalController extends Controller
         $pendingWithdrawalAmount = (float) WithdrawalRequest::where('user_id', $agent->id)->where('status', 'pending')->sum('amount');
         $availableBalance = max(0, $totalCommissionEarned - $totalWithdrawnApproved - $pendingWithdrawalAmount);
 
-        return view('portal.subagent.withdrawals', compact('agent', 'withdrawals', 'availableBalance', 'totalCommissionEarned', 'totalWithdrawnApproved', 'pendingWithdrawalAmount'));
+        $latestWithdrawal = WithdrawalRequest::where('user_id', $agent->id)
+            ->whereNotNull('payout_details')
+            ->where('payout_details', '!=', '')
+            ->latest()
+            ->first();
+        $lastPayoutDetails = $latestWithdrawal?->payout_details;
+        $lastPayoutMethod = $latestWithdrawal?->payout_method ?? 'bank_transfer';
+
+        return view('portal.subagent.withdrawals', compact('agent', 'withdrawals', 'availableBalance', 'totalCommissionEarned', 'totalWithdrawnApproved', 'pendingWithdrawalAmount', 'lastPayoutDetails', 'lastPayoutMethod'));
     }
 
     /**

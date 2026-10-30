@@ -115,17 +115,32 @@
 
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Payout Method <span class="text-danger">*</span></label>
+                        @php
+                            $selectedMethod = old('payout_method', $lastPayoutMethod ?? 'bank_transfer');
+                        @endphp
                         <select name="payout_method" class="form-select" required>
-                            <option value="bank_transfer">Bank Transfer (NEFT/IMPS)</option>
-                            <option value="upi">UPI ID / VPA</option>
-                            <option value="cheque">Bank Cheque</option>
-                            <option value="cash">Cash Settlement</option>
+                            <option value="bank_transfer" {{ $selectedMethod == 'bank_transfer' ? 'selected' : '' }}>Bank Transfer (NEFT/IMPS)</option>
+                            <option value="upi" {{ $selectedMethod == 'upi' ? 'selected' : '' }}>UPI ID / VPA</option>
+                            <option value="cheque" {{ $selectedMethod == 'cheque' ? 'selected' : '' }}>Bank Cheque</option>
+                            <option value="cash" {{ $selectedMethod == 'cash' ? 'selected' : '' }}>Cash Settlement</option>
                         </select>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Payout Account / UPI Details <span class="text-danger">*</span></label>
-                        <textarea name="payout_details" rows="3" class="form-control" placeholder="Account Number, IFSC code or UPI ID" required></textarea>
+                        <label class="form-label fw-semibold d-flex justify-content-between align-items-center">
+                            <span>Payout Account / UPI Details <span class="text-danger">*</span></span>
+                            @if(!empty($lastPayoutDetails))
+                                <span class="badge bg-success-subtle text-success border border-success-subtle fw-normal" style="font-size: 0.72rem;">
+                                    <i class="fas fa-check-circle me-1"></i>Saved Details Auto-Filled
+                                </span>
+                            @endif
+                        </label>
+                        <textarea name="payout_details" rows="3" class="form-control" placeholder="Account Number, IFSC code or UPI ID" required>{{ old('payout_details', $lastPayoutDetails ?? '') }}</textarea>
+                        @if(!empty($lastPayoutDetails))
+                            <div class="form-text small text-muted">
+                                <i class="fas fa-info-circle me-1"></i>Auto-filled from your previous payout. You can edit this anytime.
+                            </div>
+                        @endif
                     </div>
 
                     <div class="mb-3">

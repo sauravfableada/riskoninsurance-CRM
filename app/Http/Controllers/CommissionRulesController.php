@@ -733,6 +733,15 @@ class CommissionRulesController extends Controller
             ->take(10)
             ->get();
 
+        $latestWithdrawal = \App\Models\WithdrawalRequest::where('user_id', $userId)
+            ->whereNotNull('payout_details')
+            ->where('payout_details', '!=', '')
+            ->latest()
+            ->first();
+
+        $lastPayoutDetails = $latestWithdrawal?->payout_details;
+        $lastPayoutMethod = $latestWithdrawal?->payout_method ?? 'bank_transfer';
+
         return view('commission.entries.index', compact(
             'commissionEntries',
             'totalEarned',
@@ -745,7 +754,9 @@ class CommissionRulesController extends Controller
             'availableBalance',
             'totalWithdrawnApproved',
             'pendingWithdrawalAmount',
-            'myWithdrawals'
+            'myWithdrawals',
+            'lastPayoutDetails',
+            'lastPayoutMethod'
         ));
     }
 

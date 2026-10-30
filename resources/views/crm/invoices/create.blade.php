@@ -118,7 +118,7 @@
                             <span class="badge bg-success text-white px-2 py-1">
                                 <i class="fa-solid fa-shield-check me-1"></i>Remittance Billing Account
                             </span>
-                            <span class="text-muted small">(Configured from Accounts.csv)</span>
+                            <!-- <span class="text-muted small">(Configured from Accounts.csv)</span> -->
                         </div>
                         <span class="badge bg-white text-success border border-success-subtle px-2 py-1">
                             <i class="fa-solid fa-circle-check text-success me-1"></i>Active Account
