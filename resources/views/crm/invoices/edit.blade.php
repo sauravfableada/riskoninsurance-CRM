@@ -211,6 +211,7 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th style="min-width: 250px;">Item / Policy Description <span class="text-danger">*</span></th>
+                                        <th style="width: 110px;" class="text-center">HSN/SAC</th>
                                         <th style="width: 140px;" class="text-end">Gross Premium (₹)</th>
                                         <th style="width: 110px;" class="text-center">Pay-In %</th>
                                         <th style="width: 140px;" class="text-end">Pay-In Amount (₹) <span class="text-danger">*</span></th>
@@ -244,6 +245,10 @@
                                                 @if($item->policy_type_name)
                                                     <input type="hidden" name="items[{{ $idx }}][policy_type_name]" value="{{ $item->policy_type_name }}">
                                                 @endif
+                                            </td>
+                                            <td>
+                                                <input type="text" name="items[{{ $idx }}][hsn_sac]" class="form-control form-control-sm text-center font-monospace item-hsn" 
+                                                    value="{{ $item->hsn_sac ?: '997161' }}" placeholder="997161">
                                             </td>
                                             <td>
                                                 <input type="number" step="0.01" min="0" name="items[{{ $idx }}][gross_premium]" class="form-control form-control-sm text-end item-premium" 
@@ -403,6 +408,10 @@
                     value="${item.product_name || 'Commission Remittance'}" required>
             </td>
             <td>
+                <input type="text" name="items[${idx}][hsn_sac]" class="form-control form-control-sm text-center font-monospace item-hsn" 
+                    value="${item.hsn_sac || '997161'}" placeholder="997161">
+            </td>
+            <td>
                 <input type="number" step="0.01" min="0" name="items[${idx}][gross_premium]" class="form-control form-control-sm text-end item-premium" 
                     value="${grossPremium > 0 ? grossPremium.toFixed(2) : ''}" placeholder="0.00">
             </td>
@@ -497,6 +506,18 @@
 
         $(document).on('input', '.item-amount, .item-qty, #taxPercentageInput', function () {
             recalcTotals();
+        });
+
+        // Auto-sync HSN/SAC across rows if first row is changed
+        $(document).on('input', '.item-hsn', function () {
+            const val = $(this).val();
+            if ($(this).closest('tr').index() === 0) {
+                $('.item-hsn').each(function (i) {
+                    if (i > 0 && (!$(this).val() || $(this).val() === '997161')) {
+                        $(this).val(val);
+                    }
+                });
+            }
         });
 
         recalcTotals();

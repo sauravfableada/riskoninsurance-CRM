@@ -388,10 +388,17 @@
                 </tr>
             </thead>
             <tbody>
+                @php
+                    $lastHsn = null;
+                @endphp
                 @forelse($invoice->items as $idx => $item)
                     @php
                         $itemTotal = (float) ($item->total_price ?: (($item->pay_in_amount ?? $item->amount) * $item->quantity));
                         $itemRate = $item->pay_in_percentage ? number_format($item->pay_in_percentage, 0) . '%' : '1';
+                        $currentHsn = !empty($item->hsn_sac) ? trim($item->hsn_sac) : '997161';
+                        // "same two time no need": Only print HSN/SAC if first row or different from previous
+                        $displayHsn = ($idx === 0 || $currentHsn !== $lastHsn) ? $currentHsn : '';
+                        $lastHsn = $currentHsn;
                     @endphp
                     <tr>
                         <td class="text-center">{{ $idx + 1 }}</td>
@@ -406,9 +413,9 @@
                                 <div style="font-size: 7.5px; color: #555;">Holder: {{ $item->holder_name }}</div>
                             @endif
                         </td>
-                        <td class="text-center">997161</td>
+                        <td class="text-center">{{ $displayHsn }}</td>
                         <td class="text-center">{{ $itemRate }}</td>
-                        <td class="text-right">{{ number_format($itemTotal, 2) }}</td>
+                        <td class="text-right">{{ $item->quantity ?: 1 }}</td>
                         <td class="text-right fw-bold" style="padding-right: 8px;">{{ number_format($itemTotal, 2) }}</td>
                     </tr>
                 @empty
@@ -419,7 +426,7 @@
                         </td>
                         <td class="text-center">997161</td>
                         <td class="text-center">1</td>
-                        <td class="text-right">{{ number_format($taxableValue, 2) }}</td>
+                        <td class="text-right">1</td>
                         <td class="text-right fw-bold" style="padding-right: 8px;">{{ number_format($taxableValue, 2) }}</td>
                     </tr>
                 @endforelse

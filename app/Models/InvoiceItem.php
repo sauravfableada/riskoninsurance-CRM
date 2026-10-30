@@ -21,6 +21,7 @@ class InvoiceItem extends Model
         'pay_in_amount',
         'product_id',
         'product_name',
+        'hsn_sac',
         'amount',
         'quantity',
         'total_price',

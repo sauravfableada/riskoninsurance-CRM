@@ -192,6 +192,7 @@
                                 <tr>
                                     <th class="ps-3" style="width: 40px;">#</th>
                                     <th>Description / Policy Info</th>
+                                    <th class="text-center" style="width: 100px;">HSN/SAC</th>
                                     <th>Holder Name</th>
                                     <th class="text-end">Gross Premium</th>
                                     <th class="text-center">Pay-In %</th>
@@ -212,6 +213,9 @@
                                             @if($item->policy_type_name)
                                                 <span class="badge bg-light text-dark border small mt-1">{{ $item->policy_type_name }}</span>
                                             @endif
+                                        </td>
+                                        <td class="text-center font-monospace small">
+                                            <span class="badge bg-light text-dark border">{{ $item->hsn_sac ?: '997161' }}</span>
                                         </td>
                                         <td>{{ $item->holder_name ?? '—' }}</td>
                                         <td class="text-end">
@@ -234,7 +238,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="8" class="text-center py-4 text-muted">No line items recorded.</td>
+                                        <td colspan="9" class="text-center py-4 text-muted">No line items recorded.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
