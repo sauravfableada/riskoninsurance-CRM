@@ -10,6 +10,7 @@ use App\Models\WithdrawalRequest;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class AdminWithdrawalController extends Controller
@@ -60,8 +61,15 @@ class AdminWithdrawalController extends Controller
             $companies = InsuranceCompany::select('id', 'name')->orderBy('name')->get();
         }
 
-        // Fetch subagents for the filter dropdown
-        $subagents = User::where('type', 'sub_agents')->orderBy('name')->get(['id', 'name', 'email']);
+        // Fetch all sub-agents and staff members for filters and payout creation
+        $subagents = User::where(function ($q) {
+            $q->whereIn('type', ['sub_agents', 'staff'])
+              ->orWhereNull('type')
+              ->orWhereNotIn('type', ['customer', 'client']);
+        })
+        ->where('id', '!=', 1)
+        ->orderBy('name')
+        ->get(['id', 'name', 'email', 'type']);
 
         // Query Withdrawal Requests (which are inherently Pay-Out applications)
         $wQuery = WithdrawalRequest::with(['user', 'reviewer'])->latest();
@@ -467,5 +475,310 @@ class AdminWithdrawalController extends Controller
         ]);
 
         return back()->with('success', 'Withdrawal request has been rejected.');
+    }
+
+    /**
+     * Get member available balance and last payout details for modal.
+     */
+    public function userBalance($userId)
+    {
+        $user = User::findOrFail($userId);
+
+        $totalEarned = (float) CommissionEntry::where(function ($cq) use ($userId) {
+            if (Schema::hasColumn('commission_entries', 'user_id')) {
+                $cq->where('user_id', $userId);
+            }
+            if (Schema::hasColumn('commission_entries', 'agent_id')) {
+                $cq->orWhere('agent_id', $userId);
+            }
+        })
+        ->whereIn('payment_status', ['pending', 'paid', 'approved'])
+        ->sum(DB::raw('COALESCE(NULLIF(pay_out_amount, 0), commission_amount)'));
+
+        $withdrawnApproved = (float) WithdrawalRequest::where('user_id', $userId)
+            ->where('status', 'approved')
+            ->sum('amount');
+
+        $pendingWithdrawal = (float) WithdrawalRequest::where('user_id', $userId)
+            ->where('status', 'pending')
+            ->sum('amount');
+
+        $availableBalance = max(0, round($totalEarned - $withdrawnApproved - $pendingWithdrawal, 2));
+
+        $lastWithdrawal = WithdrawalRequest::where('user_id', $userId)
+            ->whereNotNull('payout_details')
+            ->latest('id')
+            ->first();
+
+        $policiesCount = \App\Models\Policy::where(function ($q) use ($userId) {
+            $q->where('user_id', $userId)->orWhere('created_by', $userId);
+        })->count();
+
+        return response()->json([
+            'success' => true,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'type' => ($user->type === 'sub_agents') ? 'Sub-Agent' : 'Staff',
+            ],
+            'available_balance' => $availableBalance,
+            'available_balance_formatted' => '₹' . number_format($availableBalance, 2),
+            'total_earned' => $totalEarned,
+            'policies_count' => $policiesCount,
+            'last_payout_method' => $lastWithdrawal?->payout_method ?? 'bank_transfer',
+            'last_payout_details' => $lastWithdrawal?->payout_details ?? '',
+        ]);
+    }
+
+    /**
+     * Admin create a payout request for sub-agent or staff.
+     */
+    public function storePayout(Request $request)
+    {
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'amount' => 'required|numeric|min:0.01',
+            'payout_method' => 'required|string|in:bank_transfer,upi,cheque,cash',
+            'payout_details' => 'required|string|max:1000',
+            'status' => 'required|string|in:pending,approved',
+            'admin_remarks' => 'nullable|string|max:500',
+            'subagent_note' => 'nullable|string|max:500',
+        ]);
+
+        $status = $validated['status'];
+        $isApproved = ($status === 'approved');
+
+        $withdrawal = WithdrawalRequest::create([
+            'user_id' => $validated['user_id'],
+            'amount' => $validated['amount'],
+            'payout_method' => $validated['payout_method'],
+            'payout_details' => $validated['payout_details'],
+            'status' => $status,
+            'subagent_note' => $validated['subagent_note'] ?? 'Created by Admin',
+            'admin_remarks' => $validated['admin_remarks'] ?: ($isApproved ? 'Created and approved by Admin' : null),
+            'reviewed_by' => $isApproved ? Auth::id() : null,
+            'reviewed_at' => $isApproved ? now() : null,
+        ]);
+
+        if ($isApproved) {
+            // Synchronize corresponding commission entries for this user to 'paid'
+            $userId = $validated['user_id'];
+            $unpaidEntries = CommissionEntry::where(function ($q) use ($userId) {
+                if (Schema::hasColumn('commission_entries', 'user_id')) {
+                    $q->where('user_id', $userId);
+                }
+                if (Schema::hasColumn('commission_entries', 'agent_id')) {
+                    $q->orWhere('agent_id', $userId);
+                }
+            })->where('payment_status', 'pending')->get();
+
+            $remAmt = (float) $validated['amount'];
+            foreach ($unpaidEntries as $entry) {
+                $eAmt = (float) ($entry->pay_out_amount > 0 ? $entry->pay_out_amount : $entry->commission_amount);
+                if (abs($eAmt - (float) $withdrawal->amount) < 0.05 || $unpaidEntries->count() === 1 || $remAmt >= ($eAmt - 0.05)) {
+                    $entry->update(['payment_status' => 'paid']);
+                    $remAmt -= $eAmt;
+                }
+            }
+        }
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Payout request of ₹' . number_format($withdrawal->amount, 2) . ' created successfully' . ($isApproved ? ' and marked as Approved.' : '.'),
+                'withdrawal' => $withdrawal,
+            ]);
+        }
+
+        return back()->with('success', 'Payout request of ₹' . number_format($withdrawal->amount, 2) . ' created successfully.');
+    }
+
+    /**
+     * Get details of a withdrawal request or commission payout for view/edit modals.
+     */
+    public function details(Request $request, $id)
+    {
+        $kind = $request->query('kind', 'withdrawal');
+
+        if ($kind === 'commission') {
+            $entry = CommissionEntry::with(['user', 'agent', 'policy.holder', 'policy.company', 'commissionRule.company'])->findOrFail($id);
+            $inAmt = (float) ($entry->pay_in_amount > 0 ? $entry->pay_in_amount : $entry->commission_amount);
+            $outAmt = (float) ($entry->pay_out_amount > 0 ? $entry->pay_out_amount : $entry->commission_amount);
+            $profit = (float) ($entry->net_admin_profit > 0 ? $entry->net_admin_profit : max(0, $inAmt - $outAmt));
+            $compName = $entry->policy?->company?->name ?? $entry->commissionRule?->company?->name ?? 'Direct Insurance';
+            $user = $entry->user ?? $entry->agent ?? $entry->policy?->user;
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $entry->id,
+                    'kind' => 'commission',
+                    'ref_no' => $entry->policy?->policy_number ?? ('#POL-' . $entry->policy_id),
+                    'withdrawal_ref' => '—',
+                    'user_id' => $user?->id,
+                    'user_name' => $user?->name ?? '—',
+                    'user_email' => $user?->email ?? '—',
+                    'user_type' => ($user?->type === 'sub_agents') ? 'Sub-Agent' : 'Staff',
+                    'company_name' => $compName,
+                    'gross_premium' => (float) $entry->premium_amount,
+                    'pay_in_amount' => $inAmt,
+                    'pay_out_amount' => $outAmt,
+                    'net_profit' => $profit,
+                    'payout_method' => 'policy_commission',
+                    'payout_details' => 'Policy Commission (' . ($entry->policy?->holder?->name ?? 'Customer') . ')',
+                    'status' => in_array(strtolower($entry->payment_status ?: ''), ['paid', 'approved'], true) ? 'approved' : ($entry->payment_status ?: 'pending'),
+                    'subagent_note' => $entry->remarks ?? '',
+                    'admin_remarks' => '',
+                    'reviewer_name' => null,
+                    'reviewed_at' => null,
+                    'created_at' => $entry->created_at ? $entry->created_at->format('d M Y, h:i A') : '—',
+                ]
+            ]);
+        }
+
+        $w = WithdrawalRequest::with(['user', 'reviewer'])->findOrFail($id);
+        $wRef = '#WR-' . str_pad($w->id, 5, '0', STR_PAD_LEFT);
+
+        $matchingCommission = CommissionEntry::with(['policy.holder', 'policy.company', 'commissionRule.company'])
+            ->where(function ($q) use ($w) {
+                $q->where('user_id', $w->user_id)->orWhere('agent_id', $w->user_id);
+            })
+            ->latest('id')
+            ->first();
+
+        $compName = $matchingCommission?->policy?->company?->name ?? $matchingCommission?->commissionRule?->company?->name ?? 'Wallet Payout';
+        $inAmt = $matchingCommission ? (float) ($matchingCommission->pay_in_amount > 0 ? $matchingCommission->pay_in_amount : 0) : null;
+        $outAmt = (float) $w->amount;
+        $profit = ($inAmt !== null) ? max(0, $inAmt - $outAmt) : null;
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $w->id,
+                'kind' => 'withdrawal',
+                'ref_no' => $matchingCommission?->policy?->policy_number ? $matchingCommission->policy->policy_number : $wRef,
+                'withdrawal_ref' => $wRef,
+                'user_id' => $w->user_id,
+                'user_name' => $w->user?->name ?? 'Sub-Agent #' . $w->user_id,
+                'user_email' => $w->user?->email ?? '—',
+                'user_type' => ($w->user?->type === 'sub_agents') ? 'Sub-Agent' : 'Staff',
+                'company_name' => $compName,
+                'gross_premium' => $matchingCommission ? (float) $matchingCommission->premium_amount : null,
+                'pay_in_amount' => $inAmt,
+                'pay_out_amount' => $outAmt,
+                'net_profit' => $profit,
+                'payout_method' => $w->payout_method ?: 'bank_transfer',
+                'payout_details' => $w->payout_details ?: '',
+                'status' => $w->status,
+                'subagent_note' => $w->subagent_note ?? '',
+                'admin_remarks' => $w->admin_remarks ?? '',
+                'reviewer_name' => $w->reviewer?->name,
+                'reviewed_at' => $w->reviewed_at ? $w->reviewed_at->format('d M Y, h:i A') : null,
+                'created_at' => $w->created_at ? $w->created_at->format('d M Y, h:i A') : '—',
+            ]
+        ]);
+    }
+
+    /**
+     * Update payout details.
+     */
+    public function update(Request $request, $id)
+    {
+        $kind = $request->input('kind', 'withdrawal');
+
+        if ($kind === 'commission') {
+            $entry = CommissionEntry::findOrFail($id);
+            $validated = $request->validate([
+                'pay_out_amount' => 'required|numeric|min:0',
+                'status' => 'required|string|in:pending,paid,approved,cancelled,rejected',
+                'admin_remarks' => 'nullable|string|max:500',
+            ]);
+
+            $status = ($validated['status'] === 'approved') ? 'paid' : $validated['status'];
+            $entry->update([
+                'pay_out_amount' => $validated['pay_out_amount'],
+                'payment_status' => $status,
+                'remarks' => $validated['admin_remarks'] ?? $entry->remarks,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Commission transaction updated successfully.',
+            ]);
+        }
+
+        $withdrawal = WithdrawalRequest::findOrFail($id);
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'payout_method' => 'required|string|in:bank_transfer,upi,cheque,cash',
+            'payout_details' => 'required|string|max:1000',
+            'status' => 'required|string|in:pending,approved,rejected',
+            'admin_remarks' => 'nullable|string|max:500',
+        ]);
+
+        $wasPending = ($withdrawal->status === 'pending');
+        $isNowApproved = ($validated['status'] === 'approved');
+
+        $withdrawal->update([
+            'amount' => $validated['amount'],
+            'payout_method' => $validated['payout_method'],
+            'payout_details' => $validated['payout_details'],
+            'status' => $validated['status'],
+            'admin_remarks' => $validated['admin_remarks'],
+            'reviewed_by' => $isNowApproved ? (Auth::id() ?: $withdrawal->reviewed_by) : $withdrawal->reviewed_by,
+            'reviewed_at' => $isNowApproved ? ($withdrawal->reviewed_at ?: now()) : $withdrawal->reviewed_at,
+        ]);
+
+        if ($wasPending && $isNowApproved) {
+            $subagentId = $withdrawal->user_id;
+            $unpaidEntries = CommissionEntry::where(function ($q) use ($subagentId) {
+                if (Schema::hasColumn('commission_entries', 'user_id')) {
+                    $q->where('user_id', $subagentId);
+                }
+                if (Schema::hasColumn('commission_entries', 'agent_id')) {
+                    $q->orWhere('agent_id', $subagentId);
+                }
+            })->where('payment_status', 'pending')->get();
+
+            $remAmt = (float) $withdrawal->amount;
+            foreach ($unpaidEntries as $entry) {
+                $eAmt = (float) ($entry->pay_out_amount > 0 ? $entry->pay_out_amount : $entry->commission_amount);
+                if (abs($eAmt - (float) $withdrawal->amount) < 0.05 || $unpaidEntries->count() === 1 || $remAmt >= ($eAmt - 0.05)) {
+                    $entry->update(['payment_status' => 'paid']);
+                    $remAmt -= $eAmt;
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Withdrawal request updated successfully.',
+        ]);
+    }
+
+    /**
+     * Delete a withdrawal request or commission entry.
+     */
+    public function destroy(Request $request, $id)
+    {
+        $kind = $request->input('kind', 'withdrawal');
+
+        if ($kind === 'commission') {
+            $entry = CommissionEntry::findOrFail($id);
+            $entry->delete();
+            return response()->json([
+                'success' => true,
+                'message' => 'Commission transaction deleted successfully.',
+            ]);
+        }
+
+        $withdrawal = WithdrawalRequest::findOrFail($id);
+        $withdrawal->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Withdrawal record deleted successfully.',
+        ]);
     }
 }

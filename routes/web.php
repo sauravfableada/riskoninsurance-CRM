@@ -634,6 +634,11 @@ Route::middleware('auth.api')->group(function () {
         // Sub-Agent Withdrawal Requests (embedded in standard CRM flow)
         Route::post('/commission/withdrawals', [\App\Http\Controllers\SubAgentPortalController::class, 'storeWithdrawal'])->name('subagent.withdrawals.store');
         Route::get('/admin/withdrawals', [\App\Http\Controllers\AdminWithdrawalController::class, 'index'])->name('admin.withdrawals.index');
+        Route::post('/admin/withdrawals/create-payout', [\App\Http\Controllers\AdminWithdrawalController::class, 'storePayout'])->name('admin.withdrawals.store-payout');
+        Route::get('/admin/withdrawals/user-balance/{userId}', [\App\Http\Controllers\AdminWithdrawalController::class, 'userBalance'])->name('admin.withdrawals.user-balance');
+        Route::get('/admin/withdrawals/{id}/details', [\App\Http\Controllers\AdminWithdrawalController::class, 'details'])->name('admin.withdrawals.details');
+        Route::post('/admin/withdrawals/{id}/update', [\App\Http\Controllers\AdminWithdrawalController::class, 'update'])->name('admin.withdrawals.update');
+        Route::delete('/admin/withdrawals/{id}', [\App\Http\Controllers\AdminWithdrawalController::class, 'destroy'])->name('admin.withdrawals.destroy');
         Route::post('/admin/withdrawals/{id}/approve', [\App\Http\Controllers\AdminWithdrawalController::class, 'approve'])->name('admin.withdrawals.approve');
         Route::post('/admin/withdrawals/{id}/reject', [\App\Http\Controllers\AdminWithdrawalController::class, 'reject'])->name('admin.withdrawals.reject');
         Route::post('/admin/commissions/{id}/approve', [\App\Http\Controllers\AdminWithdrawalController::class, 'approveCommission'])->name('admin.commissions.approve');
