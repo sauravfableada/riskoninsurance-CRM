@@ -30,7 +30,7 @@
                             </span>
                         @elseif($item->kind === 'pay_in')
                             <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">
-                                <i class="fa-solid fa-arrow-down-left me-1"></i> Pay-In
+                                <i class="fa-solid fa-arrow-down me-1"></i> Pay-In
                             </span>
                         @else
                             <span class="badge bg-info bg-opacity-10 text-dark border border-info border-opacity-25">

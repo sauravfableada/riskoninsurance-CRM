@@ -107,7 +107,7 @@
                         <small class="text-muted">Admin Earnings from Insurers</small>
                     </div>
                     <div class="rounded-3 bg-primary-subtle text-primary p-3 fs-4">
-                        <i class="fa-solid fa-arrow-down-left"></i>
+                        <i class="fas fa-hand-holding-dollar"></i>
                     </div>
                 </div>
             </div>
@@ -182,10 +182,6 @@
                             </option>
                         @endforeach
                     </select>
-
-                    <button type="button" id="btnResetFilter" class="btn btn-sm btn-light border {{ (($status ?? 'all') === 'all' && empty($subagentId) && empty($companyId) && (($type ?? 'all') === 'all')) ? 'd-none' : '' }}">
-                        <i class="fa-solid fa-rotate-left me-1"></i> Reset
-                    </button>
                 </form>
             </div>
         </div>
@@ -205,7 +201,6 @@
         const filterCompany = document.getElementById('filterCompany');
         const filterStatus = document.getElementById('filterStatus');
         const filterSubagent = document.getElementById('filterSubagent');
-        const btnResetFilter = document.getElementById('btnResetFilter');
         const tableContainer = document.getElementById('withdrawalsTableContainer');
         const loadingOverlay = document.getElementById('tableLoadingOverlay');
 
@@ -268,14 +263,6 @@
             const companyVal = filterCompany ? filterCompany.value : '';
             const statusVal = filterStatus ? filterStatus.value : 'all';
             const subagentVal = filterSubagent ? filterSubagent.value : '';
-
-            // Toggle reset button visibility
-            const isFiltered = (typeVal !== 'all') || (companyVal && companyVal !== '') || (statusVal !== 'all') || (subagentVal && subagentVal !== '');
-            if (isFiltered) {
-                btnResetFilter.classList.remove('d-none');
-            } else {
-                btnResetFilter.classList.add('d-none');
-            }
 
             if (!url) {
                 const params = new URLSearchParams();
@@ -351,19 +338,6 @@
         if (filterCompany) filterCompany.addEventListener('change', () => fetchFilteredData());
         if (filterStatus) filterStatus.addEventListener('change', () => fetchFilteredData());
         if (filterSubagent) filterSubagent.addEventListener('change', () => fetchFilteredData());
-
-        // Reset button
-        btnResetFilter.addEventListener('click', function () {
-            filterTypeInput.value = 'all';
-            document.querySelectorAll('.filter-type-btn').forEach(b => {
-                if (b.getAttribute('data-type') === 'all') b.classList.add('active');
-                else b.classList.remove('active');
-            });
-            if (filterCompany) filterCompany.value = '';
-            if (filterStatus) filterStatus.value = 'all';
-            if (filterSubagent) filterSubagent.value = '';
-            fetchFilteredData();
-        });
 
         // Initialize approve button handlers and pagination
         initApproveButtons();

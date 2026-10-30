@@ -513,7 +513,7 @@
                             <div class="col-md-6">
                                 <div class="card h-100 border-primary border-opacity-25 rounded-4 shadow-sm" style="background: #ffffff;">
                                     <div class="card-header bg-primary text-white py-2 px-3 rounded-top-4 d-flex justify-content-between align-items-center">
-                                        <span class="fw-bold"><i class="fa-solid fa-arrow-down-left me-1"></i> PAY-IN (Admin Share)</span>
+                                        <span class="fw-bold"><i class="fa-solid fa-hand-holding-dollar me-1"></i> PAY-IN (Admin Share)</span>
                                         <span class="badge bg-white text-primary">From Company</span>
                                     </div>
                                     <div class="card-body p-3">
@@ -728,7 +728,7 @@
                                         <div class="p-3 rounded-4 border bg-white shadow-sm h-100">
                                             <div class="d-flex align-items-center justify-content-between mb-2">
                                                 <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1">
-                                                    <i class="fa-solid fa-arrow-down-left me-1"></i> Pay-In (Admin Share)
+                                                    <i class="fa-solid fa-hand-holding-dollar me-1"></i> Pay-In (Admin Share)
                                                 </span>
                                                 <small class="text-muted">From Insurer</small>
                                             </div>
@@ -1045,7 +1045,7 @@
                                         <div class="p-3 rounded-4 border bg-white shadow-sm h-100">
                                             <div class="d-flex align-items-center justify-content-between mb-2">
                                                 <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1">
-                                                    <i class="fa-solid fa-arrow-down-left me-1"></i> Pay-In (Admin Share)
+                                                    <i class="fa-solid fa-hand-holding-dollar me-1"></i> Pay-In (Admin Share)
                                                 </span>
                                                 <small class="text-muted">From Insurer</small>
                                             </div>

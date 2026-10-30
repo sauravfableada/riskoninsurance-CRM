@@ -114,8 +114,8 @@
 
             tableBody.innerHTML = items.map((invoice, index) => {
                 const isCompanyPayIn = (invoice.invoice_type === 'company_pay_in' || invoice.company_id);
-                const billedTitle = isCompanyPayIn 
-                    ? escapeHtml(invoice.company?.name ?? "Insurance Company") 
+                const billedTitle = isCompanyPayIn
+                    ? escapeHtml(invoice.company?.name ?? "Insurance Company")
                     : escapeHtml(invoice.customer?.name ?? "Customer");
                 const billedSub = isCompanyPayIn
                     ? `<span class="badge bg-light text-primary border me-1"><i class="fa-solid fa-building me-1"></i>Insurer</span><span class="font-monospace text-muted small">Acct: <strong class="text-primary">${escapeHtml(invoice.account_id_code || '01E2F9-74AFE8-B222F4')}</strong></span>`
@@ -130,7 +130,7 @@
                 const statusLabel = escapeHtml(invoice.status ? invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1) : "Unpaid");
                 const rowNumber = meta && meta.from ? meta.from + index : index + 1;
                 const grandTotal = parseFloat(invoice.grand_total || invoice.total_amount || 0);
-                const formattedAmount = '₹' + grandTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                const formattedAmount = '₹' + grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
                 return `
                 <tr>
@@ -370,7 +370,6 @@
                     </td>
                 </tr>`;
                 },
-                },
                 success: function (res) {
                     if (res.success && res.data) {
                         renderRows(res.data.data || [], res.data);
@@ -380,7 +379,7 @@
                 error: function () {
                     tableBody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="text-center py-5">
+                    <td colspan="8" class="text-center py-5">
                         Error loading invoices
                     </td>
                 </tr>`;

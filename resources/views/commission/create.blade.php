@@ -125,7 +125,7 @@
                 <div class="col-md-6">
                     <div class="card h-100 border-primary border-opacity-25 shadow-sm rounded-4" style="background: #f8fafc;">
                         <div class="card-header bg-primary text-white py-2 px-3 rounded-top-4 d-flex justify-content-between align-items-center">
-                            <span class="fw-bold"><i class="fa-solid fa-arrow-down-left me-1"></i> PAY-IN (Admin Commission)</span>
+                            <span class="fw-bold"><i class="fa-solid fa-hand-holding-dollar me-1"></i> PAY-IN (Admin Commission)</span>
                             <span class="badge bg-white text-primary">From Company</span>
                         </div>
                         <div class="card-body p-3">

@@ -1249,7 +1249,7 @@
                             <div class="col-md-6">
                                 <div class="card h-100 border-primary border-opacity-25 rounded-4 shadow-sm" style="background: #ffffff;">
                                     <div class="card-header bg-primary text-white py-2 px-3 rounded-top-4 d-flex justify-content-between align-items-center">
-                                        <span class="fw-bold"><i class="fa-solid fa-arrow-down-left me-1"></i> PAY-IN (Admin Share)</span>
+                                        <span class="fw-bold"><i class="fa-solid fa-hand-holding-dollar me-1"></i> PAY-IN (Admin Share)</span>
                                         <span class="badge bg-white text-primary">From Company</span>
                                     </div>
                                     <div class="card-body p-3">
@@ -1391,7 +1391,7 @@
                             <div class="col-md-6">
                                 <div class="card h-100 border-primary border-opacity-25 rounded-4 shadow-sm" style="background: #ffffff;">
                                     <div class="card-header bg-primary text-white py-2 px-3 rounded-top-4 d-flex justify-content-between align-items-center">
-                                        <span class="fw-bold"><i class="fa-solid fa-arrow-down-left me-1"></i> PAY-IN (Admin Share)</span>
+                                        <span class="fw-bold"><i class="fa-solid fa-hand-holding-dollar me-1"></i> PAY-IN (Admin Share)</span>
                                         <span class="badge bg-white text-primary">From Company</span>
                                     </div>
                                     <div class="card-body p-3">
@@ -1524,7 +1524,7 @@
                             <div class="col-md-6">
                                 <div class="card h-100 border-primary border-opacity-25 rounded-4 shadow-sm" style="background: #ffffff;">
                                     <div class="card-header bg-primary text-white py-2 px-3 rounded-top-4 d-flex justify-content-between align-items-center">
-                                        <span class="fw-bold"><i class="fa-solid fa-arrow-down-left me-1"></i> PAY-IN (Admin Share)</span>
+                                        <span class="fw-bold"><i class="fa-solid fa-hand-holding-dollar me-1"></i> PAY-IN (Admin Share)</span>
                                         <span class="badge bg-white text-primary">From Company</span>
                                     </div>
                                     <div class="card-body p-3">
@@ -1669,7 +1669,7 @@
                                 <div class="card h-100 border-2 rounded-4 shadow-sm" style="border-color: #10b981;">
                                     <div class="card-header bg-white border-0 pt-3 pb-0">
                                         <div class="d-flex align-items-center gap-2">
-                                            <span class="badge bg-success text-white rounded-pill px-2 py-1"><i class="fa-solid fa-arrow-down-left"></i> Pay-In</span>
+                                            <span class="badge bg-success text-white rounded-pill px-2 py-1"><i class="fa-solid fa-hand-holding-dollar"></i> Pay-In</span>
                                             <h6 class="mb-0 fw-bold text-dark">Admin Earnings</h6>
                                         </div>
                                         <small class="text-muted d-block mt-1">Admin's commission received from insurer.</small>
