@@ -210,7 +210,7 @@ class CommissionRulesController extends Controller
         $configuredCount = $agentsWithCommission->where('has_rule', true)->count();
 
         // Load Commission Entries (Policy Transaction Pay-Ins & Pay-Outs)
-        $entriesQuery = CommissionEntry::with(['commissionRule.company', 'user', 'policy.holder'])->latest();
+        $entriesQuery = CommissionEntry::with(['commissionRule.company', 'user', 'policy.holder', 'policy.company'])->latest();
         $commissionEntries = $entriesQuery->get();
 
         $totalPayIn = (float) $commissionEntries->sum(function ($entry) {
@@ -225,6 +225,12 @@ class CommissionRulesController extends Controller
         }
         $pendingCommission = (float) $commissionEntries->where('payment_status', 'pending')->sum('commission_amount');
         $paidCommission = (float) $commissionEntries->where('payment_status', 'paid')->sum('commission_amount');
+
+        // Fetch companies for filtering and manual entry
+        $companies = class_exists(\App\Models\CompanyMaster::class) ? \App\Models\CompanyMaster::select('id', 'name')->orderBy('name')->get() : collect();
+        if ($companies->isEmpty()) {
+            $companies = InsuranceCompany::select('id', 'name')->orderBy('name')->get();
+        }
 
         // Load policies for manual transaction entry dropdown
         $availablePolicies = \App\Models\Policy::with(['holder', 'company', 'user', 'creator', 'policyType', 'policySubType'])
@@ -253,6 +259,7 @@ class CommissionRulesController extends Controller
             'totalAdminProfit',
             'pendingCommission',
             'paidCommission',
+            'companies',
             'availablePolicies',
             'agentsList',
             'allMembers'

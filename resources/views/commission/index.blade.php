@@ -154,6 +154,71 @@
                 padding: 6px 10px !important;
             }
 
+            /* Select2 Toolbar Filters */
+            .commission-filter-item {
+                min-width: 150px;
+                position: relative;
+            }
+            .commission-filter-item .select2-container {
+                width: 100% !important;
+            }
+            .commission-filter-item .select2-container .select2-selection--single {
+                height: 34px !important;
+                border: 1px solid #cbd5e1 !important;
+                border-radius: 0.375rem !important;
+                background-color: #f8fafc !important;
+                padding: 2px 24px 2px 8px !important;
+                font-size: 0.8125rem !important;
+                display: flex !important;
+                align-items: center !important;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+                transition: all 0.2s ease;
+            }
+            .commission-filter-item .select2-container--open .select2-selection--single,
+            .commission-filter-item .select2-container .select2-selection--single:hover {
+                border-color: #3b82f6 !important;
+                background-color: #ffffff !important;
+            }
+            .commission-filter-item .select2-container .select2-selection--single .select2-selection__rendered {
+                line-height: 28px !important;
+                font-size: 0.8125rem !important;
+                color: #334155 !important;
+                font-weight: 500;
+            }
+            .commission-filter-item .select2-container .select2-selection--single .select2-selection__arrow {
+                height: 32px !important;
+                right: 6px !important;
+            }
+            .commission-filter-item .select2-container .select2-selection--single .select2-selection__clear {
+                margin-right: 14px !important;
+                font-size: 1rem !important;
+                line-height: 28px !important;
+                color: #94a3b8 !important;
+            }
+            .commission-filter-item .select2-container .select2-selection--single .select2-selection__clear:hover {
+                color: #ef4444 !important;
+            }
+            #btnResetEntryFilters {
+                height: 34px;
+                padding: 0 10px;
+                font-size: 0.8125rem;
+                font-weight: 600;
+                border-radius: 0.375rem;
+                border: 1px solid #cbd5e1;
+                background-color: #f8fafc;
+                color: #475569;
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                white-space: nowrap;
+                transition: all 0.2s ease;
+            }
+            #btnResetEntryFilters:hover {
+                background-color: #e2e8f0;
+                color: #0f172a;
+                border-color: #94a3b8;
+            }
+
             .commission-status {
                 display: inline-flex;
                 padding: .32rem .7rem;
@@ -389,6 +454,99 @@
                     </div>
                 </div>
 
+                <!-- Filter Bar for Tab 2: Commission Entries -->
+                <div id="commissionEntriesFilterToolbar" class="d-none d-flex flex-wrap align-items-center gap-2">
+                    <!-- Filter 1: Company / Insurer (Select2) -->
+                    <div class="commission-filter-item" style="width: 170px;">
+                        <select id="filter_entry_company" class="form-select form-select-sm" style="width: 100%;">
+                            <option value="">All Companies</option>
+                            @php
+                                $entryCompNames = $commissionEntries->map(function($e) {
+                                    return $e->commissionRule?->company?->name ?? $e->policy?->company?->name;
+                                })->filter()->unique()->values();
+                                $allComps = ($companies ?? collect());
+                            @endphp
+                            @foreach($allComps as $comp)
+                                <option value="{{ $comp->id }}" data-name="{{ strtolower($comp->name) }}">{{ $comp->name }}</option>
+                            @endforeach
+                            @foreach($entryCompNames as $cname)
+                                @if(!$allComps->contains('name', $cname))
+                                    <option value="{{ $cname }}" data-name="{{ strtolower($cname) }}">{{ $cname }}</option>
+                                @endif
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Filter 2: Staff / Sub Agent (Select2) -->
+                    <div class="commission-filter-item" style="width: 195px;">
+                        <select id="filter_entry_user" class="form-select form-select-sm" style="width: 100%;">
+                            <option value="">All Staff / Sub-Agents</option>
+                            @php
+                                $entryUsers = $commissionEntries->map(function($e) {
+                                    $u = $e->user ?? $e->policy?->user;
+                                    return $u ? [
+                                        'id' => $u->id,
+                                        'name' => $u->name,
+                                        'type' => ($u->type === 'sub_agents') ? 'Sub-Agent' : 'Staff'
+                                    ] : null;
+                                })->filter()->unique('id')->values();
+
+                                $allStaffSub = ($allMembers ?? collect())->map(function($u) {
+                                    return [
+                                        'id' => $u->id,
+                                        'name' => $u->name,
+                                        'type' => ($u->type === 'sub_agents') ? 'Sub-Agent' : 'Staff'
+                                    ];
+                                });
+
+                                $combinedUsers = $entryUsers->concat($allStaffSub)->unique('id')->sortBy('name');
+                            @endphp
+                            @foreach($combinedUsers as $u)
+                                <option value="{{ $u['id'] }}">
+                                    {{ $u['name'] }} ({{ $u['type'] }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Filter 3: Policy Number (Select2) -->
+                    <div class="commission-filter-item" style="width: 175px;">
+                        <select id="filter_entry_policy" class="form-select form-select-sm" style="width: 100%;">
+                            <option value="">All Policies</option>
+                            @php
+                                $entryPolicies = $commissionEntries->map(function($e) {
+                                    return [
+                                        'id' => $e->policy_id,
+                                        'number' => $e->policy?->policy_number ?? ('#' . $e->policy_id),
+                                        'holder' => $e->policy?->holder?->name ?? ''
+                                    ];
+                                })->unique('number')->values();
+                            @endphp
+                            @foreach($entryPolicies as $pol)
+                                <option value="{{ $pol['id'] }}" data-number="{{ strtolower($pol['number']) }}">
+                                    {{ $pol['number'] }}{{ $pol['holder'] ? ' (' . \Illuminate\Support\Str::limit($pol['holder'], 12) . ')' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Filter 4: Status (Select2) -->
+                    <div class="commission-filter-item" style="width: 135px;">
+                        <select id="filter_entry_status" class="form-select form-select-sm" style="width: 100%;">
+                            <option value="">All Statuses</option>
+                            <option value="paid">Paid</option>
+                            <option value="pending">Pending</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+
+                    <!-- Reset Filters Button -->
+                    <button type="button" class="btn btn-sm" id="btnResetEntryFilters" title="Reset All Filters">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        <span>Reset</span>
+                    </button>
+                </div>
+
                 <div class="table-responsive">
                     <table id="commissionEntriesTable" class="table table-hover align-middle mb-0" style="width:100%">
                         <thead class="table-light text-uppercase text-secondary" style="font-size: 0.76rem; letter-spacing: 0.5px;">
@@ -411,10 +569,23 @@
                                     $inAmt = (float) ($entry->pay_in_amount > 0 ? $entry->pay_in_amount : $entry->commission_amount);
                                     $outAmt = (float) ($entry->pay_out_amount > 0 ? $entry->pay_out_amount : $entry->commission_amount);
                                     $profit = (float) ($entry->net_admin_profit > 0 ? $entry->net_admin_profit : max(0, $inAmt - $outAmt));
-                                    $status = $entry->payment_status ?: 'pending';
+                                    $status = strtolower($entry->payment_status ?: 'pending');
+
+                                    $entryCompId = $entry->commissionRule?->company_id ?? $entry->policy?->company_id ?? '';
+                                    $entryCompName = strtolower($entry->commissionRule?->company?->name ?? $entry->policy?->company?->name ?? 'Direct Insurance');
+                                    $entryUserId = $entry->user_id ?? $entry->agent_id ?? $entry->policy?->user_id ?? '';
+                                    $entryUserName = strtolower($entry->user?->name ?? $entry->policy?->user?->name ?? '');
+                                    $entryPolicyId = $entry->policy_id ?? '';
+                                    $entryPolicyNumber = strtolower($entry->policy?->policy_number ?? ('#' . $entry->policy_id));
                                 @endphp
                                 <tr id="entry_row_{{ $entry->id }}" 
                                     data-status="{{ $status }}" 
+                                    data-company-id="{{ $entryCompId }}"
+                                    data-company-name="{{ $entryCompName }}"
+                                    data-user-id="{{ $entryUserId }}"
+                                    data-user-name="{{ $entryUserName }}"
+                                    data-policy-id="{{ $entryPolicyId }}"
+                                    data-policy-number="{{ $entryPolicyNumber }}"
                                     data-payout="{{ $outAmt }}" 
                                     data-payin="{{ $inAmt }}" 
                                     data-profit="{{ $profit }}" 
@@ -1173,7 +1344,7 @@
             const tableEntries = $('#commissionEntriesTable').DataTable({
                 "pageLength": 10,
                 "lengthMenu": [5, 10, 20, 50, 100],
-                "dom": "<'d-flex justify-content-between align-items-center p-3 border-bottom'<'d-flex align-items-center'l><'d-flex'f>>t<'d-flex justify-content-between align-items-center p-3 border-top'ip>",
+                "dom": "<'d-flex flex-wrap justify-content-between align-items-center p-3 border-bottom gap-2'<'d-flex align-items-center'l><'#tableEntriesCustomFilterContainer.d-flex.flex-wrap.align-items-center.gap-2'><'d-flex align-items-center'f>>t<'d-flex justify-content-between align-items-center p-3 border-top'ip>",
                 "language": {
                     "search": "",
                     "searchPlaceholder": "Search entries by rule, insurer, policy...",
@@ -1187,6 +1358,120 @@
                     }
                 },
                 "ordering": false
+            });
+
+            // Mount the custom filters toolbar in DataTables header
+            if ($('#commissionEntriesFilterToolbar').length) {
+                $('#tableEntriesCustomFilterContainer').replaceWith($('#commissionEntriesFilterToolbar').removeClass('d-none'));
+            }
+
+            // Initialize Select2 on the 4 filters
+            function initCommissionEntriesFilters() {
+                $('#filter_entry_company').select2({
+                    placeholder: 'All Companies',
+                    allowClear: true,
+                    width: '100%'
+                });
+
+                $('#filter_entry_user').select2({
+                    placeholder: 'All Staff / Sub-Agents',
+                    allowClear: true,
+                    width: '100%'
+                });
+
+                $('#filter_entry_policy').select2({
+                    placeholder: 'All Policies',
+                    allowClear: true,
+                    width: '100%'
+                });
+
+                $('#filter_entry_status').select2({
+                    placeholder: 'All Statuses',
+                    allowClear: true,
+                    width: '100%'
+                });
+            }
+            initCommissionEntriesFilters();
+
+            // DataTables custom filtering for Commission Entries
+            $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+                if (!settings.nTable || settings.nTable.id !== 'commissionEntriesTable') {
+                    return true;
+                }
+
+                const rowNode = settings.aoData[dataIndex]?.nTr;
+                if (!rowNode) return true;
+
+                const rowCompanyId = ($(rowNode).attr('data-company-id') || '').trim();
+                const rowCompanyName = ($(rowNode).attr('data-company-name') || '').trim();
+                const rowUserId = ($(rowNode).attr('data-user-id') || '').trim();
+                const rowPolicyId = ($(rowNode).attr('data-policy-id') || '').trim();
+                const rowPolicyNumber = ($(rowNode).attr('data-policy-number') || '').trim();
+                const rowStatus = ($(rowNode).attr('data-status') || '').trim().toLowerCase();
+
+                const selectedCompany = ($('#filter_entry_company').val() || '').trim();
+                const selectedUser = ($('#filter_entry_user').val() || '').trim();
+                const selectedPolicy = ($('#filter_entry_policy').val() || '').trim();
+                const selectedStatus = ($('#filter_entry_status').val() || '').trim().toLowerCase();
+
+                // 1. Company Filter
+                if (selectedCompany) {
+                    const compOpt = $('#filter_entry_company option:selected');
+                    const compNameAttr = (compOpt.attr('data-name') || '').toLowerCase().trim();
+                    const matchId = rowCompanyId && (rowCompanyId === selectedCompany);
+                    const matchName = rowCompanyName && (
+                        rowCompanyName === selectedCompany.toLowerCase() ||
+                        (compNameAttr && rowCompanyName.includes(compNameAttr)) ||
+                        (compNameAttr && compNameAttr.includes(rowCompanyName))
+                    );
+                    if (!matchId && !matchName) {
+                        return false;
+                    }
+                }
+
+                // 2. Staff / Sub Agent Filter
+                if (selectedUser) {
+                    if (rowUserId !== selectedUser) {
+                        return false;
+                    }
+                }
+
+                // 3. Policy Filter
+                if (selectedPolicy) {
+                    const polOpt = $('#filter_entry_policy option:selected');
+                    const polNumAttr = (polOpt.attr('data-number') || '').toLowerCase().trim();
+                    const matchPolId = rowPolicyId && (rowPolicyId === selectedPolicy);
+                    const matchPolNum = rowPolicyNumber && (
+                        rowPolicyNumber === selectedPolicy.toLowerCase() ||
+                        (polNumAttr && rowPolicyNumber.includes(polNumAttr))
+                    );
+                    if (!matchPolId && !matchPolNum) {
+                        return false;
+                    }
+                }
+
+                // 4. Status Filter
+                if (selectedStatus && selectedStatus !== 'all') {
+                    if (rowStatus !== selectedStatus) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
+            // Filter trigger events
+            $('#filter_entry_company, #filter_entry_user, #filter_entry_policy, #filter_entry_status').on('change', function() {
+                tableEntries.draw();
+            });
+
+            // Reset filters button
+            $('#btnResetEntryFilters').on('click', function() {
+                $('#filter_entry_company').val(null).trigger('change');
+                $('#filter_entry_user').val(null).trigger('change');
+                $('#filter_entry_policy').val(null).trigger('change');
+                $('#filter_entry_status').val(null).trigger('change');
+                tableEntries.search('').draw();
             });
 
             // Initialize Select2 on modals
@@ -1241,7 +1526,11 @@
             });
 
             // Adjust columns on tab switch
-            $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+            $('button[data-bs-toggle="tab"], a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+                const target = $(e.target).attr('data-bs-target') || $(e.target).attr('href');
+                if (target === '#tab-entries' || $(e.target).attr('id') === 'entries-tab') {
+                    $('#commissionEntriesFilterToolbar .select2-container').css('width', '100%');
+                }
                 $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
             });
 
@@ -1835,6 +2124,11 @@
                                 ]).draw(false);
 
                                 tr.attr('data-status', (e.payment_status || 'pending').toLowerCase());
+                                if (e.company_id) tr.attr('data-company-id', e.company_id);
+                                if (e.company_name) tr.attr('data-company-name', e.company_name.toLowerCase());
+                                if (e.user_id) tr.attr('data-user-id', e.user_id);
+                                if (e.policy_id) tr.attr('data-policy-id', e.policy_id);
+                                if (e.policy_number) tr.attr('data-policy-number', e.policy_number.toLowerCase());
                                 tr.attr('data-payout', parseFloat(e.pay_out_amount) || 0);
                                 tr.attr('data-payin', parseFloat(e.pay_in_amount) || 0);
                                 tr.attr('data-profit', parseFloat(e.net_admin_profit) || 0);
