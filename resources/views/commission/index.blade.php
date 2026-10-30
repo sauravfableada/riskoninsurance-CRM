@@ -103,24 +103,79 @@
 
             #commissionEntriesTable {
                 width: 100% !important;
-                table-layout: auto;
+                border-collapse: separate;
+                border-spacing: 0;
             }
             #commissionEntriesTable th, 
             #commissionEntriesTable td {
-                white-space: nowrap;
                 vertical-align: middle;
+                padding-top: 0.75rem;
+                padding-bottom: 0.75rem;
+            }
+            #commissionEntriesTable thead th {
+                white-space: nowrap;
+                font-weight: 700;
+                font-size: 0.76rem;
+                letter-spacing: 0.5px;
+                background-color: #f8fafc;
+            }
+            #commissionEntriesTable th:nth-child(1),
+            #commissionEntriesTable td:nth-child(1) {
+                width: 55px;
+                min-width: 55px;
+                text-align: center;
+                white-space: nowrap;
             }
             #commissionEntriesTable th:nth-child(2),
             #commissionEntriesTable td:nth-child(2) {
-                max-width: 180px;
-                white-space: normal;
-                word-break: break-word;
+                min-width: 190px;
+                white-space: nowrap;
             }
             #commissionEntriesTable th:nth-child(3),
             #commissionEntriesTable td:nth-child(3) {
-                max-width: 170px;
-                white-space: normal;
-                word-break: break-word;
+                min-width: 200px;
+                white-space: nowrap;
+            }
+            #commissionEntriesTable th:nth-child(4),
+            #commissionEntriesTable td:nth-child(4) {
+                min-width: 160px;
+                white-space: nowrap;
+            }
+            #commissionEntriesTable th:nth-child(5),
+            #commissionEntriesTable td:nth-child(5) {
+                min-width: 125px;
+                text-align: right;
+                white-space: nowrap;
+            }
+            #commissionEntriesTable th:nth-child(6),
+            #commissionEntriesTable td:nth-child(6) {
+                min-width: 130px;
+                text-align: right;
+                white-space: nowrap;
+            }
+            #commissionEntriesTable th:nth-child(7),
+            #commissionEntriesTable td:nth-child(7) {
+                min-width: 130px;
+                text-align: right;
+                white-space: nowrap;
+            }
+            #commissionEntriesTable th:nth-child(8),
+            #commissionEntriesTable td:nth-child(8) {
+                min-width: 125px;
+                text-align: right;
+                white-space: nowrap;
+            }
+            #commissionEntriesTable th:nth-child(9),
+            #commissionEntriesTable td:nth-child(9) {
+                min-width: 110px;
+                text-align: center;
+                white-space: nowrap;
+            }
+            #commissionEntriesTable th:nth-child(10),
+            #commissionEntriesTable td:nth-child(10) {
+                min-width: 120px;
+                text-align: right;
+                white-space: nowrap;
             }
 
             /* Select2 inside modal styling */
@@ -595,15 +650,15 @@
                     <table id="commissionEntriesTable" class="table table-hover align-middle mb-0" style="width:100%">
                         <thead class="table-light text-uppercase text-secondary" style="font-size: 0.76rem; letter-spacing: 0.5px;">
                             <tr>
-                                <th class="ps-4 py-3" style="width: 50px;">SR.NO</th>
+                                <th class="ps-4 py-3 text-center" style="width: 55px;">#</th>
                                 <th class="py-3">Rule / Insurer</th>
                                 <th class="py-3">Staff / Sub Agent</th>
                                 <th class="py-3">Policy Number</th>
-                                <th class="py-3">Gross Premium</th>
-                                <th class="py-3 text-primary">Pay-In (Admin)</th>
-                                <th class="py-3 text-warning">Pay-Out (Agent)</th>
-                                <th class="py-3 text-success">Net Profit</th>
-                                <th class="py-3">Date</th>
+                                <th class="py-3 text-end">Gross Premium</th>
+                                <th class="py-3 text-end text-primary">Pay-In (Admin)</th>
+                                <th class="py-3 text-end text-warning">Pay-Out (Agent)</th>
+                                <th class="py-3 text-end text-success">Net Profit</th>
+                                <th class="py-3 text-center">Date</th>
                                 <th class="pe-4 py-3 text-end" style="width: 120px;">Action</th>
                             </tr>
                         </thead>
@@ -634,37 +689,70 @@
                                     data-payin="{{ $inAmt }}" 
                                     data-profit="{{ $profit }}" 
                                     data-premium="{{ (float)$entry->premium_amount }}">
-                                    <td class="ps-4 text-muted fw-semibold">{{ $index + 1 }}</td>
+                                    <td class="ps-4 text-center text-muted fw-semibold">{{ $index + 1 }}</td>
                                     <td>
                                         @php
-                                            $ruleName = $entry->commissionRule->rule_name ?? 'Policy Commission';
-                                            // If rule name is something like "Policy #POL-xxx Custom Commission", show clean "Custom Commission"
-                                            if (preg_match('/Policy\s*#[^\s]+\s*(.*)/i', $ruleName, $m)) {
+                                            $rawUserName = $entry->user?->name ?? $entry->policy?->user?->name ?? '';
+                                            $rawRule = $entry->commissionRule->rule_name ?? '';
+                                            
+                                            if (!empty($rawUserName) && !empty($rawRule)) {
+                                                $cleanedRule = trim(preg_replace('/' . preg_quote($rawUserName, '/') . '\s*/i', '', $rawRule));
+                                            } else {
+                                                $cleanedRule = $rawRule;
+                                            }
+
+                                            if (preg_match('/Policy\s*#[^\s]+\s*(.*)/i', $cleanedRule, $m)) {
                                                 $displayRuleName = trim($m[1]) ?: 'Custom Commission';
                                             } else {
-                                                $displayRuleName = $ruleName;
+                                                $displayRuleName = !empty($cleanedRule) ? $cleanedRule : 'Agent Commission';
                                             }
+
+                                            $compName = $entry->commissionRule?->company?->name 
+                                                ?? $entry->policy?->company?->name 
+                                                ?? 'Direct Insurance';
                                         @endphp
-                                        <strong class="text-dark d-block">{{ $displayRuleName }}</strong>
-                                        <small class="text-muted">{{ $entry->commissionRule?->company?->name ?? 'Direct Insurance' }}</small>
+                                        <div class="lh-sm">
+                                            <span class="fw-bold text-dark d-block">{{ $displayRuleName }}</span>
+                                            <small class="text-secondary d-flex align-items-center gap-1 mt-1" style="font-size: 0.74rem;">
+                                                <i class="fa-solid fa-building-shield text-primary" style="font-size: 0.7rem;"></i>
+                                                <span>{{ $compName }}</span>
+                                            </small>
+                                        </div>
                                     </td>
                                     <td>
-                                        <strong class="text-dark d-block">{{ $entry->user?->name ?? $entry->policy?->user?->name ?? '—' }}</strong>
-                                        <small class="text-muted">{{ $entry->user?->email ?? '' }}</small>
+                                        @php
+                                            $userObj = $entry->user ?? $entry->policy?->user;
+                                            $agentName = $userObj?->name ?? '—';
+                                            $agentEmail = $userObj?->email ?? '';
+                                            $initials = strtoupper(substr(trim($agentName), 0, 2));
+                                        @endphp
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="member-avatar bg-primary-subtle text-primary border border-primary border-opacity-25" style="width: 32px; height: 32px; font-size: 0.75rem; flex-shrink: 0;">
+                                                {{ $initials ?: 'AG' }}
+                                            </div>
+                                            <div class="lh-sm">
+                                                <span class="fw-bold text-dark d-block" style="font-size: 0.86rem;">{{ $agentName }}</span>
+                                                @if(!empty($agentEmail))
+                                                    <small class="text-muted d-block" style="font-size: 0.74rem;">{{ $agentEmail }}</small>
+                                                @endif
+                                            </div>
+                                        </div>
                                     </td>
                                     <td>
-                                        <span class="badge bg-light text-dark border">
+                                        <span class="badge bg-light text-dark border font-monospace fw-semibold px-2 py-1" style="font-size: 0.78rem;">
                                             {{ $entry->policy?->policy_number ?? ('#' . $entry->policy_id) }}
                                         </span>
                                         @if($entry->policy?->holder)
-                                             <small class="text-muted d-block">{{ $entry->policy->holder->name }}</small>
+                                            <small class="text-muted d-block mt-1" style="font-size: 0.74rem;">
+                                                <i class="fa-regular fa-user me-1 text-secondary opacity-75"></i>{{ $entry->policy->holder->name }}
+                                            </small>
                                         @endif
                                     </td>
-                                    <td class="fw-semibold text-dark">₹{{ number_format($entry->premium_amount, 2) }}</td>
-                                    <td class="fw-bold text-primary">₹{{ number_format($inAmt, 2) }}</td>
-                                    <td class="fw-bold text-dark">₹{{ number_format($outAmt, 2) }}</td>
-                                    <td class="fw-bold text-success">₹{{ number_format($profit, 2) }}</td>
-                                    <td class="text-muted small">
+                                    <td class="text-end fw-semibold text-dark">₹{{ number_format($entry->premium_amount, 2) }}</td>
+                                    <td class="text-end fw-bold text-primary">₹{{ number_format($inAmt, 2) }}</td>
+                                    <td class="text-end fw-bold text-warning" style="color: #d97706 !important;">₹{{ number_format($outAmt, 2) }}</td>
+                                    <td class="text-end fw-bold text-success">₹{{ number_format($profit, 2) }}</td>
+                                    <td class="text-center text-muted small">
                                         {{ $entry->entry_date ? $entry->entry_date->format('d M Y') : ($entry->created_at ? $entry->created_at->format('d M Y') : '—') }}
                                     </td>
                                     <td class="pe-4 text-end">
@@ -1388,7 +1476,8 @@
             const tableEntries = $('#commissionEntriesTable').DataTable({
                 "pageLength": 10,
                 "lengthMenu": [5, 10, 20, 50, 100],
-                "dom": "<'d-flex justify-content-between align-items-center p-3 border-bottom'<'d-flex align-items-center'l><'d-flex align-items-center'f>>t<'d-flex justify-content-between align-items-center p-3 border-top'ip>",
+                "autoWidth": false,
+                "dom": "<'d-flex flex-wrap justify-content-between align-items-center p-3 border-bottom gap-2'<'d-flex align-items-center'l><'d-flex align-items-center'f>>t<'d-flex justify-content-between align-items-center p-3 border-top'ip>",
                 "language": {
                     "search": "",
                     "searchPlaceholder": "Search entries by rule, insurer, policy...",
@@ -1569,6 +1658,9 @@
                 const target = $(e.target).attr('data-bs-target') || $(e.target).attr('href');
                 if (target === '#tab-entries' || $(e.target).attr('id') === 'entries-tab') {
                     $('#commissionEntriesFilterToolbar .select2-container').css('width', '100%');
+                    setTimeout(() => {
+                        tableEntries.columns.adjust().draw(false);
+                    }, 50);
                 }
                 $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
             });
@@ -1882,13 +1974,13 @@
                             `;
 
                             const rowNode = tableEntries.row.add([
-                                '<span class="ps-4 text-muted fw-semibold">New</span>',
-                                `<strong class="text-dark d-block">${e.rule_name}</strong><small class="text-muted">${e.company_name}</small>`,
-                                `<strong class="text-dark d-block">${e.member_name}</strong><small class="text-muted">${e.member_email}</small>`,
-                                `<span class="badge bg-light text-dark border">${e.policy_number}</span><small class="text-muted d-block">${e.holder_name}</small>`,
+                                '<span class="ps-4 text-center text-muted fw-semibold">New</span>',
+                                `<div class="lh-sm"><span class="fw-bold text-dark d-block">${e.rule_name || 'Agent Commission'}</span><small class="text-secondary d-flex align-items-center gap-1 mt-1" style="font-size: 0.74rem;"><i class="fa-solid fa-building-shield text-primary" style="font-size: 0.7rem;"></i><span>${e.company_name || 'Direct Insurance'}</span></small></div>`,
+                                `<div class="d-flex align-items-center gap-2"><div class="member-avatar bg-primary-subtle text-primary border border-primary border-opacity-25" style="width: 32px; height: 32px; font-size: 0.75rem; flex-shrink: 0;">${(e.member_name || 'AG').substring(0, 2).toUpperCase()}</div><div class="lh-sm"><span class="fw-bold text-dark d-block" style="font-size: 0.86rem;">${e.member_name || '—'}</span><small class="text-muted d-block" style="font-size: 0.74rem;">${e.member_email || ''}</small></div></div>`,
+                                `<span class="badge bg-light text-dark border font-monospace fw-semibold px-2 py-1" style="font-size: 0.78rem;">${e.policy_number}</span><small class="text-muted d-block mt-1" style="font-size: 0.74rem;"><i class="fa-regular fa-user me-1 text-secondary opacity-75"></i>${e.holder_name || ''}</small>`,
                                 `<span class="fw-semibold text-dark">₹${e.premium_amount}</span>`,
                                 `<span class="fw-bold text-primary">₹${e.pay_in_amount}</span>`,
-                                `<span class="fw-bold text-dark">₹${e.pay_out_amount}</span>`,
+                                `<span class="fw-bold text-warning" style="color: #d97706 !important;">₹${e.pay_out_amount}</span>`,
                                 `<span class="fw-bold text-success">₹${e.net_admin_profit}</span>`,
                                 `<span class="text-muted small">${e.entry_date}</span>`,
                                 `<span class="pe-4 text-end">${actionsHtml}</span>`
@@ -2151,12 +2243,12 @@
                             if (tr.length) {
                                 tableEntries.row(tr).data([
                                     tr.find('td:eq(0)').html(),
-                                    `<strong class="text-dark d-block">${e.rule_name}</strong><small class="text-muted">${e.company_name}</small>`,
-                                    `<strong class="text-dark d-block">${e.member_name}</strong><small class="text-muted">${e.member_email}</small>`,
-                                    `<span class="badge bg-light text-dark border">${e.policy_number}</span><small class="text-muted d-block">${e.holder_name}</small>`,
+                                    `<div class="lh-sm"><span class="fw-bold text-dark d-block">${e.rule_name || 'Agent Commission'}</span><small class="text-secondary d-flex align-items-center gap-1 mt-1" style="font-size: 0.74rem;"><i class="fa-solid fa-building-shield text-primary" style="font-size: 0.7rem;"></i><span>${e.company_name || 'Direct Insurance'}</span></small></div>`,
+                                    `<div class="d-flex align-items-center gap-2"><div class="member-avatar bg-primary-subtle text-primary border border-primary border-opacity-25" style="width: 32px; height: 32px; font-size: 0.75rem; flex-shrink: 0;">${(e.member_name || 'AG').substring(0, 2).toUpperCase()}</div><div class="lh-sm"><span class="fw-bold text-dark d-block" style="font-size: 0.86rem;">${e.member_name || '—'}</span><small class="text-muted d-block" style="font-size: 0.74rem;">${e.member_email || ''}</small></div></div>`,
+                                    `<span class="badge bg-light text-dark border font-monospace fw-semibold px-2 py-1" style="font-size: 0.78rem;">${e.policy_number}</span><small class="text-muted d-block mt-1" style="font-size: 0.74rem;"><i class="fa-regular fa-user me-1 text-secondary opacity-75"></i>${e.holder_name || ''}</small>`,
                                     `<span class="fw-semibold text-dark">₹${e.premium_amount}</span>`,
                                     `<span class="fw-bold text-primary">₹${e.pay_in_amount}</span>`,
-                                    `<span class="fw-bold text-dark">₹${e.pay_out_amount}</span>`,
+                                    `<span class="fw-bold text-warning" style="color: #d97706 !important;">₹${e.pay_out_amount}</span>`,
                                     `<span class="fw-bold text-success">₹${e.net_admin_profit}</span>`,
                                     `<span class="text-muted small">${e.entry_date}</span>`,
                                     `<span class="pe-4 text-end">${actionsHtml}</span>`
