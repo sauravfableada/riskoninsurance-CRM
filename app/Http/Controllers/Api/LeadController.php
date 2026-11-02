@@ -620,8 +620,32 @@ class LeadController extends ApiBaseController
         ]);
     }
 
+    protected function ensureKycTableAllowsNullPolicy(): void
+    {
+        static $ensured = false;
+        if ($ensured) {
+            return;
+        }
+
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('kyc_documents')) {
+                if (!\Illuminate\Support\Facades\Schema::hasColumn('kyc_documents', 'lead_id')) {
+                    \Illuminate\Support\Facades\Schema::table('kyc_documents', function (\Illuminate\Database\Schema\Blueprint $table) {
+                        $table->unsignedBigInteger('lead_id')->nullable()->index()->after('policy_id');
+                    });
+                }
+                \Illuminate\Support\Facades\DB::statement('ALTER TABLE `kyc_documents` MODIFY `policy_id` BIGINT UNSIGNED NULL DEFAULT NULL');
+            }
+            $ensured = true;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Ensure kyc_documents schema failed: ' . $e->getMessage());
+        }
+    }
+
     public function saveKycForLead(Lead $lead, Request $request): void
     {
+        $this->ensureKycTableAllowsNullPolicy();
+
         $multiFields = ['aadhaar_card', 'pan_card', 'driving_licence', 'addr_aadhaar', 'addr_driving_licence'];
         $singleFields = ['photo', 'signature'];
         $allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'gif', 'jfif', 'webp', 'avif', 'svg'];
@@ -648,6 +672,7 @@ class LeadController extends ApiBaseController
         $updateData = [
             'user_id' => auth()->id() ?: ($lead->user_id ?? 1),
             'lead_id' => $lead->id,
+            'policy_id' => null,
             'kyc_status' => $existing?->kyc_status ?: 'pending',
         ];
 
