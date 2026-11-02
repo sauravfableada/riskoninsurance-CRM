@@ -3,16 +3,20 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\ApiBaseController;
+use App\Models\Document;
+use App\Models\KycDocumentsModel;
 use App\Models\Lead;
 use App\Models\LeadStatusHistory;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class LeadController extends ApiBaseController
 {
@@ -150,6 +154,8 @@ class LeadController extends ApiBaseController
         }
 
         $lead = Lead::create($data);
+
+        $this->saveKycForLead($lead, $request);
 
         $historyEntry = $this->recordStatusHistory($lead, $data['status'] ?? null, $data['status_comment'] ?? null);
         app(\App\Services\UserLogService::class)->created($lead);
@@ -391,6 +397,8 @@ class LeadController extends ApiBaseController
 
             $lead->update($data);
 
+            $this->saveKycForLead($lead, $request);
+
             if (
                 (array_key_exists('status', $data) && $data['status'] !== $originalStatus)
                 || filled($data['status_comment'] ?? null)
@@ -577,5 +585,173 @@ class LeadController extends ApiBaseController
             'whatsapp_country_code' => $whatsappCountryCode,
             'whatsapp' => $whatsapp !== '' ? $whatsappCountryCode . $whatsapp : null,
         ]);
+    }
+
+    public function getLeadKyc(Lead $lead)
+    {
+        $kyc = KycDocumentsModel::where('lead_id', $lead->id)->first();
+        if (!$kyc) {
+            return response()->json(['status' => 'error', 'message' => 'No KYC found for this lead.'], 404);
+        }
+
+        $multi = ['aadhaar_card', 'pan_card', 'driving_licence', 'addr_aadhaar', 'addr_driving_licence'];
+        $publicPath = env('PUBLIC_PATH') ? rtrim(env('PUBLIC_PATH'), '/') . '/' : '';
+        $base = asset($publicPath . 'uploads/kyc') . '/';
+        $data = $kyc->toArray();
+
+        foreach ($multi as $field) {
+            $files = !empty($data[$field]) ? json_decode((string) $data[$field], true) : [];
+            $data[$field] = array_map(static fn ($file) => str_starts_with((string)$file, 'http') ? $file : $base . basename((string)$file), $files ?: []);
+        }
+        $data['photo'] = !empty($data['photo']) ? (str_starts_with((string)$data['photo'], 'http') ? $data['photo'] : $base . basename((string)$data['photo'])) : null;
+        $data['signature'] = !empty($data['signature']) ? (str_starts_with((string)$data['signature'], 'http') ? $data['signature'] : $base . basename((string)$data['signature'])) : null;
+
+        return response()->json(['status' => 'success', 'data' => $data]);
+    }
+
+    public function submitLeadKyc(Request $request, Lead $lead)
+    {
+        $this->saveKycForLead($lead, $request);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'KYC documents updated successfully.',
+            'data' => $lead->fresh(['kycDocument'])->kycDocument
+        ]);
+    }
+
+    public function saveKycForLead(Lead $lead, Request $request): void
+    {
+        $multiFields = ['aadhaar_card', 'pan_card', 'driving_licence', 'addr_aadhaar', 'addr_driving_licence'];
+        $singleFields = ['photo', 'signature'];
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf', 'gif', 'jfif', 'webp', 'avif', 'svg'];
+
+        $hasAnyFile = false;
+        foreach (array_merge($multiFields, $singleFields) as $field) {
+            if ($request->hasFile($field)) {
+                $hasAnyFile = true;
+                break;
+            }
+        }
+
+        if (!$hasAnyFile) {
+            return;
+        }
+
+        $existing = KycDocumentsModel::where('lead_id', $lead->id)->first();
+
+        $uploadDir = public_path('uploads/kyc');
+        if (!is_dir($uploadDir)) {
+            @mkdir($uploadDir, 0755, true);
+        }
+
+        $updateData = [
+            'user_id' => auth()->id() ?: ($lead->user_id ?? 1),
+            'lead_id' => $lead->id,
+            'kyc_status' => $existing?->kyc_status ?: 'pending',
+        ];
+
+        $kycFieldLabels = [
+            'aadhaar_card'        => 'Aadhaar Card',
+            'pan_card'            => 'PAN Card',
+            'driving_licence'     => 'Driving Licence',
+            'addr_aadhaar'        => 'Address Proof (Aadhaar)',
+            'addr_driving_licence'=> 'Address Proof (DL)',
+            'photo'               => 'Passport Photo',
+            'signature'           => 'Signature',
+        ];
+
+        foreach ($multiFields as $field) {
+            $files = $request->file($field);
+            if (!$files) {
+                continue;
+            }
+
+            $saved = [];
+            if ($existing && !empty($existing->{$field})) {
+                $prev = json_decode((string) $existing->{$field}, true);
+                if (is_array($prev)) {
+                    $saved = $prev;
+                }
+            }
+
+            $filesArr = is_array($files) ? $files : [$files];
+            foreach ($filesArr as $file) {
+                if (!$file instanceof UploadedFile || !$file->isValid()) {
+                    continue;
+                }
+                $ext = strtolower((string) $file->getClientOriginalExtension());
+                if (!in_array($ext, $allowedExtensions, true)) {
+                    continue;
+                }
+                $newName = Str::uuid() . '.' . $ext;
+                $file->move($uploadDir, $newName);
+                $saved[] = $newName;
+
+                $this->syncLeadDocument($lead, $field, $newName, $ext, $kycFieldLabels[$field] ?? $field);
+            }
+
+            if (!empty($saved)) {
+                $updateData[$field] = json_encode(array_values(array_unique($saved)));
+            }
+        }
+
+        foreach ($singleFields as $field) {
+            $file = $request->file($field);
+            if (is_array($file)) {
+                $file = $file[0] ?? null;
+            }
+
+            if (!$file instanceof UploadedFile || !$file->isValid()) {
+                continue;
+            }
+
+            $ext = strtolower((string) $file->getClientOriginalExtension());
+            if (!in_array($ext, $allowedExtensions, true)) {
+                continue;
+            }
+
+            $newName = Str::uuid() . '.' . $ext;
+            $file->move($uploadDir, $newName);
+            $updateData[$field] = $newName;
+
+            $this->syncLeadDocument($lead, $field, $newName, $ext, $kycFieldLabels[$field] ?? $field);
+        }
+
+        if ($existing) {
+            $existing->update($updateData);
+        } else {
+            KycDocumentsModel::create($updateData);
+        }
+    }
+
+    protected function syncLeadDocument(Lead $lead, string $field, string $fileName, string $ext, string $label): void
+    {
+        try {
+            $cleanName = basename($fileName);
+            $filePath = 'uploads/kyc/' . $cleanName;
+
+            $exists = Document::where('file_path', $filePath)->exists();
+            if (!$exists) {
+                Document::create([
+                    'customer_id'       => $lead->converted_customer_id ?: null,
+                    'title'             => 'KYC ' . $label . ' - Lead ' . $lead->name . ' (' . $cleanName . ')',
+                    'file_path'         => $filePath,
+                    'file_type'         => strtolower($ext),
+                    'is_kyc'            => true,
+                    'meta'              => json_encode([
+                        'source' => 'kyc_document',
+                        'field' => $field,
+                        'lead_id' => $lead->id,
+                        'lead_name' => $lead->name,
+                    ]),
+                    'documentable_id'   => $lead->id,
+                    'documentable_type' => Lead::class,
+                    'user_id'           => auth()->id() ?: ($lead->user_id ?? 1),
+                ]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Sync Lead KYC to Document failed: ' . $e->getMessage());
+        }
     }
 }

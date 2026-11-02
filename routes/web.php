@@ -190,6 +190,8 @@ Route::middleware('auth.api')->group(function () {
     Route::get('leads-import-sample', [LeadController::class, 'downloadImportSample'])->middleware('matrix_permission:create_leads')->name('leads.import_sample');
     Route::post('leads/{lead}/convert', [LeadController::class, 'convertToCustomer'])->middleware('matrix_permission:edit_leads')->name('leads.convert');
     Route::get('leads/{lead}/image', [LeadController::class, 'image'])->middleware('matrix_permission:view_leads')->name('leads.image');
+    Route::get('leads/{lead}/kyc', [LeadController::class, 'getKyc'])->middleware('matrix_permission:view_leads')->name('leads.kyc.view');
+    Route::post('leads/{lead}/kyc', [LeadController::class, 'saveKyc'])->middleware('matrix_permission:edit_leads')->name('leads.kyc.save');
     
     Route::resource('deals', DealController::class)->except(['store', 'update', 'destroy'])->middleware('matrix_permission:view_deals');
     Route::get('deals-export', [DealController::class, 'export'])->middleware('matrix_permission:view_deals')->name('deals.export');

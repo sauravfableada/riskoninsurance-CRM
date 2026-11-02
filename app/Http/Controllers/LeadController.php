@@ -54,21 +54,23 @@ class LeadController extends Controller
     public function edit(Lead $lead)
     {
         $this->authorize('update', $lead);
-        $lead->load(['statusHistories.updater']);
+        $lead->load(['statusHistories.updater', 'kycDocument']);
         $sources = LeadSource::orderBy('name')->get();
         $stages = Stage::orderBy('name')->get();
         $users = $this->selectableUsers();
         $groups = \App\Models\FamilyGroup::orderBy('group_name')->get();
+        $kyc = $lead->kycDocument;
 
-        return view('crm.leads.edit', compact('lead', 'sources', 'stages', 'users', 'groups'));
+        return view('crm.leads.edit', compact('lead', 'sources', 'stages', 'users', 'groups', 'kyc'));
     }
 
     public function show(Lead $lead)
     {
         $this->authorize('view', $lead);
-        $lead->load(['leadSource', 'stage', 'assignedUser', 'followUps.assignedUser', 'tasks.assignedUser', 'statusHistories.updater']);
+        $lead->load(['leadSource', 'stage', 'assignedUser', 'followUps.assignedUser', 'tasks.assignedUser', 'statusHistories.updater', 'kycDocument']);
+        $kyc = $lead->kycDocument;
 
-        return view('crm.leads.show', compact('lead'));
+        return view('crm.leads.show', compact('lead', 'kyc'));
     }
 
     public function image(Lead $lead)
@@ -78,6 +80,16 @@ class LeadController extends Controller
         }
 
         return response()->file(Storage::disk('public')->path($lead->image));
+    }
+
+    public function getKyc(Lead $lead)
+    {
+        return app(\App\Http\Controllers\Api\LeadController::class)->getLeadKyc($lead);
+    }
+
+    public function saveKyc(Request $request, Lead $lead)
+    {
+        return app(\App\Http\Controllers\Api\LeadController::class)->submitLeadKyc($request, $lead);
     }
 
     public function convertToCustomer(Request $request, Lead $lead)
@@ -154,6 +166,15 @@ class LeadController extends Controller
                 'is_converted' => true,
                 'converted_customer_id' => $existing->id,
             ]);
+
+            // Sync all Lead KYC documents to the converted customer
+            try {
+                \App\Models\Document::where('documentable_type', Lead::class)
+                    ->where('documentable_id', $lead->id)
+                    ->update(['customer_id' => $existing->id]);
+            } catch (\Throwable $e) {
+                \Log::warning('Sync Lead Documents to Customer failed: ' . $e->getMessage());
+            }
 
             return $existing;
         });

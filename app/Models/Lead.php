@@ -107,4 +107,14 @@ class Lead extends Model
     {
         return $this->hasMany(LeadStatusHistory::class)->latest();
     }
+
+    public function kycDocument()
+    {
+        return $this->hasOne(KycDocumentsModel::class, 'lead_id');
+    }
+
+    public function documents()
+    {
+        return $this->morphMany(Document::class, 'documentable');
+    }
 }

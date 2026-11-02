@@ -278,9 +278,12 @@ class DocumentController extends Controller
                 foreach ($kycRecords as $kyc) {
                     try {
                         $policy = $kyc->policy_id ? Policy::find($kyc->policy_id) : null;
-                        $customerId = $policy ? ($policy->holder_id ?: null) : null;
-                        $policyNum = $policy ? ($policy->policy_number ?: ('#' . $policy->id)) : ('#' . $kyc->policy_id);
-                        $userId = $kyc->user_id ?: ($policy->created_by ?? null) ?: $defaultUserId;
+                        $lead = (!$policy && $kyc->lead_id) ? \App\Models\Lead::find($kyc->lead_id) : null;
+                        $customerId = $policy ? ($policy->holder_id ?: null) : ($lead ? ($lead->converted_customer_id ?: null) : null);
+                        $itemIdentifier = $policy ? ('Policy ' . ($policy->policy_number ?: ('#' . $policy->id))) : ($lead ? ('Lead ' . $lead->name) : ('#' . ($kyc->policy_id ?: $kyc->lead_id)));
+                        $docType = $policy ? Policy::class : ($lead ? \App\Models\Lead::class : null);
+                        $docId = $policy ? $policy->id : ($lead ? $lead->id : null);
+                        $userId = $kyc->user_id ?: ($policy->created_by ?? null) ?: ($lead->created_by ?? null) ?: $defaultUserId;
 
                         foreach ($kycFields as $field => $fieldLabel) {
                             $value = $kyc->{$field};
@@ -297,17 +300,17 @@ class DocumentController extends Controller
 
                                 $exists = Document::where('file_path', $filePath)
                                     ->orWhere('file_path', $cleanName)
-                                    ->orWhere(function ($q) use ($kyc, $cleanName) {
-                                        if ($kyc->policy_id) {
-                                            $q->where('documentable_type', Policy::class)
-                                              ->where('documentable_id', $kyc->policy_id);
+                                    ->orWhere(function ($q) use ($kyc, $cleanName, $docType, $docId) {
+                                        if ($docType && $docId) {
+                                            $q->where('documentable_type', $docType)
+                                              ->where('documentable_id', $docId);
                                         }
                                         $q->where('file_path', 'like', '%' . $cleanName);
                                     })->exists();
 
                                 if (!$exists) {
                                     $ext = pathinfo($cleanName, PATHINFO_EXTENSION) ?: 'jpg';
-                                    $title = 'KYC ' . $fieldLabel . ' - Policy ' . $policyNum . ' (' . $cleanName . ')';
+                                    $title = 'KYC ' . $fieldLabel . ' - ' . $itemIdentifier . ' (' . $cleanName . ')';
 
                                     Document::create([
                                         'customer_id'       => $customerId,
@@ -319,10 +322,11 @@ class DocumentController extends Controller
                                             'source' => 'kyc_document',
                                             'field' => $field,
                                             'policy_id' => $kyc->policy_id,
-                                            'policy_number' => $policyNum,
+                                            'lead_id' => $kyc->lead_id,
+                                            'identifier' => $itemIdentifier,
                                         ]),
-                                        'documentable_id'   => $kyc->policy_id,
-                                        'documentable_type' => Policy::class,
+                                        'documentable_id'   => $docId,
+                                        'documentable_type' => $docType,
                                         'user_id'           => $userId,
                                         'created_at'        => $kyc->created_at ?: now(),
                                         'updated_at'        => $kyc->updated_at ?: now(),

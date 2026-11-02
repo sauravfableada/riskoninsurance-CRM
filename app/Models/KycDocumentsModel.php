@@ -11,6 +11,7 @@ class KycDocumentsModel extends Model
     protected $fillable = [
         'user_id',
         'policy_id',
+        'lead_id',
         'aadhaar_card',
         'pan_card',
         'driving_licence',
@@ -24,4 +25,14 @@ class KycDocumentsModel extends Model
     ];
 
     public $timestamps = false;
+
+    public function lead()
+    {
+        return $this->belongsTo(Lead::class, 'lead_id');
+    }
+
+    public function policy()
+    {
+        return $this->belongsTo(Policy::class, 'policy_id');
+    }
 }

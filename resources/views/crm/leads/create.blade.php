@@ -116,6 +116,8 @@
 
                 @include('partials.custom_fields', ['module' => 'Lead'])
 
+                @include('crm.leads.partials.kyc-section')
+
                 <div class="mt-4 pt-4 border-top d-flex flex-sm-row justify-content-end gap-2 form-actions">
                     <a href="{{ route('leads.index') }}" class="btn btn-outline-dark-blue">Cancel</a>
                     <button type="submit" class="btn btn-dark-blue" id="submitBtn">

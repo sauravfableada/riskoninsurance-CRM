@@ -234,6 +234,7 @@
                             <div class="d-inline-flex align-items-center gap-2">
                                 ${(!isConverted && permissions.edit) ? `<button type="button" class="btn crm-action-btn btn-sm text-success convert-btn" data-id="${lead.id}" title="Convert to Customer"><i class="bi bi-person-plus"></i></button>` : ""}
                                 ${permissions.edit ? `<a href="/leads/${lead.id}/edit" class="btn crm-action-btn btn-sm" title="Edit Details"><i class="bi bi-pencil"></i></a>` : ""}
+                                ${permissions.view ? `<a href="/leads/${lead.id}#showKycTabs" class="btn crm-action-btn btn-sm text-info" title="KYC Documents"><i class="bi bi-shield-check"></i></a>` : ""}
                                 ${permissions.view ? `<a href="/leads/${lead.id}" class="btn crm-action-btn btn-sm" title="View"><i class="bi bi-eye"></i></a>` : ""}
                                 ${permissions.delete ? `<button type="button" class="btn crm-action-btn btn-sm text-danger delete-btn" data-id="${lead.id}" title="Remove Lead">
                                     <i class="bi bi-trash text-danger"></i>
@@ -279,6 +280,7 @@
                                         <div class="d-flex gap-2">
                                             ${(!isConverted && permissions.edit) ? `<button type="button" class="btn crm-action-btn btn-sm text-success convert-btn" data-id="${lead.id}" title="Convert to Customer"><i class="bi bi-person-plus"></i></button>` : ""}
                                             ${permissions.edit ? `<a href="/leads/${lead.id}/edit" class="btn crm-action-btn btn-sm" title="Edit Details"><i class="bi bi-pencil"></i></a>` : ""}
+                                            ${permissions.view ? `<a href="/leads/${lead.id}#showKycTabs" class="btn crm-action-btn btn-sm text-info" title="KYC Documents"><i class="bi bi-shield-check"></i></a>` : ""}
                                             ${permissions.view ? `<a href="/leads/${lead.id}" class="btn crm-action-btn btn-sm" title="View"><i class="bi bi-eye"></i></a>` : ""}
                                             ${permissions.delete ? `<button type="button" class="btn crm-action-btn btn-sm text-danger delete-btn" data-id="${lead.id}" title="Remove Lead">
                                                 <i class="bi bi-trash text-danger"></i>
