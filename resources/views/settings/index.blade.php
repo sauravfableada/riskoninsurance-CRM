@@ -60,6 +60,19 @@
         $signatureUrl = !empty($signaturePath)
             ? route('settings.signature.image') . '?v=' . time()
             : null;
+
+        $dscEnabled = ($settings['dsc_signature_enabled']->value ?? '0') === '1';
+        $dscSignatoryName = $settings['dsc_signatory_name']->value ?? ($settings['company_name']->value ?? 'Authorized Signatory');
+        $dscDesignation = $settings['dsc_designation']->value ?? 'Authorized Signatory';
+        $dscOrganization = $settings['dsc_organization']->value ?? ($settings['company_name']->value ?? 'Riskon Insurance Broking');
+        $dscIssuer = $settings['dsc_issuer']->value ?? 'eMudhra Sub-CA / Class 3 DSC';
+        $dscLocation = $settings['dsc_location']->value ?? 'Delhi, India';
+        $dscReason = $settings['dsc_reason']->value ?? 'Tax Invoice Verification & Authorization';
+        $dscDisplayMode = $settings['dsc_display_mode']->value ?? 'both';
+        $dscStampPath = $settings['dsc_stamp_path']->value ?? null;
+        $dscStampUrl = !empty($dscStampPath)
+            ? route('settings.dsc_stamp.image') . '?v=' . time()
+            : null;
     @endphp
 
     <div class="container-fluid px-0 settings-shell">
@@ -970,6 +983,131 @@
                                                 <img id="signaturePreview" src="{{ $signatureUrl ?? '' }}" alt="Authorized Signature" class="img-fluid {{ $signatureUrl ? '' : 'd-none' }}" style="max-height: 90px; object-fit: contain;" onerror="this.classList.add('d-none'); document.getElementById('signaturePlaceholder')?.classList.remove('d-none'); document.getElementById('signatureStatusText')?.classList.add('d-none');">
                                                 <div id="signatureStatusText" class="text-muted small mt-2 {{ $signatureUrl ? '' : 'd-none' }}">
                                                     <i class="fa-solid fa-circle-check text-success me-1"></i>Current Signature Preview
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Digital Signature Certificate (DSC) / e-Sign Section -->
+                                <div class="col-12">
+                                    <div class="card border rounded-3 p-3 bg-light bg-opacity-25">
+                                        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center pb-2 border-bottom mb-3 gap-2">
+                                            <div>
+                                                <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                                    <i class="fa-solid fa-file-signature text-success fs-5"></i> Digital Signature Certificate (DSC) &amp; e-Sign
+                                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 small">GST Compliant</span>
+                                                </h6>
+                                                <small class="text-muted">Configure official DSC Digital Signature metadata and verification box for PDF Invoices</small>
+                                            </div>
+                                            <div class="form-check form-switch fs-6 mb-0 d-flex align-items-center gap-2">
+                                                <input class="form-check-input" type="checkbox" name="dsc_signature_enabled" id="dscSignatureEnabled" value="1" {{ $dscEnabled ? 'checked' : '' }} style="cursor: pointer; width: 2.5em; height: 1.25em;">
+                                                <label class="form-check-label fw-bold small text-dark mb-0" for="dscSignatureEnabled">
+                                                    <span id="dscStatusBadge" class="badge {{ $dscEnabled ? 'bg-success text-white' : 'bg-secondary text-white' }}">
+                                                        {{ $dscEnabled ? 'DSC Active' : 'DSC Disabled' }}
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div class="row g-3">
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-semibold small">Invoice Signature Display Mode</label>
+                                                <select name="dsc_display_mode" id="dscDisplayMode" class="form-select">
+                                                    <option value="both" {{ $dscDisplayMode === 'both' ? 'selected' : '' }}>Both (Handwritten Signature + DSC Badge)</option>
+                                                    <option value="dsc_only" {{ $dscDisplayMode === 'dsc_only' ? 'selected' : '' }}>DSC Digital Certificate Only</option>
+                                                    <option value="image_only" {{ $dscDisplayMode === 'image_only' ? 'selected' : '' }}>Handwritten Signature Only</option>
+                                                </select>
+                                                <div class="form-text text-muted small">Choose how the signature block appears on generated PDF invoices.</div>
+                                            </div>
+
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-semibold small">Signatory Person Name</label>
+                                                <input type="text" name="dsc_signatory_name" id="dscSignatoryName" class="form-control" 
+                                                    value="{{ old('dsc_signatory_name', $dscSignatoryName) }}" 
+                                                    placeholder="e.g. Saurav Chaudhari">
+                                                <div class="form-text text-muted small">Full name of the DSC token holder / authorized signatory.</div>
+                                            </div>
+
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-semibold small">Designation / Role</label>
+                                                <input type="text" name="dsc_designation" id="dscDesignation" class="form-control" 
+                                                    value="{{ old('dsc_designation', $dscDesignation) }}" 
+                                                    placeholder="e.g. Director / Authorized Signatory">
+                                                <div class="form-text text-muted small">Official title of the signing authority.</div>
+                                            </div>
+
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-semibold small">Organization / Entity Name</label>
+                                                <input type="text" name="dsc_organization" id="dscOrganization" class="form-control" 
+                                                    value="{{ old('dsc_organization', $dscOrganization) }}" 
+                                                    placeholder="e.g. Riskon Insurance Broking Pvt. Ltd.">
+                                                <div class="form-text text-muted small">Company / Organization name appearing on certificate.</div>
+                                            </div>
+
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-semibold small">Certifying Authority (CA) / Token Issuer</label>
+                                                <input type="text" name="dsc_issuer" id="dscIssuer" class="form-control" 
+                                                    value="{{ old('dsc_issuer', $dscIssuer) }}" 
+                                                    placeholder="e.g. eMudhra Sub-CA / Class 3 DSC">
+                                                <div class="form-text text-muted small">Name of DSC Certifying Authority / Token type.</div>
+                                            </div>
+
+                                            <div class="col-md-4">
+                                                <label class="form-label fw-semibold small">Location / City</label>
+                                                <input type="text" name="dsc_location" id="dscLocation" class="form-control" 
+                                                    value="{{ old('dsc_location', $dscLocation) }}" 
+                                                    placeholder="e.g. New Delhi, India">
+                                                <div class="form-text text-muted small">Signing jurisdiction or business location.</div>
+                                            </div>
+
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold small">Signing Reason</label>
+                                                <input type="text" name="dsc_reason" id="dscReason" class="form-control" 
+                                                    value="{{ old('dsc_reason', $dscReason) }}" 
+                                                    placeholder="e.g. Tax Invoice Verification & Authorization">
+                                                <div class="form-text text-muted small">Stated purpose for electronic signing of invoice.</div>
+                                            </div>
+
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-semibold small">Custom DSC Stamp / Seal Image (Optional)</label>
+                                                <input type="file" name="dsc_stamp_path" id="dscStampFileInput" class="form-control" accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml">
+                                                <div class="form-text text-muted small">Optional custom emblem or green DSC seal. If none uploaded, default green verified badge renders.</div>
+                                            </div>
+
+                                            <!-- Live Preview Box -->
+                                            <div class="col-12 mt-2">
+                                                <div class="border rounded-3 p-3 bg-white">
+                                                    <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom">
+                                                        <span class="fw-bold small text-uppercase text-muted" style="letter-spacing: 0.05em;">
+                                                            <i class="fa-solid fa-eye text-primary me-1"></i> Live Invoice DSC Box Preview
+                                                        </span>
+                                                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 small">
+                                                            <i class="fa-solid fa-check-circle me-1"></i>Official Preview
+                                                        </span>
+                                                    </div>
+
+                                                    <div class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-3 p-2 bg-light bg-opacity-50 rounded">
+                                                        <div class="text-muted small">
+                                                            This preview demonstrates how the official signature block will appear on downloaded PDF invoices:
+                                                        </div>
+
+                                                        <!-- Live Rendered Box -->
+                                                        <div class="border border-success rounded p-2 bg-white text-start shadow-sm" style="min-width: 250px; max-width: 320px; font-size: 11px; border-left: 3px solid #198754 !important;">
+                                                            <div class="d-flex align-items-center gap-1 text-success fw-bold pb-1 border-bottom border-success border-opacity-25 mb-1" style="font-size: 11.5px;">
+                                                                <i class="fa-solid fa-circle-check text-success"></i> Digitally Signed by
+                                                            </div>
+                                                            <div class="fw-bold text-dark" id="liveDscSigner">{{ $dscSignatoryName }}</div>
+                                                            <div class="text-muted" style="font-size: 10px; line-height: 1.35;">
+                                                                <div><strong>Desg:</strong> <span id="liveDscDesg">{{ $dscDesignation }}</span></div>
+                                                                <div><strong>Org:</strong> <span id="liveDscOrg">{{ $dscOrganization }}</span></div>
+                                                                <div><strong>Date:</strong> <span>{{ now()->timezone('Asia/Kolkata')->format('d M Y, h:i A') }} IST</span></div>
+                                                                <div><strong>CA:</strong> <span id="liveDscIssuer">{{ $dscIssuer }}</span></div>
+                                                                <div><strong>Loc:</strong> <span id="liveDscLoc">{{ $dscLocation }}</span></div>
+                                                                <div><strong>Reason:</strong> <span id="liveDscReason">{{ $dscReason }}</span></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -2970,6 +3108,33 @@
                             $('#signatureStatusText').removeClass('d-none').html('<i class="fa-solid fa-circle-check text-success me-1"></i>New Signature Selected (Click Save below)');
                         };
                         reader.readAsDataURL(file);
+                    }
+                });
+
+                // Live DSC preview updating
+                $('#dscSignatoryName').on('input', function() {
+                    $('#liveDscSigner').text($(this).val().trim() || 'Authorized Signatory');
+                });
+                $('#dscDesignation').on('input', function() {
+                    $('#liveDscDesg').text($(this).val().trim() || 'Authorized Signatory');
+                });
+                $('#dscOrganization').on('input', function() {
+                    $('#liveDscOrg').text($(this).val().trim() || 'Riskon Insurance Broking');
+                });
+                $('#dscIssuer').on('input', function() {
+                    $('#liveDscIssuer').text($(this).val().trim() || 'eMudhra CA');
+                });
+                $('#dscLocation').on('input', function() {
+                    $('#liveDscLoc').text($(this).val().trim() || 'Delhi, India');
+                });
+                $('#dscReason').on('input', function() {
+                    $('#liveDscReason').text($(this).val().trim() || 'Tax Invoice Verification');
+                });
+                $('#dscSignatureEnabled').on('change', function() {
+                    if ($(this).is(':checked')) {
+                        $('#dscStatusBadge').removeClass('bg-secondary').addClass('bg-success').text('DSC Active');
+                    } else {
+                        $('#dscStatusBadge').removeClass('bg-success').addClass('bg-secondary').text('DSC Disabled');
                     }
                 });
             });

@@ -664,7 +664,16 @@ class InvoiceController extends Controller
                 'company_logo_path',
                 'company_signature_path',
                 'company_phone',
-                'company_email'
+                'company_email',
+                'dsc_signature_enabled',
+                'dsc_signatory_name',
+                'dsc_designation',
+                'dsc_organization',
+                'dsc_issuer',
+                'dsc_location',
+                'dsc_reason',
+                'dsc_display_mode',
+                'dsc_stamp_path',
             ])->pluck('value', 'key');
 
         $companyName = !empty($companySettings['company_name']) 
@@ -746,6 +755,16 @@ class InvoiceController extends Controller
             }
         } catch (\Throwable $e) {}
 
+        // Resolve DSC Settings
+        $dscEnabled = ($companySettings['dsc_signature_enabled'] ?? '0') === '1';
+        $dscSignatoryName = $companySettings['dsc_signatory_name'] ?? 'Authorized Signatory';
+        $dscDesignation = $companySettings['dsc_designation'] ?? 'Authorized Signatory';
+        $dscOrganization = $companySettings['dsc_organization'] ?? $companyName;
+        $dscIssuer = $companySettings['dsc_issuer'] ?? 'eMudhra Sub-CA / Class 3 DSC';
+        $dscLocation = $companySettings['dsc_location'] ?? 'Delhi, India';
+        $dscReason = $companySettings['dsc_reason'] ?? 'Tax Invoice Verification & Authorization';
+        $dscDisplayMode = $companySettings['dsc_display_mode'] ?? 'both';
+
         $companyFilterName = null;
         if ($request->filled('company_id')) {
             $companyFilterName = \App\Models\CompanyMaster::find($request->company_id)?->name;
@@ -777,7 +796,15 @@ class InvoiceController extends Controller
             'companyPhone',
             'companyEmail',
             'filters',
-            'hasFilters'
+            'hasFilters',
+            'dscEnabled',
+            'dscSignatoryName',
+            'dscDesignation',
+            'dscOrganization',
+            'dscIssuer',
+            'dscLocation',
+            'dscReason',
+            'dscDisplayMode'
         ))->setPaper('a4', 'portrait');
 
         $filename = 'invoices_report_' . date('Ymd_His') . '.pdf';
@@ -853,7 +880,41 @@ class InvoiceController extends Controller
             $signatureBase64 = 'data:' . $sigMime . ';base64,' . base64_encode(file_get_contents($signaturePath));
         }
 
-        $pdf = Pdf::loadView('crm.invoices.pdf', compact('invoice', 'logoBase64', 'signatureBase64'));
+        // Resolve DSC Settings
+        $dscSettings = \App\Models\Setting::query()
+            ->whereIn('key', [
+                'dsc_signature_enabled',
+                'dsc_signatory_name',
+                'dsc_designation',
+                'dsc_organization',
+                'dsc_issuer',
+                'dsc_location',
+                'dsc_reason',
+                'dsc_display_mode',
+            ])->pluck('value', 'key');
+
+        $dscEnabled = ($dscSettings['dsc_signature_enabled'] ?? '0') === '1';
+        $dscSignatoryName = $dscSettings['dsc_signatory_name'] ?? 'Authorized Signatory';
+        $dscDesignation = $dscSettings['dsc_designation'] ?? 'Authorized Signatory';
+        $dscOrganization = $dscSettings['dsc_organization'] ?? 'RISKON INSURANCE';
+        $dscIssuer = $dscSettings['dsc_issuer'] ?? 'eMudhra Sub-CA / Class 3 DSC';
+        $dscLocation = $dscSettings['dsc_location'] ?? 'Delhi, India';
+        $dscReason = $dscSettings['dsc_reason'] ?? 'Tax Invoice Verification & Authorization';
+        $dscDisplayMode = $dscSettings['dsc_display_mode'] ?? 'both';
+
+        $pdf = Pdf::loadView('crm.invoices.pdf', compact(
+            'invoice',
+            'logoBase64',
+            'signatureBase64',
+            'dscEnabled',
+            'dscSignatoryName',
+            'dscDesignation',
+            'dscOrganization',
+            'dscIssuer',
+            'dscLocation',
+            'dscReason',
+            'dscDisplayMode'
+        ));
         $filename = 'invoice-' . ($invoice->number ?: $invoice->id) . '.pdf';
         return $pdf->download($filename);
     }

@@ -388,13 +388,35 @@
                     <div class="fw-bold" style="font-size: 9px; color: #000; text-align: right;">
                         For {{ strtoupper($companyName) }}
                     </div>
-                    @if(!empty($signatureBase64))
-                        <div style="height: 42px; text-align: right; padding-top: 2px;">
-                            <img src="{{ $signatureBase64 }}" style="max-height: 38px; max-width: 130px; object-fit: contain;">
+
+                    @php
+                        $showImageSig = (!empty($signatureBase64)) && (!isset($dscEnabled) || !$dscEnabled || in_array($dscDisplayMode ?? 'both', ['both', 'image_only']));
+                        $showDscBox = (!empty($dscEnabled) && in_array($dscDisplayMode ?? 'both', ['both', 'dsc_only']));
+                    @endphp
+
+                    @if($showImageSig)
+                        <div style="height: 38px; text-align: right; padding-top: 2px;">
+                            <img src="{{ $signatureBase64 }}" style="max-height: 34px; max-width: 130px; object-fit: contain;">
                         </div>
-                    @else
-                        <div style="height: 42px;"></div>
                     @endif
+
+                    @if($showDscBox)
+                        <div style="text-align: right; margin-top: 2px; margin-bottom: 2px;">
+                            <div style="display: inline-block; text-align: left; border: 1px solid #198754; border-left: 3px solid #198754; background-color: #f8fff9; padding: 2px 5px; border-radius: 3px; max-width: 190px; font-size: 7px; line-height: 1.25; color: #212529;">
+                                <div style="font-size: 7.5px; font-weight: bold; color: #198754; border-bottom: 1px solid #d1e7dd; padding-bottom: 1px; margin-bottom: 1px;">
+                                    <span style="font-size: 8.5px; font-weight: bold;">&#10003;</span> Digitally Signed by
+                                </div>
+                                <div style="font-weight: bold; color: #000;">{{ $dscSignatoryName ?? 'Authorized Signatory' }}</div>
+                                <div><strong>Desg:</strong> {{ $dscDesignation ?? 'Authorized Signatory' }}</div>
+                                <div><strong>Date:</strong> {{ now()->format('d-m-Y H:i') }} IST</div>
+                                <div><strong>Reason:</strong> {{ $dscReason ?? 'Tax Invoice Verification' }}</div>
+                                <div><strong>Loc:</strong> {{ $dscLocation ?? 'Delhi, India' }}</div>
+                            </div>
+                        </div>
+                    @elseif(!$showImageSig)
+                        <div style="height: 38px;"></div>
+                    @endif
+
                     <div style="font-weight: bold; font-size: 9px; text-align: right; display: inline-block; border-top: 1px solid #333; padding-top: 2px; min-width: 130px;">
                         Authorized Signatory
                     </div>

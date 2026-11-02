@@ -22,7 +22,7 @@ class SettingController extends Controller
                 abort(403, 'Unauthorized access to settings.');
             }
             return $next($request);
-        })->except(['signatureImage']);
+        })->except(['signatureImage', 'dscStampImage']);
     }
 
     public function index()
@@ -714,7 +714,20 @@ class SettingController extends Controller
             'company_bank_ifsc' => ['sometimes', 'nullable', 'string', 'max:255'],
             'company_bank_branch' => ['sometimes', 'nullable', 'string', 'max:255'],
             'company_signature_path' => ['sometimes', 'nullable', 'file', 'image', 'mimes:jpeg,png,jpg,webp,svg', 'max:4096'],
+            'dsc_signature_enabled' => ['sometimes', 'nullable'],
+            'dsc_signatory_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'dsc_designation' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'dsc_organization' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'dsc_issuer' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'dsc_location' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'dsc_reason' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'dsc_display_mode' => ['sometimes', 'nullable', 'in:image_only,dsc_only,both'],
+            'dsc_stamp_path' => ['sometimes', 'nullable', 'file', 'image', 'mimes:jpeg,png,jpg,webp,svg', 'max:4096'],
         ]);
+
+        if ($request->has('company_bank_name') || $request->has('dsc_signatory_name') || $request->has('dsc_signature_enabled')) {
+            $validated['dsc_signature_enabled'] = $request->boolean('dsc_signature_enabled') ? '1' : '0';
+        }
 
         foreach ($validated as $key => $value) {
             // Passwords are never sent back to the settings form. An empty value
@@ -731,7 +744,7 @@ class SettingController extends Controller
 
                 $path = $request->file($key)->store('company', 'public');
                 $value = $path;
-            } elseif ($request->exists($key) && $request->file($key) === null && (str_contains($key, 'logo') || str_contains($key, 'signature'))) {
+            } elseif ($request->exists($key) && $request->file($key) === null && (str_contains($key, 'logo') || str_contains($key, 'signature') || str_contains($key, 'stamp'))) {
                 continue;
             }
 
@@ -742,7 +755,7 @@ class SettingController extends Controller
             if (Schema::hasColumn('settings', 'group')) {
                 if (str_starts_with($key, 'commission_') || str_starts_with($key, 'default_pay_')) {
                     $attributes['group'] = 'commission';
-                } elseif (str_starts_with($key, 'company_bank_') || str_contains($key, 'signature')) {
+                } elseif (str_starts_with($key, 'company_bank_') || str_contains($key, 'signature') || str_starts_with($key, 'dsc_')) {
                     $attributes['group'] = 'bank_signature';
                 } elseif (str_starts_with($key, 'mail_')) {
                     $attributes['group'] = 'smtp';
@@ -821,5 +834,32 @@ class SettingController extends Controller
         }
 
         abort(404, 'Signature image file not found on disk.');
+    }
+
+    public function dscStampImage()
+    {
+        $path = Setting::query()->where('key', 'dsc_stamp_path')->value('value');
+
+        if (!$path) {
+            abort(404, 'DSC stamp image not configured.');
+        }
+
+        $candidates = [
+            Storage::disk('public')->path($path),
+            storage_path('app/public/' . ltrim($path, '/\\')),
+            storage_path('app/' . ltrim($path, '/\\')),
+            public_path('storage/' . ltrim($path, '/\\')),
+            public_path(ltrim($path, '/\\')),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if ($candidate && file_exists($candidate) && !is_dir($candidate)) {
+                return response()->file($candidate, [
+                    'Cache-Control' => 'public, max-age=86400',
+                ]);
+            }
+        }
+
+        abort(404, 'DSC stamp image file not found on disk.');
     }
 }

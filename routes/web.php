@@ -107,6 +107,7 @@ Route::get('/profile/company-logo-image', [App\Http\Controllers\ProfileControlle
 Route::get('/profile/short-company-logo-image', [App\Http\Controllers\ProfileController::class, 'shortCompanyLogoImage'])->name('profile.short_company_logo.image');
 Route::get('/profile/company-signature-image', [App\Http\Controllers\ProfileController::class, 'companySignatureImage'])->name('profile.company_signature.image');
 Route::get('/settings/signature-image', [App\Http\Controllers\SettingController::class, 'signatureImage'])->name('settings.signature.image');
+Route::get('/settings/dsc-stamp-image', [App\Http\Controllers\SettingController::class, 'dscStampImage'])->name('settings.dsc_stamp.image');
 
 // Direct storage file delivery fallback for shared hosting / cPanel environments lacking symlink
 Route::get('/storage/{path}', function (string $path) {
