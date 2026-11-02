@@ -317,18 +317,29 @@
             }
         });
 
+        function getInvoiceFilterQueryString() {
+            const params = [];
+            if (activeInvoiceType) params.push(`invoice_type=${encodeURIComponent(activeInvoiceType)}`);
+            if (companySelect?.value) params.push(`company_id=${encodeURIComponent(companySelect.value)}`);
+            if (statusSelect?.value) params.push(`status=${encodeURIComponent(statusSelect.value)}`);
+            if (startDateInput?.value) params.push(`start_date=${encodeURIComponent(startDateInput.value)}`);
+            if (endDateInput?.value) params.push(`end_date=${encodeURIComponent(endDateInput.value)}`);
+            if (searchInput?.value?.trim()) params.push(`search=${encodeURIComponent(searchInput.value.trim())}`);
+            return params.length ? `?${params.join('&')}` : '';
+        }
+
         if (exportBtn) {
             exportBtn.addEventListener("click", function (e) {
                 e.preventDefault();
-                const params = [];
-                if (startDateInput?.value) params.push(`start_date=${encodeURIComponent(startDateInput.value)}`);
-                if (endDateInput?.value) params.push(`end_date=${encodeURIComponent(endDateInput.value)}`);
-                if (statusSelect?.value) params.push(`status=${encodeURIComponent(statusSelect.value)}`);
-                if (companySelect?.value) params.push(`company_id=${encodeURIComponent(companySelect.value)}`);
-                if (activeInvoiceType) params.push(`invoice_type=${encodeURIComponent(activeInvoiceType)}`);
-                let url = '/invoices-export';
-                if (params.length) url += `?${params.join('&')}`;
-                window.location.href = url;
+                window.location.href = `/invoices-export${getInvoiceFilterQueryString()}`;
+            });
+        }
+
+        const exportPdfBtn = document.getElementById("invoiceExportPdfBtn");
+        if (exportPdfBtn) {
+            exportPdfBtn.addEventListener("click", function (e) {
+                e.preventDefault();
+                window.location.href = `/invoices-export-pdf${getInvoiceFilterQueryString()}`;
             });
         }
 

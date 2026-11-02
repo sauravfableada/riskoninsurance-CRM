@@ -546,16 +546,65 @@ class InvoiceController extends Controller
         ]);
     }
 
+    protected function buildFilteredInvoicesQuery(Request $request)
+    {
+        $user = auth()->user();
+        $query = Invoice::with(['company', 'customer', 'currency', 'items']);
+
+        // Apply explicit ownership filter for non-admin users
+        if ($user && !$user->isAdmin()) {
+            $query->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                    ->orWhere('created_by', $user->id);
+            });
+        }
+
+        if ($request->filled('invoice_type')) {
+            $query->where('invoice_type', $request->invoice_type);
+        }
+
+        if ($request->filled('company_id')) {
+            $query->where('company_id', $request->company_id);
+        }
+
+        if ($request->filled('customer_id')) {
+            $query->where('customer_id', $request->customer_id);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('invoice_date', '>=', $request->start_date);
+        }
+
+        if ($request->filled('end_date')) {
+            $query->whereDate('invoice_date', '<=', $request->end_date);
+        }
+
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('number', 'like', "%{$search}%")
+                    ->orWhere('account_id_code', 'like', "%{$search}%")
+                    ->orWhereHas('company', fn($q2) => $q2->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('customer', fn($q2) => $q2->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        return $query->latest('invoice_date')->latest('id');
+    }
+
     public function export(Request $request)
     {
         $this->authorize('viewAny', Invoice::class);
-        $query = Invoice::with(['company', 'customer', 'currency']);
 
-        $invoices = $query->latest('invoice_date')->get();
+        $invoices = $this->buildFilteredInvoicesQuery($request)->get();
 
         $fileName = 'invoices_' . now()->format('Ymd_His') . '.csv';
         $headers = [
-            'Content-type'        => 'text/csv',
+            'Content-type'        => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=$fileName",
             'Pragma'              => 'no-cache',
             'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
@@ -566,6 +615,7 @@ class InvoiceController extends Controller
 
         $callback = function () use ($invoices, $columns) {
             $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM
             fputcsv($file, $columns);
 
             foreach ($invoices as $inv) {
@@ -592,6 +642,86 @@ class InvoiceController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    public function exportPdf(Request $request)
+    {
+        $this->authorize('viewAny', Invoice::class);
+
+        $invoices = $this->buildFilteredInvoicesQuery($request)->get();
+
+        $totalSubtotal = (float) $invoices->sum(fn($i) => (float) ($i->subtotal ?: ($i->items->sum('total_price') ?: 0)));
+        $totalTax = (float) $invoices->sum(fn($i) => (float) ($i->tax_amount ?: 0));
+        $totalAmount = (float) $invoices->sum(fn($i) => (float) ($i->grand_total ?: ($i->total_amount ?: 0)));
+        $paidAmount = (float) $invoices->where('status', 'paid')->sum(fn($i) => (float) ($i->grand_total ?: ($i->total_amount ?: 0)));
+        $unpaidAmount = (float) $invoices->where('status', 'unpaid')->sum(fn($i) => (float) ($i->grand_total ?: ($i->total_amount ?: 0)));
+
+        // Resolve Company Logo for PDF
+        $logoBase64 = null;
+        $logoPath = null;
+        try {
+            $settingPath = \App\Models\Setting::query()->where('key', 'company_logo_path')->value('value');
+            if ($settingPath) {
+                $candidates = [
+                    \Illuminate\Support\Facades\Storage::disk('public')->path($settingPath),
+                    storage_path('app/public/' . ltrim($settingPath, '/\\')),
+                    storage_path('app/' . ltrim($settingPath, '/\\')),
+                    public_path('storage/' . ltrim($settingPath, '/\\')),
+                    public_path(ltrim($settingPath, '/\\')),
+                ];
+                foreach ($candidates as $cand) {
+                    if ($cand && file_exists($cand) && !is_dir($cand)) {
+                        $logoPath = $cand;
+                        break;
+                    }
+                }
+            }
+            if (!$logoPath || !file_exists($logoPath)) {
+                if (file_exists(public_path('logo/riskon_logo.png'))) {
+                    $logoPath = public_path('logo/riskon_logo.png');
+                } elseif (file_exists(public_path('logo/fableadcrmLogo.png'))) {
+                    $logoPath = public_path('logo/fableadcrmLogo.png');
+                }
+            }
+            if ($logoPath && file_exists($logoPath)) {
+                $mime = mime_content_type($logoPath) ?: 'image/png';
+                $logoBase64 = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($logoPath));
+            }
+        } catch (\Throwable $e) {}
+
+        $companyName = \App\Models\Setting::query()->where('key', 'company_name')->value('value') ?: 'RISKON IMF PRIVATE LIMITED';
+
+        $companyFilterName = null;
+        if ($request->filled('company_id')) {
+            $companyFilterName = \App\Models\CompanyMaster::find($request->company_id)?->name;
+        }
+
+        $filters = [
+            'type'       => $request->invoice_type,
+            'company'    => $companyFilterName,
+            'status'     => $request->status,
+            'start_date' => $request->start_date,
+            'end_date'   => $request->end_date,
+            'search'     => $request->search,
+        ];
+
+        $hasFilters = !empty(array_filter($filters));
+
+        $pdf = Pdf::loadView('crm.invoices.export_pdf', compact(
+            'invoices',
+            'totalSubtotal',
+            'totalTax',
+            'totalAmount',
+            'paidAmount',
+            'unpaidAmount',
+            'logoBase64',
+            'companyName',
+            'filters',
+            'hasFilters'
+        ))->setPaper('a4', 'landscape');
+
+        $filename = 'invoices_report_' . date('Ymd_His') . '.pdf';
+        return $pdf->download($filename);
     }
 
     public function pdf(Invoice $invoice)

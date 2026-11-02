@@ -48,11 +48,14 @@
             <p class="text-muted small mb-0">Track Company Pay-In commission invoices to insurance companies and direct customer billings.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
-            @can('invoices.view')
+            @if(auth()->user()?->isAdmin() || auth()->user()?->hasMatrixPermission('view_invoices') || \Illuminate\Support\Facades\Gate::allows('viewAny', \App\Models\Invoice::class) || \Illuminate\Support\Facades\Gate::allows('invoices.view'))
+                <button type="button" id="invoiceExportPdfBtn" class="btn btn-outline-danger">
+                    <i class="fa-solid fa-file-pdf me-1"></i>Export PDF
+                </button>
                 <button type="button" id="invoiceExportBtn" class="btn btn-outline-dark-blue">
                     <i class="fa-solid fa-download me-1"></i>Export CSV
                 </button>
-            @endcan
+            @endif
             @can('invoices.create')
                 <a href="{{ route('invoices.create') }}" class="btn btn-dark-blue">
                     <i class="bi bi-plus-lg me-1"></i>Create Invoice

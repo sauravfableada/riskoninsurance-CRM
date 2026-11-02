@@ -249,6 +249,7 @@ Route::middleware('auth.api')->group(function () {
     Route::post('invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->middleware('matrix_permission:edit_invoices')->name('invoices.status');
     Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])->middleware('matrix_permission:view_invoices')->name('invoices.pdf');
     Route::get('invoices-export', [InvoiceController::class, 'export'])->middleware('matrix_permission:view_invoices')->name('invoices.export');
+    Route::get('invoices-export-pdf', [InvoiceController::class, 'exportPdf'])->middleware('matrix_permission:view_invoices')->name('invoices.export_pdf');
     Route::get('bookings/{booking}/invoice/create', [InvoiceController::class, 'createByBooking'])->name('bookings.invoice.create');
 
     // Travel Operations & Financials
