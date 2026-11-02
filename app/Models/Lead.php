@@ -117,4 +117,9 @@ class Lead extends Model
     {
         return $this->morphMany(Document::class, 'documentable');
     }
+
+    public function meetings()
+    {
+        return $this->hasMany(Meeting::class);
+    }
 }

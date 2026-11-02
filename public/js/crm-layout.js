@@ -158,13 +158,16 @@
             || element.dataset.searchType
             || (searchUrl.includes("/users/search") ? "user" : null)
             || (searchUrl.includes("/customers/search") ? "customer" : null)
+            || (searchUrl.includes("/leads/search") ? "lead" : null)
             || ((element.name || element.id || "").includes("user") ? "user" : null)
             || ((element.name || element.id || "").includes("customer") ? "customer" : null)
+            || ((element.name || element.id || "").includes("lead") ? "lead" : null)
             || "default";
         const placeholder = element.dataset.searchPlaceholder
             || options.placeholder
             || (inferredSearchType === "user" ? "-- Search User --" : null)
             || (inferredSearchType === "customer" ? "-- Search Customer --" : null)
+            || (inferredSearchType === "lead" ? "-- Search Lead --" : null)
             || "-- Search --";
 
         const configByType = {
@@ -176,6 +179,23 @@
                         const email = item.email || item.data_email || "";
                         return '<div class="py-2 px-3"><div class="fw-bold">' + escape(name) + "</div>" +
                             (email ? '<div class="text-muted small">' + escape(email) + "</div>" : "") +
+                            "</div>";
+                    },
+                    item: function (item, escape) {
+                        return "<div>" + escape(item.name || item.text || "") + "</div>";
+                    }
+                }
+            },
+            lead: {
+                searchField: ["name", "email", "phone"],
+                render: {
+                    option: function (item, escape) {
+                        const name = item.name || item.text || "";
+                        const email = item.email || item.data_email || "";
+                        const phone = item.phone || item.data_phone || "";
+                        const details = [email, phone].filter(Boolean).join(" | ");
+                        return '<div class="py-2 px-3"><div class="fw-bold">' + escape(name) + "</div>" +
+                            (details ? '<div class="text-muted small">' + escape(details) + "</div>" : "") +
                             "</div>";
                     },
                     item: function (item, escape) {

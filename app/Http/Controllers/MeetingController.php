@@ -21,29 +21,34 @@ class MeetingController extends Controller
     public function create()
     {
         $customers = $this->visibleCustomers();
+        $leads = $this->visibleLeads();
         $users = $this->selectableUsers(['admin', 'staff']);
 
-        return view('crm.meetings.create', compact('customers', 'users'));
+        return view('crm.meetings.create', compact('customers', 'leads', 'users'));
     }
 
     public function edit(string $id)
     {
-        $meeting = Meeting::with(['customer', 'assignedUser', 'statusHistories.updater'])->findOrFail($id);
+        $meeting = Meeting::with(['customer', 'lead', 'assignedUser', 'statusHistories.updater'])->findOrFail($id);
         $this->authorize('update', $meeting);
         $customers = $this->visibleCustomers();
+        $leads = $this->visibleLeads();
 
         if ($meeting->customer && !$customers->contains('id', $meeting->customer_id)) {
             $customers->push($meeting->customer);
         }
+        if ($meeting->lead && !$leads->contains('id', $meeting->lead_id)) {
+            $leads->push($meeting->lead);
+        }
 
         $users = $this->selectableUsers(['admin', 'staff']);
 
-        return view('crm.meetings.edit', compact('meeting', 'users', 'customers'));
+        return view('crm.meetings.edit', compact('meeting', 'users', 'customers', 'leads'));
     }
 
     public function show(string $id)
     {
-        $meeting = Meeting::with(['customer', 'assignedUser', 'createdBy', 'updatedBy', 'statusHistories.updater'])->findOrFail($id);
+        $meeting = Meeting::with(['customer', 'lead', 'assignedUser', 'createdBy', 'updatedBy', 'statusHistories.updater'])->findOrFail($id);
         $this->authorize('view', $meeting);
         return view('crm.meetings.show', compact('meeting'));
     }
@@ -52,7 +57,7 @@ class MeetingController extends Controller
     {
         $fileName = 'meetings_' . date('Y-m-d_H-i-s') . '.csv';
         $query = $this->scopeOwnedRecords(
-            Meeting::with(['customer', 'assignedUser', 'createdBy'])
+            Meeting::with(['customer', 'lead', 'assignedUser', 'createdBy'])
         )
             ->latest()
             ->when($request->search, function ($q) use ($request) {
@@ -63,11 +68,13 @@ class MeetingController extends Controller
                         ->orWhere('meeting_type', 'like', "%{$search}%")
                         ->orWhere('address', 'like', "%{$search}%")
                         ->orWhereHas('customer', fn($customer) => $customer->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('lead', fn($lead) => $lead->where('name', 'like', "%{$search}%"))
                         ->orWhereHas('assignedUser', fn($user) => $user->where('name', 'like', "%{$search}%"));
                 });
             })
             ->when($request->status, fn($q) => $q->where('status', $request->status))
             ->when($request->customer_id, fn($q) => $q->where('customer_id', $request->customer_id))
+            ->when($request->lead_id, fn($q) => $q->where('lead_id', $request->lead_id))
             ->when($request->assigned_user_id, fn($q) => $q->where('assigned_user_id', $request->assigned_user_id))
             ->when($request->from_date && $request->to_date, function ($q) use ($request) {
                 $q->whereBetween('created_at', [
@@ -86,7 +93,7 @@ class MeetingController extends Controller
             'Expires' => '0',
         ];
 
-        $columns = ['No', 'Title', 'Customer', 'Assigned Staff', 'Meeting Type', 'Status', 'Location', 'Scheduled At', 'Google Sync', 'Created By', 'Created At'];
+        $columns = ['No', 'Title', 'Customer / Lead', 'Assigned Staff', 'Meeting Type', 'Status', 'Location', 'Scheduled At', 'Google Sync', 'Created By', 'Created At'];
 
         $callback = function () use ($meetings, $columns) {
             $file = fopen('php://output', 'w');
@@ -94,10 +101,11 @@ class MeetingController extends Controller
 
             $i = 1;
             foreach ($meetings as $meeting) {
+                $clientName = $meeting->customer?->name ?? ($meeting->lead ? $meeting->lead->name . ' (Lead)' : '--');
                 fputcsv($file, [
                     $i++,
                     $meeting->title,
-                    $meeting->customer?->name ?? '--',
+                    $clientName,
                     $meeting->assignedUser?->name ?? 'Unassigned',
                     $meeting->meeting_type ? ucfirst($meeting->meeting_type) : '--',
                     $meeting->status ? ucfirst($meeting->status) : '--',
@@ -131,6 +139,11 @@ class MeetingController extends Controller
     private function visibleCustomers()
     {
         return $this->scopeOwnedRecords(Customer::query())->orderBy('name')->get();
+    }
+
+    private function visibleLeads()
+    {
+        return $this->scopeOwnedRecords(\App\Models\Lead::query())->orderBy('name')->get();
     }
 
     /**

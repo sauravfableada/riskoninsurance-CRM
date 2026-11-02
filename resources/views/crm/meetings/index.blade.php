@@ -110,7 +110,7 @@
                     <thead class="bg-light">
                         <tr>
                             <th class="ps-4 d-none d-md-table-cell">Sr.No</th>
-                            <th class="ps-4">Title & Customer</th>
+                            <th class="ps-4">Title & Customer / Lead</th>
                             <th class="text-start">Scheduled At</th>
                             <th class="d-none d-md-table-cell">Location</th>
                             <th class="d-none d-md-table-cell">Staff</th>

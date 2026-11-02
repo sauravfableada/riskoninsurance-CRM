@@ -34,7 +34,7 @@ class MeetingController extends ApiBaseController
         }
 
         $query = $this->scopeOwnedRecords(
-            Meeting::with(['customer', 'assignedUser', 'createdBy', 'updatedBy'])
+            Meeting::with(['customer', 'lead', 'assignedUser', 'createdBy', 'updatedBy'])
         )->latest();
 
         // Search functionality
@@ -46,6 +46,9 @@ class MeetingController extends ApiBaseController
                     ->orWhere('address', 'like', "%{$search}%")
                     ->orWhereHas('customer', function ($customerQuery) use ($search) {
                         $customerQuery->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('lead', function ($leadQuery) use ($search) {
+                        $leadQuery->where('name', 'like', "%{$search}%");
                     })
                     ->orWhereHas('assignedUser', function ($userQuery) use ($search) {
                         $userQuery->where('name', 'like', "%{$search}%");
@@ -103,7 +106,8 @@ class MeetingController extends ApiBaseController
 
         $validator = Validator::make($request->all(), [
             'title' => ['required', 'string', 'max:255'],
-            'customer_id' => ['required', 'integer', 'exists:customers,id'],
+            'customer_id' => ['nullable', 'required_without:lead_id', 'integer', 'exists:customers,id'],
+            'lead_id' => ['nullable', 'required_without:customer_id', 'integer', 'exists:leads,id'],
             'assigned_user_id' => ['nullable', 'integer', 'exists:users,id'],
             'scheduled_at' => ['required', 'date'],
             'meeting_type' => ['nullable', 'in:online,offline,phone,video'],
@@ -116,9 +120,13 @@ class MeetingController extends ApiBaseController
             'title.required' => 'Please enter the meeting title.',
             'title.max' => 'Meeting title cannot exceed 255 characters.',
 
-            'customer_id.required' => 'Please select a customer.',
+            'customer_id.required_without' => 'Please select a Customer or a Lead.',
             'customer_id.integer' => 'Invalid customer selected.',
             'customer_id.exists' => 'The selected customer does not exist in our records.',
+
+            'lead_id.required_without' => 'Please select a Customer or a Lead.',
+            'lead_id.integer' => 'Invalid lead selected.',
+            'lead_id.exists' => 'The selected lead does not exist in our records.',
 
             'assigned_user_id.integer' => 'Invalid staff selected.',
             'assigned_user_id.exists' => 'The selected staff does not exist in our records.',
@@ -152,7 +160,18 @@ class MeetingController extends ApiBaseController
         }
 
         $data = $validator->validated();
-        $this->ensureVisibleCustomer((int) $data['customer_id']);
+        if (!empty($data['customer_id'])) {
+            $this->ensureVisibleCustomer((int) $data['customer_id']);
+            $data['lead_id'] = null;
+        } elseif (!empty($data['lead_id'])) {
+            $this->ensureVisibleLead((int) $data['lead_id']);
+            $data['customer_id'] = null;
+        } else {
+            return response()->json([
+                'success' => false,
+                'errors' => ['customer_id' => ['Please select a Customer or a Lead.']]
+            ], 422);
+        }
         $this->ensureAssignableUser($data['assigned_user_id'] ?? null, $user);
         if (Meeting::supportsOwnedByUserColumn()) {
             $data['user_id'] = $this->resolveOwnedUserId($data['assigned_user_id'] ?? null, $user->id);
@@ -200,23 +219,24 @@ class MeetingController extends ApiBaseController
             // Don't fail the meeting creation if Google Calendar sync fails
         }
 
-        // WhatsApp notification to customer
+        // WhatsApp notification to customer or lead
         try {
-            $meeting->load(['customer', 'assignedUser']);
+            $meeting->load(['customer', 'lead', 'assignedUser']);
 
-            $customerPhone = $meeting->customer?->whatsapp ?: $meeting->customer?->phone;
+            $contactName = $meeting->customer?->name ?: ($meeting->lead?->name ?? 'Contact');
+            $contactPhone = $meeting->customer?->whatsapp ?: ($meeting->customer?->phone ?: ($meeting->lead?->phone));
             $scheduledText = $meeting->scheduled_at ? \Illuminate\Support\Carbon::parse($meeting->scheduled_at)->format('d M Y h:i A') : '';
             $meetingType = $meeting->meeting_type ? ucfirst($meeting->meeting_type) : 'Meeting';
             $addressText = $meeting->address ?: '--';
             $agendaText = $meeting->agenda ?: '';
             $staffName = $meeting->assignedUser?->name ?? 'Staff';
 
-            if ($customerPhone) {
+            if ($contactPhone) {
                 app(\App\Services\WhatsAppService::class)->sendForModule(
                     'meeting_scheduled_customer',
-                    $customerPhone,
+                    $contactPhone,
                     [
-                        $meeting->customer?->name ?? 'Customer',
+                        $contactName,
                         $staffName,
                         $meeting->title ?? 'Meeting',
                         $scheduledText,
@@ -235,7 +255,7 @@ class MeetingController extends ApiBaseController
                     $staffPhone,
                     [
                         $staffName,
-                        $meeting->customer?->name ?? 'Customer',
+                        $contactName,
                         $meeting->title ?? 'Meeting',
                         $scheduledText,
                         $meetingType,
@@ -255,7 +275,7 @@ class MeetingController extends ApiBaseController
         return response()->json([
             'success' => true,
             'message' => 'Meeting scheduled successfully.',
-            'data' => $meeting->fresh(['customer', 'assignedUser']),
+            'data' => $meeting->fresh(['customer', 'lead', 'assignedUser']),
             'history_entry' => $this->serializeHistoryEntry($historyEntry),
             'redirect' => route('meetings.index'),
         ], 201);
@@ -268,7 +288,7 @@ class MeetingController extends ApiBaseController
             return $this->error('Unauthorized', 401);
         }
 
-        $meeting = Meeting::with(['customer', 'assignedUser', 'createdBy', 'updatedBy'])
+        $meeting = Meeting::with(['customer', 'lead', 'assignedUser', 'createdBy', 'updatedBy'])
             ->findOrFail($id);
         $this->authorize('view', $meeting);
 
@@ -291,7 +311,8 @@ class MeetingController extends ApiBaseController
         $originalStatus = $meeting->status;
         $validator = Validator::make($request->all(), [
             'title' => ['required', 'string', 'max:255'],
-            'customer_id' => ['required', 'integer', 'exists:customers,id'],
+            'customer_id' => ['nullable', 'required_without:lead_id', 'integer', 'exists:customers,id'],
+            'lead_id' => ['nullable', 'required_without:customer_id', 'integer', 'exists:leads,id'],
             'assigned_user_id' => ['nullable', 'integer', 'exists:users,id'],
             'scheduled_at' => ['required', 'date'],
             'meeting_type' => ['nullable', 'in:online,offline,phone,video'],
@@ -304,9 +325,13 @@ class MeetingController extends ApiBaseController
             'title.required' => 'Please enter the meeting title.',
             'title.max' => 'Meeting title cannot exceed 255 characters.',
 
-            'customer_id.required' => 'Please select a customer.',
+            'customer_id.required_without' => 'Please select a Customer or a Lead.',
             'customer_id.integer' => 'Invalid customer selected.',
             'customer_id.exists' => 'The selected customer does not exist in our records.',
+
+            'lead_id.required_without' => 'Please select a Customer or a Lead.',
+            'lead_id.integer' => 'Invalid lead selected.',
+            'lead_id.exists' => 'The selected lead does not exist in our records.',
 
             'assigned_user_id.integer' => 'Invalid staff selected.',
             'assigned_user_id.exists' => 'The selected staff does not exist in our records.',
@@ -333,7 +358,19 @@ class MeetingController extends ApiBaseController
         }
 
         $data = $validator->validated();
-        $this->ensureVisibleCustomer((int) $data['customer_id']);
+        if (!empty($data['customer_id'])) {
+            $this->ensureVisibleCustomer((int) $data['customer_id']);
+            $data['lead_id'] = null;
+        } elseif (!empty($data['lead_id'])) {
+            $this->ensureVisibleLead((int) $data['lead_id']);
+            $data['customer_id'] = null;
+        } else {
+            return response()->json([
+                'success' => false,
+                'errors' => ['customer_id' => ['Please select a Customer or a Lead.']]
+            ], 422);
+        }
+
         $this->ensureAssignableUser($data['assigned_user_id'] ?? null, $user);
         if (Meeting::supportsOwnedByUserColumn()) {
             $data['user_id'] = $this->resolveOwnedUserId(
@@ -354,20 +391,20 @@ class MeetingController extends ApiBaseController
         app(\App\Services\UserLogService::class)->updated($meeting, 'Updated a Meeting ' . ($meeting->title ?: ('ID ' . $meeting->id)));
 
         try {
-            $meeting->load(['customer', 'assignedUser']);
+            $meeting->load(['customer', 'lead', 'assignedUser']);
 
-            $customerPhone = $meeting->customer?->whatsapp ?: $meeting->customer?->phone;
+            $contactName = $meeting->customer?->name ?: ($meeting->lead?->name ?? 'Contact');
+            $contactPhone = $meeting->customer?->whatsapp ?: ($meeting->customer?->phone ?: ($meeting->lead?->phone));
             $staffPhone = $meeting->assignedUser?->whatsapp ?: $meeting->assignedUser?->phone;
             $staffName = $meeting->assignedUser?->name ?? (auth()->user()?->name ?? 'Staff');
-            $customerName = $meeting->customer?->name ?? 'Customer';
             $scheduledText = $meeting->scheduled_at ? \Illuminate\Support\Carbon::parse($meeting->scheduled_at)->format('d M Y h:i A') : '';
             $meetingType = $meeting->meeting_type ? ucfirst($meeting->meeting_type) : 'Meeting';
             $addressText = $meeting->address ?: '--';
             $agendaText = $meeting->agenda ?: '';
             $customerPayload = [
-                $customerName,
+                $contactName,
                 $meeting->title ?? 'Meeting',
-                $customerName,
+                $contactName,
                 $staffName,
                 $scheduledText,
                 $meetingType,
@@ -378,7 +415,7 @@ class MeetingController extends ApiBaseController
             $staffPayload = [
                 $staffName,
                 $meeting->title ?? 'Meeting',
-                $customerName,
+                $contactName,
                 $staffName,
                 $scheduledText,
                 $meetingType,
@@ -386,10 +423,10 @@ class MeetingController extends ApiBaseController
                 $agendaText,
             ];
 
-            if ($customerPhone) {
+            if ($contactPhone) {
                 app(\App\Services\WhatsAppService::class)->sendForModule(
                     'meeting_updated',
-                    $customerPhone,
+                    $contactPhone,
                     $customerPayload,
                     $meeting->id
                 );
@@ -444,7 +481,7 @@ class MeetingController extends ApiBaseController
         return response()->json([
             'success' => true,
             'message' => 'Meeting updated successfully.',
-            'data' => $meeting->fresh(['customer', 'assignedUser']),
+            'data' => $meeting->fresh(['customer', 'lead', 'assignedUser']),
             'history_entry' => $this->serializeHistoryEntry($historyEntry ?? null),
             'redirect' => route('meetings.index', $meeting),
         ]);
@@ -511,6 +548,23 @@ class MeetingController extends ApiBaseController
         return response()->json([
             'success' => true,
             'data' => $customers
+        ]);
+    }
+
+    public function getLeads()
+    {
+        $user = auth()->user();
+        if (!$user) {
+            return $this->error('Unauthorized', 401);
+        }
+
+        $leads = $this->scopeOwnedRecords(\App\Models\Lead::select('id', 'name', 'phone', 'email'))
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $leads
         ]);
     }
 
@@ -831,6 +885,12 @@ class MeetingController extends ApiBaseController
     {
         $customer = Customer::findOrFail($customerId);
         $this->authorize('view', $customer);
+    }
+
+    private function ensureVisibleLead(int $leadId): void
+    {
+        $lead = \App\Models\Lead::findOrFail($leadId);
+        $this->authorize('view', $lead);
     }
 
     private function ensureAssignableUser(?int $assignedUserId, $user): void

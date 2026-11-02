@@ -35,9 +35,31 @@
                         <div class="detail-view-block">
                             <div class="row g-3 detail-view-grid">
                                 <div class="col-md-6 col-lg-4 detail-view-row">
-                                    <span class="detail-view-label text-muted small d-block mb-1">Customer</span>
-                                    <span
-                                        class="detail-view-value fw-bold text-dark">{{ $meeting->customer?->name ?? '--' }}</span>
+                                    <span class="detail-view-label text-muted small d-block mb-1">
+                                        {{ $meeting->lead ? 'Lead' : 'Customer' }}
+                                    </span>
+                                    <span class="detail-view-value fw-bold text-dark">
+                                        @if($meeting->lead)
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle me-1">Lead</span>
+                                            @can('leads.view')
+                                                <a href="{{ route('leads.show', $meeting->lead->id) }}" class="text-decoration-none fw-bold text-primary">
+                                                    {{ $meeting->lead->name }}
+                                                </a>
+                                            @else
+                                                {{ $meeting->lead->name }}
+                                            @endcan
+                                        @elseif($meeting->customer)
+                                            @can('customers.view')
+                                                <a href="{{ route('customers.show', $meeting->customer->id) }}" class="text-decoration-none fw-bold text-primary">
+                                                    {{ $meeting->customer->name }}
+                                                </a>
+                                            @else
+                                                {{ $meeting->customer->name }}
+                                            @endcan
+                                        @else
+                                            --
+                                        @endif
+                                    </span>
                                 </div>
 
                                 <div class="col-md-6 col-lg-4 detail-view-row">

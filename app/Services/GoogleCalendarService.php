@@ -424,11 +424,12 @@ class GoogleCalendarService
             ];
         }
 
-        // Add customer as guest/attendee
-        if ($meeting->customer && !empty($meeting->customer->email)) {
+        // Add customer or lead as guest/attendee
+        $attendeeEntity = $meeting->customer ?: $meeting->lead;
+        if ($attendeeEntity && !empty($attendeeEntity->email)) {
             $attendees[] = [
-                'email' => $meeting->customer->email,
-                'displayName' => $meeting->customer->name,
+                'email' => $attendeeEntity->email,
+                'displayName' => $attendeeEntity->name,
                 'organizer' => false,
                 'responseStatus' => 'needsAction',
             ];

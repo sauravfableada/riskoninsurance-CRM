@@ -299,9 +299,14 @@ const MeetingTable = {
 
         let html = "";
         meetings.forEach((meeting, index) => {
-            let customerName = meeting.customer
-                ? escapeHtml(meeting.customer.name)
-                : "--";
+            let clientBadge = "";
+            let customerName = "--";
+            if (meeting.customer) {
+                customerName = escapeHtml(meeting.customer.name);
+            } else if (meeting.lead) {
+                clientBadge = '<span class="badge bg-info-subtle text-info border border-info-subtle me-1">Lead</span>';
+                customerName = escapeHtml(meeting.lead.name);
+            }
             let srNo = meta.from ? meta.from + index : index + 1;
             
             const assignedUserData = meeting.assigned_user || meeting.assignedUser;
@@ -329,10 +334,10 @@ const MeetingTable = {
                 ? `<i class="bi bi-geo-alt text-muted me-1"></i>${escapeHtml(meeting.address)}`
                 : '<span class="text-muted">—</span>';
 
-            // Title & Customer column
+            // Title & Customer / Lead column
             let titleDisplay = `
                 <div class="fw-semibold">${escapeHtml(meeting.title)}</div>
-                <small class="text-muted">${customerName}</small>
+                <small class="text-muted">${clientBadge}${customerName}</small>
             `;
 
             // Scheduled At column with type
@@ -736,8 +741,13 @@ const MeetingUpdate = {
         buttonLoader("#submitBtn", "Updating", true);
 
         let csrfToken = getCsrfToken();
+        const participantType = $('input[name="participant_type"]:checked').val() || ($('#lead_id').val() ? 'lead' : 'customer');
+        const customerId = participantType === 'customer' ? ($("#customer_id").val() || null) : null;
+        const leadId = participantType === 'lead' ? ($("#lead_id").val() || null) : null;
+
         let formData = {
-            customer_id: $("#customer_id").val(),
+            customer_id: customerId,
+            lead_id: leadId,
             title: $("#title").val(),
             scheduled_at: $("#scheduled_at").val(),
             meeting_type: $("#meeting_type").val(),
@@ -863,6 +873,94 @@ $(document).ready(function () {
     // Global delete handler
     $(document).on("click", ".delete-meeting", function () {
         deleteMeeting($(this).data("id"));
+    });
+
+    // Participant Type toggle (Customer vs Lead)
+    $(document).on("change", 'input[name="participant_type"]', function () {
+        const type = $(this).val();
+        if (type === "lead") {
+            $("#meetingParticipantLabel").html('Lead <span class="text-danger">*</span>');
+            $("#customerSelectContainer").addClass("d-none");
+            $("#leadSelectContainer").removeClass("d-none");
+
+            const custSelect = document.querySelector("#customer_id");
+            if (custSelect && custSelect.tomselect) {
+                custSelect.tomselect.clear();
+            } else if (custSelect) {
+                custSelect.value = "";
+            }
+        } else {
+            $("#meetingParticipantLabel").html('Customer <span class="text-danger">*</span>');
+            $("#leadSelectContainer").addClass("d-none");
+            $("#customerSelectContainer").removeClass("d-none");
+
+            const leadSelect = document.querySelector("#lead_id");
+            if (leadSelect && leadSelect.tomselect) {
+                leadSelect.tomselect.clear();
+            } else if (leadSelect) {
+                leadSelect.value = "";
+            }
+        }
+    });
+
+    // Handle Add Lead Modal Submit
+    $("#formAddLead").on("submit", function (e) {
+        e.preventDefault();
+        let $form = $(this);
+        let url = $form.attr("action");
+        let btn = $form.find('button[type="submit"]');
+        let spinner = btn.find('.spinner-border');
+        
+        btn.prop('disabled', true);
+        spinner.removeClass('d-none');
+        $form.find(".invalid-feedback").html("").hide();
+        $form.find(".is-invalid").removeClass("is-invalid");
+        
+        $.ajax({
+            url: url,
+            type: "POST",
+            data: $form.serialize(),
+            headers: authHeaders({
+                "X-Requested-With": "XMLHttpRequest",
+                "X-CSRF-TOKEN": getCsrfToken(),
+                Accept: "application/json",
+            }),
+            success: function (response) {
+                btn.prop('disabled', false);
+                spinner.addClass('d-none');
+                
+                if (response.success && response.data) {
+                    let lead = response.data;
+                    let tsElement = document.querySelector("#lead_id");
+                    if (tsElement && tsElement.tomselect) {
+                        tsElement.tomselect.addOption({
+                            id: lead.id,
+                            name: lead.name,
+                            email: lead.email || '',
+                            phone: lead.phone || ''
+                        });
+                        tsElement.tomselect.addItem(lead.id);
+                    } else {
+                        let $select = $("#lead_id");
+                        $select.append(new Option(lead.name, lead.id, true, true));
+                        $select.trigger("change");
+                    }
+                    $("#modalAddLead").modal("hide");
+                    $form[0].reset();
+                    showAlert("success", "Lead added successfully.");
+                }
+            },
+            error: function (xhr) {
+                btn.prop('disabled', false);
+                spinner.addClass('d-none');
+                
+                if (xhr.status === 422 && xhr.responseJSON?.errors) {
+                    displayErrors(xhr.responseJSON.errors);
+                } else {
+                    showAlert("error", xhr.responseJSON?.message || "Error adding lead.");
+                }
+            }
+        });
     });
 
     // Handle Add Customer Modal Submit

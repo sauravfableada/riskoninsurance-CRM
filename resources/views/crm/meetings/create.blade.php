@@ -23,26 +23,68 @@
                     @csrf
 
                     <div class="row g-4">
-                        <!-- Customer -->
+                        <!-- Customer / Lead Selection -->
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Customer <span class="text-danger">*</span></label>
-                            <div class="d-flex gap-2">
-                                <div class="flex-grow-1">
-                                    <select name="customer_id" id="customer_id" class="form-select"
-                                        data-search-url="{{ route('api.customers.search') }}" data-search-type="customer"
-                                        data-search-placeholder="-- Search Customer --" required>
-                                        <option value="">-- Search Customer --</option>
-                                        @foreach ($customers as $customer)
-                                            <option value="{{ $customer->id }}" data-email="{{ $customer->email }}"
-                                                data-phone="{{ $customer->phone }}">
-                                                {{ $customer->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <div class="invalid-feedback" id="customer_id-error"></div>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label fw-semibold mb-0" id="meetingParticipantLabel">
+                                    Customer <span class="text-danger">*</span>
+                                </label>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Meeting Target Type">
+                                    <input type="radio" class="btn-check" name="participant_type" id="participant_customer" value="customer" checked autocomplete="off">
+                                    <label class="btn btn-outline-dark-blue btn-sm py-0 px-2 fw-medium" for="participant_customer">
+                                        <i class="bi bi-person me-1"></i>Customer
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="participant_type" id="participant_lead" value="lead" autocomplete="off">
+                                    <label class="btn btn-outline-dark-blue btn-sm py-0 px-2 fw-medium" for="participant_lead">
+                                        <i class="bi bi-person-lines-fill me-1"></i>Lead
+                                    </label>
                                 </div>
-                                <div>
-                                    <button type="button" class="btn btn-dark-blue px-3" data-bs-toggle="modal" data-bs-target="#modalAddCustomer" title="Add New Customer"><i class="fa-solid fa-plus"></i></button>
+                            </div>
+
+                            <!-- Customer Select Container -->
+                            <div id="customerSelectContainer">
+                                <div class="d-flex gap-2">
+                                    <div class="flex-grow-1">
+                                        <select name="customer_id" id="customer_id" class="form-select"
+                                            data-search-url="{{ route('api.customers.search') }}" data-search-type="customer"
+                                            data-search-placeholder="-- Search Customer --">
+                                            <option value="">-- Search Customer --</option>
+                                            @foreach ($customers as $customer)
+                                                <option value="{{ $customer->id }}" data-email="{{ $customer->email }}"
+                                                    data-phone="{{ $customer->phone }}">
+                                                    {{ $customer->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <div class="invalid-feedback" id="customer_id-error"></div>
+                                    </div>
+                                    <div>
+                                        <button type="button" class="btn btn-dark-blue px-3" data-bs-toggle="modal" data-bs-target="#modalAddCustomer" title="Add New Customer"><i class="fa-solid fa-plus"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Lead Select Container -->
+                            <div id="leadSelectContainer" class="d-none">
+                                <div class="d-flex gap-2">
+                                    <div class="flex-grow-1">
+                                        <select name="lead_id" id="lead_id" class="form-select"
+                                            data-search-url="{{ route('api.leads.search') }}" data-search-type="lead"
+                                            data-search-placeholder="-- Search Lead --">
+                                            <option value="">-- Search Lead --</option>
+                                            @foreach ($leads as $lead)
+                                                <option value="{{ $lead->id }}" data-email="{{ $lead->email }}"
+                                                    data-phone="{{ $lead->phone }}">
+                                                    {{ $lead->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <div class="invalid-feedback" id="lead_id-error"></div>
+                                    </div>
+                                    <div>
+                                        <button type="button" class="btn btn-dark-blue px-3" data-bs-toggle="modal" data-bs-target="#modalAddLead" title="Add New Lead"><i class="fa-solid fa-plus"></i></button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -143,6 +185,46 @@
                                 <input type="tel" class="form-control" name="phone" placeholder="Phone number" maxlength="15" inputmode="numeric">
                             </div>
                             <datalist id="quickCustomerCountryCodes"><option value="+91"><option value="+1"><option value="+44"><option value="+61"><option value="+971"><option value="+966"><option value="+65"><option value="+60"><option value="+974"></datalist>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-dark-blue">
+                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                            <span class="btn-text">Save</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Add Lead -->
+    <div class="modal fade" id="modalAddLead" tabindex="-1" aria-labelledby="modalAddLeadLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header" style="background:#0a2540;">
+                    <h5 class="modal-title text-white fw-bold" id="modalAddLeadLabel">Add Lead</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="formAddLead" action="/api/leads" method="POST">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="name" placeholder="Full name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Email</label>
+                            <input type="email" class="form-control" name="email" placeholder="Email address">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Phone <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="text" class="form-control flex-grow-0" name="country_code" value="+91" list="quickLeadMeetingCountryCodes" maxlength="5" style="width:95px" aria-label="Country code">
+                                <input type="tel" class="form-control" name="phone" placeholder="Phone number" maxlength="15" inputmode="numeric" required>
+                            </div>
+                            <datalist id="quickLeadMeetingCountryCodes"><option value="+91"><option value="+1"><option value="+44"><option value="+61"><option value="+971"><option value="+966"><option value="+65"><option value="+60"><option value="+974"></datalist>
                         </div>
                     </div>
                     <div class="modal-footer">

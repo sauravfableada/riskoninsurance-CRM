@@ -755,6 +755,38 @@ class LeadController extends ApiBaseController
         }
     }
 
+    public function search(Request $request)
+    {
+        $query = $this->scopeOwnedRecords(Lead::query()->whereNull('deleted_at'));
+
+        $search = $request->get('q', $request->get('search', ''));
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('company_name', 'like', "%{$search}%");
+            });
+        }
+
+        $leads = $query->limit(25)->get(['id', 'name', 'email', 'phone', 'company_name']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $leads->map(function ($lead) {
+                return [
+                    'id' => $lead->id,
+                    'text' => $lead->name,
+                    'name' => $lead->name,
+                    'email' => $lead->email,
+                    'phone' => $lead->phone,
+                    'company_name' => $lead->company_name,
+                ];
+            }),
+        ]);
+    }
+
     public function revertFromCustomer(Request $request, Lead $lead)
     {
         return app(\App\Http\Controllers\LeadController::class)->revertFromCustomer($request, $lead);

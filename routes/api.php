@@ -132,6 +132,7 @@ Route::prefix('v1')->group(function () {
 // These routes use custom 'auth.api' middleware for proper API authentication
 Route::middleware('auth.api')->group(function () {
     // Core CRM API endpoints
+    Route::get('leads/search', [LeadController::class, 'search'])->name('api.leads.search');
     Route::post('leads/import', [LeadController::class, 'import'])->name('api.leads.import');
     Route::apiResource('leads', LeadController::class)->names([
         'index' => 'api.leads.index',
@@ -171,6 +172,8 @@ Route::middleware('auth.api')->group(function () {
         'destroy' => 'api.projects.destroy',
     ]);
 
+    Route::get('meetings/customers', [MeetingController::class, 'getCustomers']);
+    Route::get('meetings/leads', [MeetingController::class, 'getLeads']);
     Route::get('meetings/google/auth-status', [MeetingController::class, 'googleAuthStatus']);
     Route::get('meetings/google/auth-url', [MeetingController::class, 'googleAuthUrl']);
     Route::post('meetings/google/disconnect', [MeetingController::class, 'googleDisconnect']);

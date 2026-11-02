@@ -16,6 +16,7 @@ class Meeting extends Model
     protected $fillable = [
         'title',
         'customer_id',
+        'lead_id',
         'assigned_user_id',
         'scheduled_at',
         'meeting_type',
@@ -45,6 +46,14 @@ class Meeting extends Model
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    /**
+     * Get the lead associated with the meeting.
+     */
+    public function lead()
+    {
+        return $this->belongsTo(Lead::class);
     }
 
     /**
