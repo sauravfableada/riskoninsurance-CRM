@@ -725,7 +725,7 @@ class SettingController extends Controller
             'dsc_stamp_path' => ['sometimes', 'nullable', 'file', 'image', 'mimes:jpeg,png,jpg,webp,svg', 'max:4096'],
         ]);
 
-        if ($request->has('company_bank_name') || $request->has('dsc_signatory_name') || $request->has('dsc_signature_enabled')) {
+        if ($request->has('company_bank_name') || $request->has('dsc_signatory_name') || $request->exists('dsc_signature_enabled')) {
             $validated['dsc_signature_enabled'] = $request->boolean('dsc_signature_enabled') ? '1' : '0';
         }
 
@@ -736,6 +736,9 @@ class SettingController extends Controller
                 continue;
             }
 
+            $fileKeys = ['company_signature_path', 'dsc_stamp_path', 'firebase_key_file', 'company_logo', 'company_stamp'];
+            $isPotentialFileField = in_array($key, $fileKeys, true) || str_ends_with($key, '_path') || str_ends_with($key, '_file');
+
             if ($request->hasFile($key)) {
                 $oldSetting = Setting::where('key', $key)->first();
                 if ($oldSetting && $oldSetting->value && Storage::disk('public')->exists($oldSetting->value)) {
@@ -744,7 +747,7 @@ class SettingController extends Controller
 
                 $path = $request->file($key)->store('company', 'public');
                 $value = $path;
-            } elseif ($request->exists($key) && $request->file($key) === null && (str_contains($key, 'logo') || str_contains($key, 'signature') || str_contains($key, 'stamp'))) {
+            } elseif ($isPotentialFileField && !$request->hasFile($key)) {
                 continue;
             }
 
@@ -767,7 +770,7 @@ class SettingController extends Controller
             }
 
             if (Schema::hasColumn('settings', 'type')) {
-                $attributes['type'] = $request->hasFile($key) ? 'file' : (is_bool($value) || in_array($key, ['commission_allow_manual_override', 'whatsapp_integration_enabled', 'social_integrations_enabled', 'google_connection_enabled']) ? 'boolean' : 'string');
+                $attributes['type'] = $request->hasFile($key) ? 'file' : (is_bool($value) || in_array($key, ['dsc_signature_enabled', 'commission_allow_manual_override', 'whatsapp_integration_enabled', 'social_integrations_enabled', 'google_connection_enabled']) ? 'boolean' : 'string');
             }
 
             Setting::updateOrCreate(['key' => $key], $attributes);

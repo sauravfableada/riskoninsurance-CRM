@@ -61,7 +61,7 @@
             ? route('settings.signature.image') . '?v=' . time()
             : null;
 
-        $dscEnabled = ($settings['dsc_signature_enabled']->value ?? '0') === '1';
+        $dscEnabled = in_array(strval($settings['dsc_signature_enabled']->value ?? '0'), ['1', 'true', 'on'], true);
         $dscSignatoryName = $settings['dsc_signatory_name']->value ?? ($settings['company_name']->value ?? 'Authorized Signatory');
         $dscDesignation = $settings['dsc_designation']->value ?? 'Authorized Signatory';
         $dscOrganization = $settings['dsc_organization']->value ?? ($settings['company_name']->value ?? 'Riskon Insurance Broking');
@@ -1001,6 +1001,7 @@
                                                 <small class="text-muted">Configure official DSC Digital Signature metadata and verification box for PDF Invoices</small>
                                             </div>
                                             <div class="form-check form-switch fs-6 mb-0 d-flex align-items-center gap-2">
+                                                <input type="hidden" name="dsc_signature_enabled" value="0">
                                                 <input class="form-check-input" type="checkbox" name="dsc_signature_enabled" id="dscSignatureEnabled" value="1" {{ $dscEnabled ? 'checked' : '' }} style="cursor: pointer; width: 2.5em; height: 1.25em;">
                                                 <label class="form-check-label fw-bold small text-dark mb-0" for="dscSignatureEnabled">
                                                     <span id="dscStatusBadge" class="badge {{ $dscEnabled ? 'bg-success text-white' : 'bg-secondary text-white' }}">
@@ -3131,11 +3132,56 @@
                     $('#liveDscReason').text($(this).val().trim() || 'Tax Invoice Verification');
                 });
                 $('#dscSignatureEnabled').on('change', function() {
-                    if ($(this).is(':checked')) {
-                        $('#dscStatusBadge').removeClass('bg-secondary').addClass('bg-success').text('DSC Active');
-                    } else {
-                        $('#dscStatusBadge').removeClass('bg-success').addClass('bg-secondary').text('DSC Disabled');
-                    }
+                    const isChecked = $(this).is(':checked');
+                    const badge = $('#dscStatusBadge');
+
+                    badge.removeClass('bg-success bg-secondary text-white')
+                         .addClass('bg-warning text-dark')
+                         .html('<i class="fa-solid fa-spinner fa-spin me-1"></i>Saving...');
+
+                    $.ajax({
+                        url: window.settingsPageConfig?.settingsUpdate || '{{ route("settings.update") }}',
+                        type: 'POST',
+                        dataType: 'json',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        },
+                        data: {
+                            _token: '{{ csrf_token() }}',
+                            _method: 'PUT',
+                            dsc_signature_enabled: isChecked ? 1 : 0
+                        },
+                        success: function(res) {
+                            if (isChecked) {
+                                badge.removeClass('bg-warning text-dark bg-secondary')
+                                     .addClass('bg-success text-white')
+                                     .text('DSC Active');
+                                if (typeof toastr !== 'undefined') {
+                                    toastr.success('DSC Digital Signature enabled successfully!');
+                                }
+                            } else {
+                                badge.removeClass('bg-warning text-dark bg-success')
+                                     .addClass('bg-secondary text-white')
+                                     .text('DSC Disabled');
+                                if (typeof toastr !== 'undefined') {
+                                    toastr.info('DSC Digital Signature disabled.');
+                                }
+                            }
+                        },
+                        error: function(xhr) {
+                            console.error('Failed to update DSC status:', xhr);
+                            $('#dscSignatureEnabled').prop('checked', !isChecked);
+                            badge.removeClass('bg-warning text-dark')
+                                 .addClass(!isChecked ? 'bg-success text-white' : 'bg-secondary text-white')
+                                 .text(!isChecked ? 'DSC Active' : 'DSC Disabled');
+                            if (typeof toastr !== 'undefined') {
+                                toastr.error('Failed to update DSC status. Please try again.');
+                            } else {
+                                alert('Failed to update DSC status. Please try again.');
+                            }
+                        }
+                    });
                 });
             });
         </script>

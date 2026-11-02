@@ -756,7 +756,7 @@ class InvoiceController extends Controller
         } catch (\Throwable $e) {}
 
         // Resolve DSC Settings
-        $dscEnabled = ($companySettings['dsc_signature_enabled'] ?? '0') === '1';
+        $dscEnabled = in_array(strval($companySettings['dsc_signature_enabled'] ?? '0'), ['1', 'true', 'on'], true);
         $dscSignatoryName = $companySettings['dsc_signatory_name'] ?? 'Authorized Signatory';
         $dscDesignation = $companySettings['dsc_designation'] ?? 'Authorized Signatory';
         $dscOrganization = $companySettings['dsc_organization'] ?? $companyName;
@@ -893,7 +893,7 @@ class InvoiceController extends Controller
                 'dsc_display_mode',
             ])->pluck('value', 'key');
 
-        $dscEnabled = ($dscSettings['dsc_signature_enabled'] ?? '0') === '1';
+        $dscEnabled = in_array(strval($dscSettings['dsc_signature_enabled'] ?? '0'), ['1', 'true', 'on'], true);
         $dscSignatoryName = $dscSettings['dsc_signatory_name'] ?? 'Authorized Signatory';
         $dscDesignation = $dscSettings['dsc_designation'] ?? 'Authorized Signatory';
         $dscOrganization = $dscSettings['dsc_organization'] ?? 'RISKON INSURANCE';
