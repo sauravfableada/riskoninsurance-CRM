@@ -193,6 +193,81 @@ class LeadController extends Controller
             ->with('success', 'Customer created from lead.');
     }
 
+    public function revertFromCustomer(Request $request, Lead $lead)
+    {
+        $this->authorize('update', $lead);
+
+        if (!$lead->is_converted && !$lead->converted_customer_id) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This lead is not currently marked as converted.',
+                ], 422);
+            }
+            return redirect()->back()->with('error', 'This lead is not currently marked as converted.');
+        }
+
+        $customerId = $lead->converted_customer_id;
+        $customer = $customerId ? Customer::find($customerId) : null;
+        $customerName = $customer ? $customer->name : ('#' . $customerId);
+
+        DB::transaction(function () use ($lead, $customer, $customerId, $customerName) {
+            $newStatus = ($lead->status === 'won') ? 'qualified' : ($lead->status ?: 'qualified');
+
+            $lead->update([
+                'is_converted' => false,
+                'converted_customer_id' => null,
+                'status' => $newStatus,
+            ]);
+
+            // Decouple lead's KYC & documents from the customer
+            try {
+                \App\Models\Document::where('documentable_type', Lead::class)
+                    ->where('documentable_id', $lead->id)
+                    ->update(['customer_id' => null]);
+            } catch (\Throwable $e) {
+                \Log::warning('Decouple Lead Documents from Customer failed: ' . $e->getMessage());
+            }
+
+            // Check if other leads or policies are attached to this customer
+            $otherLeads = Lead::where('converted_customer_id', $customerId)->where('id', '!=', $lead->id)->count();
+            $hasPolicies = \App\Models\Policy::where('holder_id', $customerId)->exists();
+            $hasInvoices = class_exists(\App\Models\Invoice::class) && \App\Models\Invoice::where('customer_id', $customerId)->exists();
+
+            // If the customer record was purely created from this lead and has no policies/invoices/other leads, safely delete it
+            if ($customer && !$hasPolicies && !$hasInvoices && $otherLeads === 0) {
+                $customer->delete();
+            }
+
+            // Record status history
+            if (class_exists(\App\Models\LeadStatusHistory::class)) {
+                \App\Models\LeadStatusHistory::create([
+                    'lead_id' => $lead->id,
+                    'status' => $newStatus,
+                    'comment' => "Conversion reverted back from Customer ({$customerName}). Restored to active lead.",
+                    'user_id' => auth()->id() ?: ($lead->user_id ?? 1),
+                ]);
+            }
+
+            if (class_exists(\App\Services\UserLogService::class)) {
+                app(\App\Services\UserLogService::class)->updated($lead);
+            }
+        });
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Lead converted status has been reverted back to an active lead successfully.',
+                'lead_id' => $lead->id,
+                'redirect' => route('leads.show', $lead->id),
+            ]);
+        }
+
+        return redirect()
+            ->route('leads.show', $lead->id)
+            ->with('success', 'Lead converted status has been reverted back to an active lead successfully.');
+    }
+
     public function export(Request $request)
     {
         $fileName = 'leads_' . date('Y-m-d_H-i-s') . '.csv';

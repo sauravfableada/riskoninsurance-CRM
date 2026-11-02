@@ -141,6 +141,7 @@ Route::middleware('auth.api')->group(function () {
         'destroy' => 'api.leads.destroy',
     ]);
     Route::post('leads/{lead}/update-status', [LeadController::class, 'updateStatus'])->name('api.leads.update_status');
+    Route::post('leads/{lead}/revert', [LeadController::class, 'revertFromCustomer'])->name('api.leads.revert');
     Route::get('leads/{lead}/kyc', [LeadController::class, 'getLeadKyc'])->name('api.leads.kyc.view');
     Route::post('leads/{lead}/kyc', [LeadController::class, 'submitLeadKyc'])->name('api.leads.kyc.submit');
 

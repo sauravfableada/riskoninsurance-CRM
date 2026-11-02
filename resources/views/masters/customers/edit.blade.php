@@ -20,6 +20,31 @@
             </div>
         </div>
     </div>
+
+    @php
+        $originLead = \App\Models\Lead::where('converted_customer_id', $customer->id)->first();
+    @endphp
+    @if($originLead)
+        <div class="alert alert-info border border-info-subtle d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 rounded-4 m-3 mb-0">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-info-circle-fill fs-5 text-primary"></i>
+                <div>
+                    <strong>Converted from Lead:</strong> This client was created from lead 
+                    <a href="{{ route('leads.show', $originLead->id) }}" class="fw-bold text-dark text-decoration-underline">
+                        {{ $originLead->name }}
+                    </a>.
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ route('leads.show', $originLead->id) }}" class="btn btn-sm btn-outline-dark-blue">
+                    <i class="bi bi-eye me-1"></i>View Lead
+                </a>
+                <button type="button" class="btn btn-sm btn-warning text-dark js-revert-from-customer" data-lead-id="{{ $originLead->id }}">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Revert to Lead
+                </button>
+            </div>
+        </div>
+    @endif
     <div class="card-body p-3 p-md-4">
                 <form id="customerForm" data-id="{{ $customer->id }}" enctype="multipart/form-data" novalidate>
                     @csrf
@@ -248,6 +273,67 @@
                             citySelect.addOption({ value: '', text: 'Error loading cities' });
                         });
                 });
+
+                const revertBtn = document.querySelector('.js-revert-from-customer');
+                if (revertBtn) {
+                    revertBtn.addEventListener('click', function() {
+                        const leadId = this.dataset.leadId;
+                        const btn = this;
+
+                        Swal.fire({
+                            title: "Revert from Customer?",
+                            text: "This will revert the conversion and restore the original lead record.",
+                            icon: "warning",
+                            showCancelButton: true,
+                            confirmButtonColor: "#d97706",
+                            cancelButtonColor: "#64748b",
+                            confirmButtonText: '<i class="bi bi-arrow-counterclockwise me-1"></i> Yes, Revert to Lead',
+                            cancelButtonText: "Cancel",
+                            customClass: {
+                                popup: "rounded-4 shadow",
+                                cancelButton: "text-dark border",
+                            },
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                const originalHtml = btn.innerHTML;
+                                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+                                btn.disabled = true;
+
+                                fetch(`/leads/${leadId}/revert`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                })
+                                .then(res => res.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        if (typeof window.showAlert === 'function') {
+                                            window.showAlert('success', data.message || 'Lead converted status reverted successfully.');
+                                        }
+                                        if (data.redirect) {
+                                            window.location.href = data.redirect;
+                                        } else {
+                                            window.location.reload();
+                                        }
+                                    } else {
+                                        throw new Error(data.message || 'Failed to revert lead.');
+                                    }
+                                })
+                                .catch(err => {
+                                    btn.innerHTML = originalHtml;
+                                    btn.disabled = false;
+                                    if (typeof window.showAlert === 'function') {
+                                        window.showAlert('error', err.message || 'Failed to revert lead.');
+                                    }
+                                });
+                            }
+                        });
+                    });
+                }
             });
         </script>
     @endpush

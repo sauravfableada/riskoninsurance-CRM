@@ -754,4 +754,9 @@ class LeadController extends ApiBaseController
             Log::warning('Sync Lead KYC to Document failed: ' . $e->getMessage());
         }
     }
+
+    public function revertFromCustomer(Request $request, Lead $lead)
+    {
+        return app(\App\Http\Controllers\LeadController::class)->revertFromCustomer($request, $lead);
+    }
 }

@@ -12,9 +12,14 @@
         </div>
         <div class="d-flex flex-wrap gap-2 w-100 w-md-auto justify-content-lg-end justify-content-md-end">
             @if($lead->is_converted && $lead->converted_customer_id)
-                <a href="{{ route('masters.customers.edit', $lead->converted_customer_id) }}" class="btn btn-success flex-grow-1 flex-md-grow-0">
+                <a href="{{ route('masters.customers.edit', $lead->converted_customer_id) }}" class="btn btn-success flex-grow-1 flex-md-grow-0" title="View converted customer profile">
                     <i class="bi bi-person-check me-1"></i>View Customer
                 </a>
+                @can('leads.edit')
+                <button type="button" class="btn btn-outline-warning flex-grow-1 flex-md-grow-0" id="showRevertLeadBtn" data-id="{{ $lead->id }}" title="Revert back to an active lead">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>Revert to Lead
+                </button>
+                @endcan
             @else
                 <button type="button" class="btn btn-success flex-grow-1 flex-md-grow-0" id="showConvertLeadBtn" data-id="{{ $lead->id }}">
                     <i class="bi bi-person-plus me-1"></i>Convert
@@ -673,6 +678,64 @@
             });
         });
     }
+
+    const revertBtn = document.getElementById('showRevertLeadBtn');
+    if (revertBtn) {
+        revertBtn.addEventListener('click', function() {
+            const leadId = this.dataset.id;
+            const button = this;
+
+            Swal.fire({
+                title: "Revert from Customer?",
+                text: "This will revert the conversion and restore this record back to an active lead.",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#d97706",
+                cancelButtonColor: "#64748b",
+                confirmButtonText: '<i class="bi bi-arrow-counterclockwise me-1"></i> Yes, Revert to Lead',
+                cancelButtonText: "Cancel",
+                customClass: {
+                    popup: "rounded-4 shadow",
+                    cancelButton: "text-dark border",
+                },
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const originalHtml = button.innerHTML;
+                    button.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+                    button.disabled = true;
+
+                    fetch(`/leads/${leadId}/revert`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            if (typeof window.showAlert === 'function') {
+                                window.showAlert('success', data.message || 'Lead converted status reverted successfully.');
+                            }
+                            window.location.reload();
+                        } else {
+                            throw new Error(data.message || 'Failed to revert lead.');
+                        }
+                    })
+                    .catch(err => {
+                        button.innerHTML = originalHtml;
+                        button.disabled = false;
+                        if (typeof window.showAlert === 'function') {
+                            window.showAlert('error', err.message || 'Failed to revert lead.');
+                        }
+                    });
+                }
+            });
+        });
+    }
+
     function showLeadKycGallery(title, files) {
         const modalEl = document.getElementById('leadKycGalleryModal');
         if (!modalEl) return;

@@ -184,6 +184,51 @@
             });
         }
 
+        function revertLead(id, button) {
+            Swal.fire({
+                title: "Revert from Customer?",
+                text: "Are you sure you want to revert this converted customer back to an active lead?",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#d97706",
+                cancelButtonColor: "#64748b",
+                confirmButtonText: '<i class="bi bi-arrow-counterclockwise me-1"></i> Yes, Revert to Lead',
+                cancelButtonText: "Cancel",
+                customClass: {
+                    popup: "rounded-4 shadow",
+                    cancelButton: "text-dark border",
+                },
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const originalHtml = button.innerHTML;
+                    button.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+                    button.disabled = true;
+
+                    $.ajax({
+                        url: `/leads/${id}/revert`,
+                        type: "POST",
+                        headers: authHeaders({
+                            "X-CSRF-TOKEN": csrfToken,
+                            Accept: "application/json",
+                        }),
+                        success: function (res) {
+                            if (typeof window.showAlert === "function") {
+                                window.showAlert("success", res?.message || "Lead converted status reverted successfully.");
+                            }
+                            fetchLeads();
+                        },
+                        error: function (xhr) {
+                            if (typeof window.showAlert === "function") {
+                                window.showAlert("error", xhr?.responseJSON?.message || "Unable to revert lead. Please try again.");
+                            }
+                            button.innerHTML = originalHtml;
+                            button.disabled = false;
+                        },
+                    });
+                }
+            });
+        }
+
         function renderRows(items, meta) {
             if (!items || items.length === 0) {
                 tableBody.innerHTML = `
@@ -233,6 +278,7 @@
                         <td class="text-end pe-4 d-none d-md-table-cell">
                             <div class="d-inline-flex align-items-center gap-2">
                                 ${(!isConverted && permissions.edit) ? `<button type="button" class="btn crm-action-btn btn-sm text-success convert-btn" data-id="${lead.id}" title="Convert to Customer"><i class="bi bi-person-plus"></i></button>` : ""}
+                                ${(isConverted && permissions.edit) ? `<button type="button" class="btn crm-action-btn btn-sm text-warning revert-btn" data-id="${lead.id}" title="Revert back to Lead"><i class="bi bi-arrow-counterclockwise"></i></button>` : ""}
                                 ${permissions.edit ? `<a href="/leads/${lead.id}/edit" class="btn crm-action-btn btn-sm" title="Edit Details"><i class="bi bi-pencil"></i></a>` : ""}
                                 ${permissions.view ? `<a href="/leads/${lead.id}#showKycTabs" class="btn crm-action-btn btn-sm text-info" title="KYC Documents"><i class="bi bi-shield-check"></i></a>` : ""}
                                 ${permissions.view ? `<a href="/leads/${lead.id}" class="btn crm-action-btn btn-sm" title="View"><i class="bi bi-eye"></i></a>` : ""}
@@ -279,6 +325,7 @@
                                         <div class="expand-label"><i class="fa-solid fa-gear"></i> Actions :</div>
                                         <div class="d-flex gap-2">
                                             ${(!isConverted && permissions.edit) ? `<button type="button" class="btn crm-action-btn btn-sm text-success convert-btn" data-id="${lead.id}" title="Convert to Customer"><i class="bi bi-person-plus"></i></button>` : ""}
+                                            ${(isConverted && permissions.edit) ? `<button type="button" class="btn crm-action-btn btn-sm text-warning revert-btn" data-id="${lead.id}" title="Revert back to Lead"><i class="bi bi-arrow-counterclockwise"></i></button>` : ""}
                                             ${permissions.edit ? `<a href="/leads/${lead.id}/edit" class="btn crm-action-btn btn-sm" title="Edit Details"><i class="bi bi-pencil"></i></a>` : ""}
                                             ${permissions.view ? `<a href="/leads/${lead.id}#showKycTabs" class="btn crm-action-btn btn-sm text-info" title="KYC Documents"><i class="bi bi-shield-check"></i></a>` : ""}
                                             ${permissions.view ? `<a href="/leads/${lead.id}" class="btn crm-action-btn btn-sm" title="View"><i class="bi bi-eye"></i></a>` : ""}
@@ -302,6 +349,12 @@
             document.querySelectorAll(".convert-btn").forEach(function (btn) {
                 btn.addEventListener("click", function () {
                     convertLead(this.dataset.id, this);
+                });
+            });
+
+            document.querySelectorAll(".revert-btn").forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    revertLead(this.dataset.id, this);
                 });
             });
 

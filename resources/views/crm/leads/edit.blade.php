@@ -25,6 +25,28 @@
                 </div>
 
                 <div class="p-4">
+            @if($lead->is_converted && $lead->converted_customer_id)
+                <div class="alert alert-warning border border-warning-subtle d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 rounded-4 mb-4">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-person-check fs-4 text-success"></i>
+                        <div>
+                            <strong class="text-dark">Converted Lead:</strong> This lead was converted into customer 
+                            <a href="{{ route('masters.customers.edit', $lead->converted_customer_id) }}" class="fw-bold text-dark text-decoration-underline">
+                                {{ $lead->convertedCustomer?->name ?: ('#' . $lead->converted_customer_id) }}
+                            </a>.
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <a href="{{ route('masters.customers.edit', $lead->converted_customer_id) }}" class="btn btn-sm btn-outline-dark-blue">
+                            <i class="bi bi-person me-1"></i>View Customer
+                        </a>
+                        <button type="button" class="btn btn-sm btn-warning text-dark js-revert-from-edit" data-id="{{ $lead->id }}">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Revert to Lead
+                        </button>
+                    </div>
+                </div>
+            @endif
+
             <form method="POST" action="/api/leads/{{ $lead->id }}" enctype="multipart/form-data" class="needs-validation ajax-lead-form js-status-comment-form" novalidate id="leadEditForm">
                 @csrf
                 @method('PUT')
@@ -159,4 +181,64 @@
 @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
     <script src="{{ (env('PUBLIC_PATH') ? '/' . trim(env('PUBLIC_PATH'), '/') . '/js/leads.js' : '/js/leads.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const revertBtn = document.querySelector('.js-revert-from-edit');
+            if (revertBtn) {
+                revertBtn.addEventListener('click', function() {
+                    const leadId = this.dataset.id;
+                    const btn = this;
+
+                    Swal.fire({
+                        title: "Revert from Customer?",
+                        text: "This will revert the conversion and restore this record back to an active lead.",
+                        icon: "warning",
+                        showCancelButton: true,
+                        confirmButtonColor: "#d97706",
+                        cancelButtonColor: "#64748b",
+                        confirmButtonText: '<i class="bi bi-arrow-counterclockwise me-1"></i> Yes, Revert to Lead',
+                        cancelButtonText: "Cancel",
+                        customClass: {
+                            popup: "rounded-4 shadow",
+                            cancelButton: "text-dark border",
+                        },
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            const originalHtml = btn.innerHTML;
+                            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+                            btn.disabled = true;
+
+                            fetch(`/leads/${leadId}/revert`, {
+                                method: 'POST',
+                                headers: {
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                    'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            })
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data.success) {
+                                    if (typeof window.showAlert === 'function') {
+                                        window.showAlert('success', data.message || 'Lead converted status reverted successfully.');
+                                    }
+                                    window.location.reload();
+                                } else {
+                                    throw new Error(data.message || 'Failed to revert lead.');
+                                }
+                            })
+                            .catch(err => {
+                                btn.innerHTML = originalHtml;
+                                btn.disabled = false;
+                                if (typeof window.showAlert === 'function') {
+                                    window.showAlert('error', err.message || 'Failed to revert lead.');
+                                }
+                            });
+                        }
+                    });
+                });
+            }
+        });
+    </script>
 @endpush
