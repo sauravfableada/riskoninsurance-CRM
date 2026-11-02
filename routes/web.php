@@ -102,9 +102,46 @@ Route::get('/auth/google', [MeetingController::class, 'redirectToGoogle'])->name
 Route::get('/google/callback', [MeetingController::class, 'handleGoogleCallback'])->name('google.callback');
 Route::get('/auth/google/callback', [MeetingController::class, 'handleGoogleCallback'])->name('google.callback.legacy');
 
-// Public logo routes
+// Public logo and signature routes
 Route::get('/profile/company-logo-image', [App\Http\Controllers\ProfileController::class, 'companyLogoImage'])->name('profile.company_logo.image');
 Route::get('/profile/short-company-logo-image', [App\Http\Controllers\ProfileController::class, 'shortCompanyLogoImage'])->name('profile.short_company_logo.image');
+Route::get('/profile/company-signature-image', [App\Http\Controllers\ProfileController::class, 'companySignatureImage'])->name('profile.company_signature.image');
+Route::get('/settings/signature-image', [App\Http\Controllers\SettingController::class, 'signatureImage'])->name('settings.signature.image');
+
+// Direct storage file delivery fallback for shared hosting / cPanel environments lacking symlink
+Route::get('/storage/{path}', function (string $path) {
+    $cleanPath = str_replace(['../', '..\\'], '', $path);
+    $candidates = [
+        storage_path('app/public/' . $cleanPath),
+        storage_path('app/' . $cleanPath),
+        public_path('storage/' . $cleanPath),
+    ];
+    foreach ($candidates as $cand) {
+        if ($cand && file_exists($cand) && !is_dir($cand)) {
+            return response()->file($cand, [
+                'Cache-Control' => 'public, max-age=86400',
+            ]);
+        }
+    }
+    abort(404, 'File not found in storage');
+})->where('path', '.*')->name('storage.fallback');
+
+Route::get('/public/storage/{path}', function (string $path) {
+    $cleanPath = str_replace(['../', '..\\'], '', $path);
+    $candidates = [
+        storage_path('app/public/' . $cleanPath),
+        storage_path('app/' . $cleanPath),
+        public_path('storage/' . $cleanPath),
+    ];
+    foreach ($candidates as $cand) {
+        if ($cand && file_exists($cand) && !is_dir($cand)) {
+            return response()->file($cand, [
+                'Cache-Control' => 'public, max-age=86400',
+            ]);
+        }
+    }
+    abort(404, 'File not found in storage');
+})->where('path', '.*')->name('public.storage.fallback');
 
 Route::middleware('auth')->group(function () {
     Route::redirect('/sms-marketing', '/marketing/sms-marketing');

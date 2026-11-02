@@ -115,23 +115,60 @@ class ProfileController extends Controller
     public function companyLogoImage()
     {
         $path = Setting::query()->where('key', 'company_logo_path')->value('value');
+        $resolved = $this->resolvePublicFilePath($path);
 
-        if (!$path || !Storage::disk('public')->exists($path)) {
+        if (!$resolved) {
             abort(404);
         }
 
-        return Response::file(Storage::disk('public')->path($path));
+        return Response::file($resolved);
     }
 
     public function shortCompanyLogoImage()
     {
         $path = Setting::query()->where('key', 'short_company_logo_path')->value('value');
+        $resolved = $this->resolvePublicFilePath($path);
 
-        if (!$path || !Storage::disk('public')->exists($path)) {
+        if (!$resolved) {
             abort(404);
         }
 
-        return Response::file(Storage::disk('public')->path($path));
+        return Response::file($resolved);
+    }
+
+    public function companySignatureImage()
+    {
+        $path = Setting::query()->where('key', 'company_signature_path')->value('value');
+        $resolved = $this->resolvePublicFilePath($path);
+
+        if (!$resolved) {
+            abort(404);
+        }
+
+        return Response::file($resolved);
+    }
+
+    private function resolvePublicFilePath(?string $path): ?string
+    {
+        if (empty($path)) {
+            return null;
+        }
+
+        $candidates = [
+            Storage::disk('public')->path($path),
+            storage_path('app/public/' . ltrim($path, '/\\')),
+            storage_path('app/' . ltrim($path, '/\\')),
+            public_path('storage/' . ltrim($path, '/\\')),
+            public_path(ltrim($path, '/\\')),
+        ];
+
+        foreach ($candidates as $cand) {
+            if ($cand && file_exists($cand) && !is_dir($cand)) {
+                return $cand;
+            }
+        }
+
+        return null;
     }
 
     private function googleConnectionEnabled(): bool

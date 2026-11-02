@@ -543,8 +543,20 @@ class InvoiceController extends Controller
 
         try {
             $settingPath = \App\Models\Setting::query()->where('key', 'company_logo_path')->value('value');
-            if ($settingPath && \Illuminate\Support\Facades\Storage::disk('public')->exists($settingPath)) {
-                $logoPath = \Illuminate\Support\Facades\Storage::disk('public')->path($settingPath);
+            if ($settingPath) {
+                $candidates = [
+                    \Illuminate\Support\Facades\Storage::disk('public')->path($settingPath),
+                    storage_path('app/public/' . ltrim($settingPath, '/\\')),
+                    storage_path('app/' . ltrim($settingPath, '/\\')),
+                    public_path('storage/' . ltrim($settingPath, '/\\')),
+                    public_path(ltrim($settingPath, '/\\')),
+                ];
+                foreach ($candidates as $cand) {
+                    if ($cand && file_exists($cand) && !is_dir($cand)) {
+                        $logoPath = $cand;
+                        break;
+                    }
+                }
             }
         } catch (\Throwable $e) {}
 
@@ -567,8 +579,20 @@ class InvoiceController extends Controller
 
         try {
             $sigSettingPath = \App\Models\Setting::query()->where('key', 'company_signature_path')->value('value');
-            if ($sigSettingPath && \Illuminate\Support\Facades\Storage::disk('public')->exists($sigSettingPath)) {
-                $signaturePath = \Illuminate\Support\Facades\Storage::disk('public')->path($sigSettingPath);
+            if ($sigSettingPath) {
+                $candidates = [
+                    \Illuminate\Support\Facades\Storage::disk('public')->path($sigSettingPath),
+                    storage_path('app/public/' . ltrim($sigSettingPath, '/\\')),
+                    storage_path('app/' . ltrim($sigSettingPath, '/\\')),
+                    public_path('storage/' . ltrim($sigSettingPath, '/\\')),
+                    public_path(ltrim($sigSettingPath, '/\\')),
+                ];
+                foreach ($candidates as $cand) {
+                    if ($cand && file_exists($cand) && !is_dir($cand)) {
+                        $signaturePath = $cand;
+                        break;
+                    }
+                }
             }
         } catch (\Throwable $e) {}
 

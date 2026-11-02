@@ -153,16 +153,23 @@ class AppServiceProvider extends ServiceProvider
                 $companyFaviconUrl = $companyLogoPath && \Illuminate\Support\Facades\Storage::disk('public')->exists($companyLogoPath)
                     ? route('profile.company_logo.image') . '?v=' . \Illuminate\Support\Facades\Storage::disk('public')->lastModified($companyLogoPath)
                     : $defaultFavicon;
+
+                $companySignaturePath = \App\Models\Setting::query()->where('key', 'company_signature_path')->value('value');
+                $companySignatureUrl = !empty($companySignaturePath)
+                    ? route('settings.signature.image') . '?v=' . time()
+                    : null;
             } catch (\Throwable $e) {
                 $companyLogoUrl = url((env('PUBLIC_PATH') ? rtrim(env('PUBLIC_PATH'), '/') . '/' : '') . 'logo/fableadcrmLogo.png');
                 $shortCompanyLogoUrl = null;
                 $companyFaviconUrl = url((env('PUBLIC_PATH') ? rtrim(env('PUBLIC_PATH'), '/') . '/' : '') . 'images/template/crmfavicon.png');
+                $companySignatureUrl = null;
             }
 
             $view->with([
                 'companyLogoUrl' => $companyLogoUrl,
                 'shortCompanyLogoUrl' => $shortCompanyLogoUrl,
                 'companyFaviconUrl' => $companyFaviconUrl,
+                'companySignatureUrl' => $companySignatureUrl,
                 'companyName' => $companyName,
                 'isBasicPlan' => $isBasicPlan,
                 'currentPlanDisplayName' => $currentPlanDisplayName,

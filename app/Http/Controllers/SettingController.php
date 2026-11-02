@@ -22,7 +22,7 @@ class SettingController extends Controller
                 abort(403, 'Unauthorized access to settings.');
             }
             return $next($request);
-        });
+        })->except(['signatureImage']);
     }
 
     public function index()
@@ -794,5 +794,32 @@ class SettingController extends Controller
             'customer_welcome_message' => 'Customer Welcome Message',
             'customer_profile_updated' => 'Customer Profile Updated',
         ];
+    }
+
+    public function signatureImage()
+    {
+        $path = Setting::query()->where('key', 'company_signature_path')->value('value');
+
+        if (!$path) {
+            abort(404, 'Signature image not configured.');
+        }
+
+        $candidates = [
+            Storage::disk('public')->path($path),
+            storage_path('app/public/' . ltrim($path, '/\\')),
+            storage_path('app/' . ltrim($path, '/\\')),
+            public_path('storage/' . ltrim($path, '/\\')),
+            public_path(ltrim($path, '/\\')),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if ($candidate && file_exists($candidate) && !is_dir($candidate)) {
+                return response()->file($candidate, [
+                    'Cache-Control' => 'public, max-age=86400',
+                ]);
+            }
+        }
+
+        abort(404, 'Signature image file not found on disk.');
     }
 }

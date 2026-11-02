@@ -57,8 +57,8 @@
         $bankIfsc = $settings['company_bank_ifsc']->value ?? 'ICIC0003359';
         $bankBranch = $settings['company_bank_branch']->value ?? 'Tagore Garden';
         $signaturePath = $settings['company_signature_path']->value ?? null;
-        $signatureUrl = $signaturePath && Storage::disk('public')->exists($signaturePath)
-            ? Storage::disk('public')->url($signaturePath)
+        $signatureUrl = !empty($signaturePath)
+            ? route('settings.signature.image') . '?v=' . time()
             : null;
     @endphp
 
@@ -76,7 +76,8 @@
                         data-bs-target="#commission-settings" type="button" role="tab"><i class="fa-solid fa-percent me-1 text-primary"></i> Commission Settings</button></li>
                 <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab"
                         data-bs-target="#bank-signature" type="button" role="tab"><i class="fa-solid fa-building-columns me-1 text-primary"></i> Bank &amp; Signature</button></li>
-                <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab"
+                <li class="nav-
+                item" role="presentation"><button class="nav-link" data-bs-toggle="tab"
                         data-bs-target="#smtp" type="button" role="tab">Email SMTP</button></li>
                 {{-- WhatsApp configuration is intentionally hidden.
                 <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab"
@@ -961,17 +962,15 @@
                                         </div>
 
                                         <div class="mt-2 text-center p-3 border rounded bg-white flex-grow-1 d-flex flex-column align-items-center justify-content-center" style="min-height: 140px;">
-                                            <div id="signaturePreviewWrapper">
-                                                @if($signatureUrl)
-                                                    <img id="signaturePreview" src="{{ $signatureUrl }}" alt="Authorized Signature" class="img-fluid" style="max-height: 90px; object-fit: contain;">
-                                                    <div class="text-muted small mt-2"><i class="fa-solid fa-circle-check text-success me-1"></i>Current Signature Preview</div>
-                                                @else
-                                                    <div id="signaturePlaceholder" class="text-muted small">
-                                                        <i class="fa-solid fa-signature fs-1 opacity-25 d-block mb-2"></i>
-                                                        No signature uploaded yet.
-                                                    </div>
-                                                    <img id="signaturePreview" src="" alt="Signature Preview" class="img-fluid d-none" style="max-height: 90px; object-fit: contain;">
-                                                @endif
+                                            <div id="signaturePreviewWrapper" class="w-100 text-center">
+                                                <div id="signaturePlaceholder" class="text-muted small {{ $signatureUrl ? 'd-none' : '' }}">
+                                                    <i class="fa-solid fa-signature fs-1 opacity-25 d-block mb-2"></i>
+                                                    No signature uploaded yet.
+                                                </div>
+                                                <img id="signaturePreview" src="{{ $signatureUrl ?? '' }}" alt="Authorized Signature" class="img-fluid {{ $signatureUrl ? '' : 'd-none' }}" style="max-height: 90px; object-fit: contain;" onerror="this.classList.add('d-none'); document.getElementById('signaturePlaceholder')?.classList.remove('d-none'); document.getElementById('signatureStatusText')?.classList.add('d-none');">
+                                                <div id="signatureStatusText" class="text-muted small mt-2 {{ $signatureUrl ? '' : 'd-none' }}">
+                                                    <i class="fa-solid fa-circle-check text-success me-1"></i>Current Signature Preview
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -2968,6 +2967,7 @@
                         reader.onload = function(evt) {
                             $('#signaturePlaceholder').addClass('d-none');
                             $('#signaturePreview').attr('src', evt.target.result).removeClass('d-none');
+                            $('#signatureStatusText').removeClass('d-none').html('<i class="fa-solid fa-circle-check text-success me-1"></i>New Signature Selected (Click Save below)');
                         };
                         reader.readAsDataURL(file);
                     }
