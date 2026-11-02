@@ -537,6 +537,51 @@ class SettingController extends Controller
         ]);
     }
 
+    /**
+     * Save/Update default global commission rates directly from Settings
+     */
+    public function saveDefaultCommission(Request $request)
+    {
+        $validated = $request->validate([
+            'default_pay_in_type'           => 'required|in:percentage,fixed',
+            'default_pay_in_value'          => 'required|numeric|min:0',
+            'default_pay_out_type'          => 'required|in:percentage,fixed',
+            'default_pay_out_value'         => 'required|numeric|min:0',
+            'default_pay_out_based_on'      => 'required|in:admin_commission,premium',
+            'commission_calculation_method' => 'nullable|string|in:company_wise,category_wise,sub_type_wise,agent_wise,policy_wise,manual_override,default_commission',
+        ]);
+
+        $inVal = (float) $validated['default_pay_in_value'];
+        $outVal = (float) $validated['default_pay_out_value'];
+
+        Setting::updateOrCreate(['key' => 'default_pay_in_type'], ['value' => $validated['default_pay_in_type'], 'group' => 'commission', 'type' => 'string']);
+        Setting::updateOrCreate(['key' => 'default_pay_in_percentage'], ['value' => (string) $inVal, 'group' => 'commission', 'type' => 'string']);
+        Setting::updateOrCreate(['key' => 'default_pay_in_value'], ['value' => (string) $inVal, 'group' => 'commission', 'type' => 'string']);
+
+        Setting::updateOrCreate(['key' => 'default_pay_out_type'], ['value' => $validated['default_pay_out_type'], 'group' => 'commission', 'type' => 'string']);
+        Setting::updateOrCreate(['key' => 'default_pay_out_percentage'], ['value' => (string) $outVal, 'group' => 'commission', 'type' => 'string']);
+        Setting::updateOrCreate(['key' => 'default_pay_out_value'], ['value' => (string) $outVal, 'group' => 'commission', 'type' => 'string']);
+
+        Setting::updateOrCreate(['key' => 'default_pay_out_based_on'], ['value' => $validated['default_pay_out_based_on'], 'group' => 'commission', 'type' => 'string']);
+
+        if (!empty($validated['commission_calculation_method'])) {
+            Setting::updateOrCreate(['key' => 'commission_calculation_method'], ['value' => $validated['commission_calculation_method'], 'group' => 'commission', 'type' => 'string']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Default commission rates saved successfully.',
+            'data' => [
+                'pay_in_type' => $validated['default_pay_in_type'],
+                'pay_in_value' => $inVal,
+                'pay_out_type' => $validated['default_pay_out_type'],
+                'pay_out_value' => $outVal,
+                'pay_out_based_on' => $validated['default_pay_out_based_on'],
+                'method' => $validated['commission_calculation_method'] ?? null,
+            ]
+        ]);
+    }
+
     public function update(Request $request)
     {
         try {
@@ -655,8 +700,15 @@ class SettingController extends Controller
             'whatsapp_integration_enabled' => ['sometimes', 'required', 'boolean'],
             'social_integrations_enabled' => ['sometimes', 'required', 'boolean'],
             'google_connection_enabled' => ['sometimes', 'required', 'boolean'],
-            'commission_calculation_method' => ['sometimes', 'required', 'in:company_wise,category_wise,sub_type_wise,agent_wise,policy_wise,manual_override'],
+            'commission_calculation_method' => ['sometimes', 'required', 'in:company_wise,category_wise,sub_type_wise,agent_wise,policy_wise,manual_override,default_commission'],
             'commission_allow_manual_override' => ['sometimes', 'nullable', 'boolean'],
+            'default_pay_in_type' => ['sometimes', 'nullable', 'in:percentage,fixed'],
+            'default_pay_in_percentage' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'default_pay_in_value' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'default_pay_out_type' => ['sometimes', 'nullable', 'in:percentage,fixed'],
+            'default_pay_out_percentage' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'default_pay_out_value' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'default_pay_out_based_on' => ['sometimes', 'nullable', 'in:admin_commission,premium'],
             'company_bank_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'company_bank_account_no' => ['sometimes', 'nullable', 'string', 'max:255'],
             'company_bank_ifsc' => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -688,7 +740,7 @@ class SettingController extends Controller
             // Some live databases may still be on an older schema; avoid writing
             // columns that do not exist there.
             if (Schema::hasColumn('settings', 'group')) {
-                if (str_starts_with($key, 'commission_')) {
+                if (str_starts_with($key, 'commission_') || str_starts_with($key, 'default_pay_')) {
                     $attributes['group'] = 'commission';
                 } elseif (str_starts_with($key, 'company_bank_') || str_contains($key, 'signature')) {
                     $attributes['group'] = 'bank_signature';

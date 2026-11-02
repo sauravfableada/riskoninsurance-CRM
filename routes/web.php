@@ -494,6 +494,7 @@ Route::middleware('auth.api')->group(function () {
     Route::post('/settings/category-commission', [SettingController::class, 'saveCategoryCommission'])->name('settings.category-commission.save');
     Route::get('/settings/agent-commission/{userId}', [SettingController::class, 'getAgentCommission'])->name('settings.agent-commission.get');
     Route::post('/settings/agent-commission', [SettingController::class, 'saveAgentCommission'])->name('settings.agent-commission.save');
+    Route::post('/settings/default-commission', [SettingController::class, 'saveDefaultCommission'])->name('settings.default-commission.save');
 
     Route::post('/tutorial-videos', [\App\Http\Controllers\TutorialVideoController::class, 'store'])->name('tutorial-videos.store');
     Route::put('/tutorial-videos/{id}', [\App\Http\Controllers\TutorialVideoController::class, 'update'])->name('tutorial-videos.update');

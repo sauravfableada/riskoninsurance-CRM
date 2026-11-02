@@ -46,6 +46,12 @@
         $commissionMethod = $settings['commission_calculation_method']->value ?? 'company_wise';
         $commissionAllowManual = ($settings['commission_allow_manual_override']->value ?? '1') === '1';
 
+        $defaultPayInType = $settings['default_pay_in_type']->value ?? 'percentage';
+        $defaultPayInVal = (float) ($settings['default_pay_in_percentage']->value ?? ($settings['default_pay_in_value']->value ?? 20));
+        $defaultPayOutType = $settings['default_pay_out_type']->value ?? 'percentage';
+        $defaultPayOutVal = (float) ($settings['default_pay_out_percentage']->value ?? ($settings['default_pay_out_value']->value ?? 10));
+        $defaultPayOutBasedOn = $settings['default_pay_out_based_on']->value ?? 'admin_commission';
+
         $bankName = $settings['company_bank_name']->value ?? 'ICICI Bank (Tagore Garden)';
         $bankAccountNo = $settings['company_bank_account_no']->value ?? '335905001025';
         $bankIfsc = $settings['company_bank_ifsc']->value ?? 'ICIC0003359';
@@ -199,7 +205,46 @@
                                         </div>
                                     </label>
                                 </div>
+
+                                <!-- Option 6: Default Global Commission Set (Admin & Staff/Sub-Agent Default Set) -->
+                                <div class="col-md-6">
+                                    <label class="commission-opt-card card h-100 p-3 border rounded-4 cursor-pointer position-relative shadow-sm {{ $commissionMethod === 'default_commission' ? 'border-primary bg-light-primary' : 'border-light-subtle' }}" style="cursor: pointer; transition: all 0.2s ease;">
+                                        <div class="d-flex align-items-start gap-3">
+                                            <input type="radio" name="commission_calculation_method" value="default_commission" class="form-check-input mt-1" {{ $commissionMethod === 'default_commission' ? 'checked' : '' }}>
+                                            <div class="w-100">
+                                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <h6 class="mb-0 fw-bold text-dark">6. Default Commission Set</h6>
+                                                        <span class="badge bg-primary-subtle text-primary border border-primary border-opacity-25 small">Global System Default</span>
+                                                    </div>
+                                                </div>
+                                                <p class="text-muted small mb-2">
+                                                    Standard default rates for <strong>Admin (Pay-In)</strong> and <strong>Staff / Sub-Agents (Pay-Out)</strong> across all policies.
+                                                </p>
+                                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                    <span class="badge bg-white text-primary border small font-monospace">
+                                                        <i class="fa-solid fa-hand-holding-dollar me-1"></i>Admin: <strong id="card_preview_default_payin">{{ $defaultPayInVal }}{{ $defaultPayInType === 'percentage' ? '%' : '₹' }}</strong>
+                                                    </span>
+                                                    <span class="badge bg-white text-dark border small font-monospace">
+                                                        <i class="fa-solid fa-users me-1 text-warning"></i>Staff/Agent: <strong id="card_preview_default_payout">{{ $defaultPayOutVal }}{{ $defaultPayOutType === 'percentage' ? '%' : '₹' }}</strong>
+                                                    </span>
+                                                    <span class="badge bg-light text-secondary border small" id="card_preview_default_basis">
+                                                        {{ $defaultPayOutBasedOn === 'premium' ? '% of Premium' : '% of Admin Share' }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
                             </div>
+
+                            <input type="hidden" name="default_pay_in_type" id="main_default_pay_in_type" value="{{ $defaultPayInType }}">
+                            <input type="hidden" name="default_pay_in_percentage" id="main_default_pay_in_val" value="{{ $defaultPayInVal }}">
+                            <input type="hidden" name="default_pay_in_value" id="main_default_pay_in_val2" value="{{ $defaultPayInVal }}">
+                            <input type="hidden" name="default_pay_out_type" id="main_default_pay_out_type" value="{{ $defaultPayOutType }}">
+                            <input type="hidden" name="default_pay_out_percentage" id="main_default_pay_out_val" value="{{ $defaultPayOutVal }}">
+                            <input type="hidden" name="default_pay_out_value" id="main_default_pay_out_val2" value="{{ $defaultPayOutVal }}">
+                            <input type="hidden" name="default_pay_out_based_on" id="main_default_pay_out_based_on" value="{{ $defaultPayOutBasedOn }}">
 
                             <hr class="my-4">
 
@@ -222,6 +267,132 @@
                         </div>
                     </div>
                 </form>
+
+                <!-- DEFAULT COMMISSION MASTER MANAGER -->
+                <div class="settings-panel mt-4 commission-method-section" id="section_default_commission" style="{{ $commissionMethod === 'default_commission' ? '' : 'display: none;' }}">
+                    <div class="settings-panel-head d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div>
+                            <i class="fa-solid fa-sliders me-2 text-primary"></i>
+                            <strong>Default Commission Master (Admin &amp; Staff / Sub-Agent)</strong>
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 ms-2">Global System Engine</span>
+                        </div>
+                        <div>
+                            <span class="text-muted small">Standard rates automatically applied when no specific rule exists or when Default is selected</span>
+                        </div>
+                    </div>
+                    <div class="settings-panel-body p-4">
+                        <form id="defaultCommissionForm" method="POST" action="{{ route('settings.default-commission.save') }}">
+                            @csrf
+                            <input type="hidden" name="commission_calculation_method" value="default_commission">
+
+                            <div class="row g-4">
+                                <!-- CARD 1: ADMIN SHARE (PAY-IN FROM INSURER) -->
+                                <div class="col-lg-6">
+                                    <div class="card h-100 border-primary border-opacity-25 rounded-4 shadow-sm bg-white">
+                                        <div class="card-header bg-primary text-white py-2 px-3 rounded-top-4 d-flex justify-content-between align-items-center">
+                                            <span class="fw-bold"><i class="fa-solid fa-hand-holding-dollar me-1"></i> PAY-IN (Admin Share)</span>
+                                            <span class="badge bg-white text-primary">From Insurer</span>
+                                        </div>
+                                        <div class="card-body p-3">
+                                            <p class="text-muted small mb-3">
+                                                Standard commission percentage or fixed fee the company / admin receives from the insurance provider.
+                                            </p>
+                                            <div class="row g-2 mb-3">
+                                                <div class="col-6">
+                                                    <label class="form-label small fw-semibold text-dark">Commission Type</label>
+                                                    <select name="default_pay_in_type" id="def_pay_in_type" class="form-select form-select-sm">
+                                                        <option value="percentage" {{ $defaultPayInType === 'percentage' ? 'selected' : '' }}>Percentage (%)</option>
+                                                        <option value="fixed" {{ $defaultPayInType === 'fixed' ? 'selected' : '' }}>Fixed Amount (₹)</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-6">
+                                                    <label class="form-label small fw-semibold text-dark">Pay-In Rate <span class="text-danger">*</span></label>
+                                                    <div class="input-group input-group-sm">
+                                                        <span class="input-group-text bg-light def-payin-unit">{{ $defaultPayInType === 'percentage' ? '%' : '₹' }}</span>
+                                                        <input type="number" step="0.01" min="0" max="1000000" name="default_pay_in_value" id="def_pay_in_val" class="form-control form-control-sm fw-bold" value="{{ $defaultPayInVal }}" required>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="p-2 bg-light rounded-3 text-center border">
+                                                <small class="text-muted fw-semibold">Effective Admin Pay-In on ₹100,000</small>
+                                                <div class="h5 fw-bold mb-0 text-primary" id="preview_def_payin_amount">₹20,000.00</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- CARD 2: STAFF / SUB-AGENT SHARE (PAY-OUT TO MEMBER) -->
+                                <div class="col-lg-6">
+                                    <div class="card h-100 border-warning border-opacity-50 rounded-4 shadow-sm bg-white">
+                                        <div class="card-header bg-warning text-dark py-2 px-3 rounded-top-4 d-flex justify-content-between align-items-center">
+                                            <span class="fw-bold"><i class="fa-solid fa-users me-1"></i> PAY-OUT (Staff / Sub-Agent Share)</span>
+                                            <span class="badge bg-dark text-white">Disbursed to Member</span>
+                                        </div>
+                                        <div class="card-body p-3">
+                                            <p class="text-muted small mb-3">
+                                                Standard commission disbursed to the Sub-Agent or Staff member booking the policy.
+                                            </p>
+                                            <div class="row g-2 mb-2">
+                                                <div class="col-6">
+                                                    <label class="form-label small fw-semibold text-dark">Commission Type</label>
+                                                    <select name="default_pay_out_type" id="def_pay_out_type" class="form-select form-select-sm">
+                                                        <option value="percentage" {{ $defaultPayOutType === 'percentage' ? 'selected' : '' }}>Percentage (%)</option>
+                                                        <option value="fixed" {{ $defaultPayOutType === 'fixed' ? 'selected' : '' }}>Fixed Amount (₹)</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-6">
+                                                    <label class="form-label small fw-semibold text-dark">Pay-Out Rate <span class="text-danger">*</span></label>
+                                                    <div class="input-group input-group-sm">
+                                                        <span class="input-group-text bg-light def-payout-unit">{{ $defaultPayOutType === 'percentage' ? '%' : '₹' }}</span>
+                                                        <input type="number" step="0.01" min="0" max="1000000" name="default_pay_out_value" id="def_pay_out_val" class="form-control form-control-sm fw-bold" value="{{ $defaultPayOutVal }}" required>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label small fw-semibold text-dark">Pay-Out Calculation Basis</label>
+                                                <select name="default_pay_out_based_on" id="def_pay_out_based_on" class="form-select form-select-sm">
+                                                    <option value="admin_commission" {{ $defaultPayOutBasedOn === 'admin_commission' ? 'selected' : '' }}>
+                                                        % of Admin Commission (Pay-In) — Standard &amp; Recommended
+                                                    </option>
+                                                    <option value="premium" {{ $defaultPayOutBasedOn === 'premium' ? 'selected' : '' }}>
+                                                        % of Gross Premium
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            <div class="p-2 bg-light rounded-3 text-center border">
+                                                <small class="text-muted fw-semibold">Effective Member Pay-Out on ₹100,000</small>
+                                                <div class="h5 fw-bold mb-0 text-warning" style="color: #d97706 !important;" id="preview_def_payout_amount">₹2,000.00</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- LIVE PROFIT SUMMARY CARD -->
+                                <div class="col-12">
+                                    <div class="p-3 rounded-4 d-flex justify-content-between align-items-center flex-wrap gap-3 border border-success border-2 shadow-sm" style="background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);">
+                                        <div>
+                                            <h6 class="mb-0 fw-bold" style="color: #064e3b !important;">
+                                                <i class="fa-solid fa-calculator text-success me-2"></i>Admin Net Retained Earnings (Example ₹100,000 Booking)
+                                            </h6>
+                                            <small class="text-secondary fw-semibold">Admin Pay-In minus Member Pay-Out</small>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="text-muted small d-block">Admin Retains:</span>
+                                            <div class="h3 fw-bold mb-0 text-success" id="preview_def_profit_amount">₹18,000.00</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2 pt-2">
+                                    <span id="defaultCommissionStatus" class="small"></span>
+                                    <button type="submit" class="btn btn-primary px-4 ms-auto" id="btnSaveDefaultCommission">
+                                        <i class="fa-solid fa-floppy-disk me-1"></i> Save Default Commission Rates
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
 
                 <!-- COMPANY-WISE COMMISSION MASTER MANAGER -->
                 <div class="settings-panel mt-4 commission-method-section" id="section_company_wise" style="{{ $commissionMethod === 'company_wise' ? '' : 'display: none;' }}">
@@ -2082,6 +2253,92 @@
                         error: function(xhr) {
                             btn.prop('disabled', false).html(origHtml);
                             const msg = xhr.responseJSON?.message || 'Failed to save settings.';
+                            statusEl.removeClass('text-muted text-success').addClass('text-danger').html('<i class="fa fa-circle-exclamation me-1"></i> ' + msg);
+                        }
+                    });
+                });
+
+                // ==========================================
+                // DEFAULT COMMISSION RECALCULATION & SUBMIT
+                // ==========================================
+                function recalculateDefaultCommissionSummary() {
+                    const inType = $('#def_pay_in_type').val() || 'percentage';
+                    const inVal = parseFloat($('#def_pay_in_val').val()) || 0;
+                    const outType = $('#def_pay_out_type').val() || 'percentage';
+                    const outVal = parseFloat($('#def_pay_out_val').val()) || 0;
+                    const outBase = $('#def_pay_out_based_on').val() || 'admin_commission';
+
+                    $('.def-payin-unit').text(inType === 'percentage' ? '%' : '₹');
+                    $('.def-payout-unit').text(outType === 'percentage' ? '%' : '₹');
+
+                    // Standard calculation based on ₹100,000 example
+                    const examplePremium = 100000;
+                    let payInAmt = 0;
+                    if (inType === 'percentage') {
+                        payInAmt = (examplePremium * inVal) / 100;
+                    } else {
+                        payInAmt = inVal;
+                    }
+
+                    let payOutAmt = 0;
+                    if (outType === 'percentage') {
+                        const baseAmt = (outBase === 'premium') ? examplePremium : payInAmt;
+                        payOutAmt = (baseAmt * outVal) / 100;
+                    } else {
+                        payOutAmt = outVal;
+                    }
+
+                    const netProfit = Math.max(0, payInAmt - payOutAmt);
+
+                    $('#preview_def_payin_amount').text('₹' + payInAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                    $('#preview_def_payout_amount').text('₹' + payOutAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                    $('#preview_def_profit_amount').text('₹' + netProfit.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+
+                    // Update Card Preview Badges
+                    $('#card_preview_default_payin').text(inVal + (inType === 'percentage' ? '%' : '₹'));
+                    $('#card_preview_default_payout').text(outVal + (outType === 'percentage' ? '%' : '₹'));
+                    $('#card_preview_default_basis').text(outBase === 'premium' ? '% of Premium' : '% of Admin Share');
+
+                    // Sync into main settings form hidden fields
+                    $('#main_default_pay_in_type').val(inType);
+                    $('#main_default_pay_in_val, #main_default_pay_in_val2').val(inVal);
+                    $('#main_default_pay_out_type').val(outType);
+                    $('#main_default_pay_out_val, #main_default_pay_out_val2').val(outVal);
+                    $('#main_default_pay_out_based_on').val(outBase);
+                }
+
+                $('#def_pay_in_type, #def_pay_out_type, #def_pay_out_based_on').on('change', recalculateDefaultCommissionSummary);
+                $('#def_pay_in_val, #def_pay_out_val').on('input', recalculateDefaultCommissionSummary);
+                recalculateDefaultCommissionSummary();
+
+                // Submit Default Commission Form via AJAX
+                $('#defaultCommissionForm').on('submit', function(e) {
+                    e.preventDefault();
+                    const btn = $('#btnSaveDefaultCommission');
+                    const origHtml = btn.html();
+                    const statusEl = $('#defaultCommissionStatus');
+                    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span> Saving Default Rates...');
+                    statusEl.removeClass('text-danger text-success').addClass('text-muted').html('<span class="spinner-border spinner-border-sm me-1"></span> Saving...');
+
+                    $.ajax({
+                        url: $(this).attr('action'),
+                        type: 'POST',
+                        data: $(this).serialize(),
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        success: function(res) {
+                            btn.prop('disabled', false).html(origHtml);
+                            statusEl.removeClass('text-muted text-danger').addClass('text-success').html('<i class="fa fa-circle-check me-1"></i> ' + (res.message || 'Default commission rates saved successfully.'));
+                            if (typeof toastr !== 'undefined') {
+                                toastr.success('Default commission rates updated!');
+                            }
+                            recalculateDefaultCommissionSummary();
+                            setTimeout(function() {
+                                statusEl.fadeOut(500, function() { $(this).text('').show(); });
+                            }, 3500);
+                        },
+                        error: function(xhr) {
+                            btn.prop('disabled', false).html(origHtml);
+                            const msg = xhr.responseJSON?.message || 'Failed to save default commission.';
                             statusEl.removeClass('text-muted text-success').addClass('text-danger').html('<i class="fa fa-circle-exclamation me-1"></i> ' + msg);
                         }
                     });

@@ -318,8 +318,10 @@ class PolicyController extends Controller
                 $commissionMethod = \App\Models\Setting::where('key', 'commission_calculation_method')->value('value') ?? 'company_wise';
 
                 $commissionRule = null;
-                // If setting is manual_override, skip automatic rule assignment on creation
-                if ($commissionMethod !== 'manual_override') {
+                // If setting is default_commission, directly skip rules and use configured defaults
+                if ($commissionMethod === 'default_commission') {
+                    $commissionRule = null;
+                } elseif ($commissionMethod !== 'manual_override') {
                     // If method is sub_type_wise:
                     // 1. Look for rule matching policy_sub_type_id
                     // 2. If not found or not present, fallback to Category/Type-wise rule (policy_type_id)
@@ -468,15 +470,17 @@ class PolicyController extends Controller
                 } else {
                     // Standard / Default Commission Fallback
                     // Check if default rates exist in settings or use system standards (20% pay-in, 10% pay-out of admin commission)
-                    $defaultPayIn = (float) (\App\Models\Setting::where('key', 'default_pay_in_percentage')->value('value') ?? 20);
-                    $defaultPayOut = (float) (\App\Models\Setting::where('key', 'default_pay_out_percentage')->value('value') ?? 10);
+                    $defaultPayIn = (float) (\App\Models\Setting::where('key', 'default_pay_in_percentage')->value('value') ?? (\App\Models\Setting::where('key', 'default_pay_in_value')->value('value') ?? 20));
+                    $defaultPayInType = \App\Models\Setting::where('key', 'default_pay_in_type')->value('value') ?? 'percentage';
+                    $defaultPayOut = (float) (\App\Models\Setting::where('key', 'default_pay_out_percentage')->value('value') ?? (\App\Models\Setting::where('key', 'default_pay_out_value')->value('value') ?? 10));
+                    $defaultPayOutType = \App\Models\Setting::where('key', 'default_pay_out_type')->value('value') ?? 'percentage';
                     $defaultPayOutBasedOn = \App\Models\Setting::where('key', 'default_pay_out_based_on')->value('value') ?? 'admin_commission';
 
-                    $payInType = 'percentage';
+                    $payInType = in_array($defaultPayInType, ['percentage', 'fixed']) ? $defaultPayInType : 'percentage';
                     $payInVal = $defaultPayIn > 0 ? $defaultPayIn : 20;
-                    $payOutType = 'percentage';
+                    $payOutType = in_array($defaultPayOutType, ['percentage', 'fixed']) ? $defaultPayOutType : 'percentage';
                     $payOutVal = $defaultPayOut > 0 ? $defaultPayOut : 10;
-                    $payOutBasedOn = $defaultPayOutBasedOn;
+                    $payOutBasedOn = in_array($defaultPayOutBasedOn, ['admin_commission', 'premium']) ? $defaultPayOutBasedOn : 'admin_commission';
                     $ruleId = null;
                 }
 
