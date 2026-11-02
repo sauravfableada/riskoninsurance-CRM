@@ -656,11 +656,42 @@ class InvoiceController extends Controller
         $paidAmount = (float) $invoices->where('status', 'paid')->sum(fn($i) => (float) ($i->grand_total ?: ($i->total_amount ?: 0)));
         $unpaidAmount = (float) $invoices->where('status', 'unpaid')->sum(fn($i) => (float) ($i->grand_total ?: ($i->total_amount ?: 0)));
 
+        $companySettings = \App\Models\Setting::query()
+            ->whereIn('key', [
+                'company_name',
+                'company_address',
+                'company_tax_id',
+                'company_logo_path',
+                'company_signature_path',
+                'company_phone',
+                'company_email'
+            ])->pluck('value', 'key');
+
+        $companyName = !empty($companySettings['company_name']) 
+            ? trim($companySettings['company_name']) 
+            : 'RISKON IMF PRIVATE LIMITED';
+
+        $companyAddress = !empty($companySettings['company_address']) 
+            ? trim($companySettings['company_address']) 
+            : 'BG-513, SANJAY GANDHI TRANSPORT NAGAR NEW DELHI 110042 Delhi India';
+
+        $companyTaxNo = !empty($companySettings['company_tax_id']) 
+            ? trim($companySettings['company_tax_id']) 
+            : '07AANCR6912L1ZU';
+
+        $companyPhone = !empty($companySettings['company_phone']) 
+            ? trim($companySettings['company_phone']) 
+            : '+91 9650800804';
+
+        $companyEmail = !empty($companySettings['company_email']) 
+            ? trim($companySettings['company_email']) 
+            : 'info.riskoninsurance@gmail.com';
+
         // Resolve Company Logo for PDF
         $logoBase64 = null;
         $logoPath = null;
         try {
-            $settingPath = \App\Models\Setting::query()->where('key', 'company_logo_path')->value('value');
+            $settingPath = $companySettings['company_logo_path'] ?? null;
             if ($settingPath) {
                 $candidates = [
                     \Illuminate\Support\Facades\Storage::disk('public')->path($settingPath),
@@ -689,7 +720,31 @@ class InvoiceController extends Controller
             }
         } catch (\Throwable $e) {}
 
-        $companyName = \App\Models\Setting::query()->where('key', 'company_name')->value('value') ?: 'RISKON IMF PRIVATE LIMITED';
+        // Resolve Authorized Signature for PDF
+        $signatureBase64 = null;
+        try {
+            $sigPath = null;
+            $sigSettingPath = $companySettings['company_signature_path'] ?? null;
+            if ($sigSettingPath) {
+                $candidates = [
+                    \Illuminate\Support\Facades\Storage::disk('public')->path($sigSettingPath),
+                    storage_path('app/public/' . ltrim($sigSettingPath, '/\\')),
+                    storage_path('app/' . ltrim($sigSettingPath, '/\\')),
+                    public_path('storage/' . ltrim($sigSettingPath, '/\\')),
+                    public_path(ltrim($sigSettingPath, '/\\')),
+                ];
+                foreach ($candidates as $cand) {
+                    if ($cand && file_exists($cand) && !is_dir($cand)) {
+                        $sigPath = $cand;
+                        break;
+                    }
+                }
+            }
+            if ($sigPath && file_exists($sigPath)) {
+                $sigMime = mime_content_type($sigPath) ?: 'image/png';
+                $signatureBase64 = 'data:' . $sigMime . ';base64,' . base64_encode(file_get_contents($sigPath));
+            }
+        } catch (\Throwable $e) {}
 
         $companyFilterName = null;
         if ($request->filled('company_id')) {
@@ -715,10 +770,15 @@ class InvoiceController extends Controller
             'paidAmount',
             'unpaidAmount',
             'logoBase64',
+            'signatureBase64',
             'companyName',
+            'companyAddress',
+            'companyTaxNo',
+            'companyPhone',
+            'companyEmail',
             'filters',
             'hasFilters'
-        ))->setPaper('a4', 'landscape');
+        ))->setPaper('a4', 'portrait');
 
         $filename = 'invoices_report_' . date('Ymd_His') . '.pdf';
         return $pdf->download($filename);

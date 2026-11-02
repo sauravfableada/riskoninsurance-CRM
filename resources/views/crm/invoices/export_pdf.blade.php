@@ -1,348 +1,406 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Invoices Report</title>
+    <meta charset="utf-8">
+    <title>Invoices Statement Report</title>
     <style>
         @page {
-            margin: 20px 25px;
-            size: a4 landscape;
+            size: A4 portrait;
+            margin: 8mm 10mm 8mm 10mm;
         }
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+
         body {
             font-family: DejaVu Sans, Arial, Helvetica, sans-serif;
             font-size: 8.5px;
-            color: #222;
-            background: #fff;
+            color: #000000;
+            margin: 0;
             padding: 0;
+            line-height: 1.3;
+            background: #ffffff;
         }
-        .header-table {
+
+        .invoice-box {
+            width: 100%;
+            border: 1.5px solid #000000;
+            box-sizing: border-box;
+        }
+
+        table {
             width: 100%;
             border-collapse: collapse;
-            border-bottom: 2px solid #0f172a;
-            padding-bottom: 8px;
-            margin-bottom: 10px;
-        }
-        .header-table td {
-            vertical-align: middle;
-            border: none;
-            padding: 0;
-        }
-        .report-title {
-            font-size: 15px;
-            font-weight: bold;
-            color: #0f172a;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .company-name {
-            font-size: 11px;
-            font-weight: bold;
-            color: #1e40af;
-            margin-top: 2px;
-        }
-        .meta-text {
-            font-size: 8px;
-            color: #64748b;
-            text-align: right;
-            line-height: 1.35;
         }
 
-        /* Filter bar */
-        .filter-bar {
-            background-color: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 4px;
-            padding: 5px 8px;
-            margin-bottom: 10px;
-            font-size: 8px;
-            color: #334155;
-        }
-        .filter-label {
-            font-weight: bold;
-            color: #0f172a;
-            margin-right: 4px;
-        }
-        .filter-pill {
-            display: inline-block;
-            background-color: #e2e8f0;
-            color: #1e293b;
-            padding: 1px 5px;
-            border-radius: 3px;
-            margin-right: 5px;
-            font-size: 7.5px;
-        }
-
-        /* KPI summary boxes */
-        .kpi-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 6px 0;
-            margin-bottom: 10px;
-        }
-        .kpi-table td {
-            width: 25%;
-            background-color: #f8fafc;
-            border: 1px solid #cbd5e1;
-            border-radius: 4px;
-            padding: 6px 8px;
-            text-align: left;
-        }
-        .kpi-label {
-            font-size: 7px;
-            text-transform: uppercase;
-            font-weight: bold;
-            color: #64748b;
-            margin-bottom: 2px;
-        }
-        .kpi-value {
-            font-size: 12px;
-            font-weight: bold;
-            color: #0f172a;
-        }
-        .kpi-value.green { color: #16a34a; }
-        .kpi-value.orange { color: #ea580c; }
-        .kpi-value.blue { color: #2563eb; }
-
-        /* Data table */
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 4px;
-        }
-        .data-table th, .data-table td {
-            border: 1px solid #cbd5e1;
-            padding: 4.5px 6px;
-            vertical-align: middle;
-        }
-        .data-table th {
-            background-color: #0f172a;
-            color: #ffffff;
-            font-weight: bold;
-            font-size: 8px;
-            text-align: left;
-            text-transform: uppercase;
-        }
-        .data-table tr:nth-child(even) {
-            background-color: #f8fafc;
-        }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .text-left { text-align: left; }
         .fw-bold { font-weight: bold; }
         .font-mono { font-family: monospace; font-size: 8px; }
 
+        .border-bottom { border-bottom: 1px solid #000000; }
+        .border-top { border-top: 1px solid #000000; }
+        .border-right { border-right: 1px solid #000000; }
+        .border-left { border-left: 1px solid #000000; }
+
+        /* Header Elements matching Invoice */
+        .company-name {
+            font-size: 15px;
+            font-weight: bold;
+            color: #000000;
+            text-align: right;
+            letter-spacing: 0.5px;
+            margin: 0 0 3px 0;
+        }
+
+        .company-address {
+            font-size: 8px;
+            text-align: right;
+            line-height: 1.3;
+            color: #111111;
+        }
+
+        .company-contacts {
+            font-size: 7.5px;
+            font-weight: bold;
+            text-align: right;
+            padding: 2px 0 0 0;
+            color: #111111;
+        }
+
+        /* Meta Section */
+        .meta-table td {
+            padding: 4px 8px;
+            font-size: 9px;
+        }
+
+        /* Items Table */
+        .items-table th {
+            padding: 5px 4px;
+            font-size: 8px;
+            font-weight: bold;
+            background-color: #f8fafc;
+            border-bottom: 1px solid #000000;
+            border-right: 1px solid #000000;
+        }
+
+        .items-table th:last-child {
+            border-right: none;
+        }
+
+        .items-table td {
+            padding: 3.5px 5px;
+            font-size: 8px;
+            vertical-align: middle;
+            border-right: 1px solid #000000;
+            border-bottom: 0.5px solid #e2e8f0;
+        }
+
+        .items-table td:last-child {
+            border-right: none;
+        }
+
+        .totals-table td {
+            padding: 3px 8px;
+            font-size: 8px;
+        }
+
         .badge-status {
             display: inline-block;
-            padding: 1px 5px;
-            border-radius: 3px;
-            font-size: 7.5px;
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-size: 7px;
             font-weight: bold;
             text-transform: uppercase;
         }
         .status-paid {
             background-color: #dcfce7;
             color: #15803d;
-            border: 1px solid #bbf7d0;
+            border: 0.5px solid #bbf7d0;
         }
         .status-unpaid {
             background-color: #fef9c3;
             color: #a16207;
-            border: 1px solid #fef08a;
+            border: 0.5px solid #fef08a;
         }
         .status-cancelled {
             background-color: #fee2e2;
             color: #b91c1c;
-            border: 1px solid #fecaca;
-        }
-
-        .badge-type {
-            display: inline-block;
-            padding: 1px 4px;
-            border-radius: 2px;
-            font-size: 7px;
-            font-weight: bold;
-        }
-        .type-payin {
-            background-color: #eff6ff;
-            color: #1d4ed8;
-            border: 1px solid #dbeafe;
-        }
-        .type-customer {
-            background-color: #f1f5f9;
-            color: #475569;
-            border: 1px solid #e2e8f0;
-        }
-
-        .total-row {
-            background-color: #f1f5f9 !important;
-            font-weight: bold;
-            border-top: 2px solid #0f172a;
-        }
-
-        .footer {
-            margin-top: 15px;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 5px;
-            font-size: 7.5px;
-            color: #94a3b8;
-            text-align: right;
+            border: 0.5px solid #fecaca;
         }
     </style>
 </head>
 <body>
+    @php
+        if (!function_exists('indianAmountToWordsReport')) {
+            function indianAmountToWordsReport($amount) {
+                $amount = (int) round($amount);
+                if ($amount == 0) return 'Zero Only';
+                
+                $ones = [
+                    0 => '', 1 => 'One', 2 => 'Two', 3 => 'Three', 4 => 'Four', 5 => 'Five',
+                    6 => 'Six', 7 => 'Seven', 8 => 'Eight', 9 => 'Nine', 10 => 'Ten',
+                    11 => 'Eleven', 12 => 'Twelve', 13 => 'Thirteen', 14 => 'Fourteen', 15 => 'Fifteen',
+                    16 => 'Sixteen', 17 => 'Seventeen', 18 => 'Eighteen', 19 => 'Nineteen'
+                ];
+                $tens = [
+                    2 => 'Twenty', 3 => 'Thirty', 4 => 'Forty', 5 => 'Fifty',
+                    6 => 'Sixty', 7 => 'Seventy', 8 => 'Eighty', 9 => 'Ninety'
+                ];
 
-    <!-- Header -->
-    <table class="header-table">
-        <tr>
-            <td style="width: 50%;">
-                <div class="report-title">Invoices &amp; Commissions Report</div>
-                <div class="company-name">{{ $companyName }}</div>
-            </td>
-            <td style="width: 50%;" class="meta-text">
-                <div>Generated: <strong>{{ date('d M Y, h:i A') }}</strong></div>
-                <div>Generated By: <strong>{{ auth()->user()?->name ?: 'Administrator' }}</strong></div>
-                <div>Total Records: <strong>{{ $invoices->count() }}</strong></div>
-            </td>
-        </tr>
-    </table>
+                $convertBelowThousand = function($num) use ($ones, $tens) {
+                    $res = '';
+                    if ($num >= 100) {
+                        $res .= $ones[(int)($num / 100)] . ' Hundred ';
+                        $num %= 100;
+                    }
+                    if ($num >= 20) {
+                        $res .= $tens[(int)($num / 10)] . ' ';
+                        $num %= 10;
+                    }
+                    if ($num > 0) {
+                        $res .= $ones[$num] . ' ';
+                    }
+                    return trim($res);
+                };
 
-    <!-- Filters Summary -->
-    <div class="filter-bar">
-        <span class="filter-label">Report Scope:</span>
-        @if($hasFilters)
-            @if(!empty($filters['type']))
-                <span class="filter-pill">Type: {{ $filters['type'] === 'company_pay_in' ? 'Company Pay-In' : 'Customer Invoices' }}</span>
-            @endif
-            @if(!empty($filters['company']))
-                <span class="filter-pill">Company: {{ $filters['company'] }}</span>
-            @endif
-            @if(!empty($filters['status']))
-                <span class="filter-pill">Status: {{ ucfirst($filters['status']) }}</span>
-            @endif
-            @if(!empty($filters['start_date']))
-                <span class="filter-pill">From: {{ date('d-m-Y', strtotime($filters['start_date'])) }}</span>
-            @endif
-            @if(!empty($filters['end_date']))
-                <span class="filter-pill">To: {{ date('d-m-Y', strtotime($filters['end_date'])) }}</span>
-            @endif
-            @if(!empty($filters['search']))
-                <span class="filter-pill">Search: "{{ $filters['search'] }}"</span>
-            @endif
-            <span style="color: #64748b; font-size: 7.5px;">(Filtered results matching the current screen view)</span>
-        @else
-            <span class="filter-pill" style="background-color: #e0f2fe; color: #0369a1;">All Invoices (No Filters Applied)</span>
-        @endif
-    </div>
+                $parts = [];
+                $crore = (int) ($amount / 10000000);
+                $amount %= 10000000;
+                $lakh = (int) ($amount / 100000);
+                $amount %= 100000;
+                $thousand = (int) ($amount / 1000);
+                $remainder = $amount % 1000;
 
-    <!-- Financial KPI Summary Cards -->
-    <table class="kpi-table">
-        <tr>
-            <td>
-                <div class="kpi-label">Total Invoices</div>
-                <div class="kpi-value blue">{{ $invoices->count() }}</div>
-            </td>
-            <td>
-                <div class="kpi-label">Total Volume (₹)</div>
-                <div class="kpi-value">₹{{ number_format($totalAmount, 2) }}</div>
-            </td>
-            <td>
-                <div class="kpi-label">Paid / Received (₹)</div>
-                <div class="kpi-value green">₹{{ number_format($paidAmount, 2) }}</div>
-            </td>
-            <td>
-                <div class="kpi-label">Pending / Unpaid (₹)</div>
-                <div class="kpi-value orange">₹{{ number_format($unpaidAmount, 2) }}</div>
-            </td>
-        </tr>
-    </table>
+                if ($crore > 0) $parts[] = $convertBelowThousand($crore) . ' Crore';
+                if ($lakh > 0) $parts[] = $convertBelowThousand($lakh) . ' Lakh';
+                if ($thousand > 0) $parts[] = $convertBelowThousand($thousand) . ' Thousand';
+                if ($remainder > 0) $parts[] = $convertBelowThousand($remainder);
 
-    <!-- Data Table -->
-    <table class="data-table">
-        <thead>
+                return trim(implode(' ', $parts)) . ' Only';
+            }
+        }
+    @endphp
+
+    <div class="invoice-box">
+        <!-- 1. Header Design (matching Tax Invoice: Logo Left, Dynamic Company Details Right) -->
+        <table class="border-bottom" style="width: 100%;">
             <tr>
-                <th style="width: 25px;" class="text-center">#</th>
-                <th style="width: 130px;">Invoice #</th>
-                <th style="width: 85px;">Type</th>
-                <th>Billed To</th>
-                <th style="width: 100px;">Account ID</th>
-                <th style="width: 65px;" class="text-center">Date</th>
-                <th style="width: 65px;" class="text-center">Due Date</th>
-                <th style="width: 75px;" class="text-right">Subtotal (₹)</th>
-                <th style="width: 65px;" class="text-right">GST / Tax</th>
-                <th style="width: 85px;" class="text-right">Grand Total (₹)</th>
-                <th style="width: 55px;" class="text-center">Status</th>
+                <td style="width: 30%; vertical-align: middle; padding: 6px 10px;">
+                    @if(!empty($logoBase64))
+                        <img src="{{ $logoBase64 }}" alt="{{ $companyName }}" style="height: 48px; width: auto; max-width: 175px;">
+                    @else
+                        <div style="font-size: 14px; font-weight: bold; color: #1e40af;">{{ strtoupper($companyName) }}</div>
+                    @endif
+                </td>
+                <td style="width: 70%; text-align: right; vertical-align: middle; padding: 6px 10px;">
+                    <div class="company-name">{{ strtoupper($companyName) }}</div>
+                    <div class="company-address">{!! nl2br(e($companyAddress)) !!}</div>
+                    <div class="company-contacts">
+                        @if($companyTaxNo)
+                            <span class="fw-bold">GSTIN/Tax No:</span> {{ $companyTaxNo }} &nbsp;&nbsp;|&nbsp;&nbsp;
+                        @endif
+                        @if($companyPhone)
+                            <span class="fw-bold">Mob:</span> {{ $companyPhone }} &nbsp;&nbsp;|&nbsp;&nbsp;
+                        @endif
+                        @if($companyEmail)
+                            <span class="fw-bold">Email:</span> {{ $companyEmail }}
+                        @endif
+                    </div>
+                </td>
             </tr>
-        </thead>
-        <tbody>
-            @forelse($invoices as $idx => $inv)
-                @php
-                    $isCompany = ($inv->invoice_type === 'company_pay_in');
-                    $billedTo = $isCompany ? ($inv->company?->name ?: 'Insurance Company') : ($inv->customer?->name ?: 'Customer');
-                    $subtotalVal = (float) ($inv->subtotal ?: ($inv->items->sum('total_price') ?: 0));
-                    $taxVal = (float) ($inv->tax_amount ?: 0);
-                    $grandVal = (float) ($inv->grand_total ?: ($inv->total_amount ?: ($subtotalVal + $taxVal)));
-                @endphp
-                <tr>
-                    <td class="text-center">{{ $idx + 1 }}</td>
-                    <td class="fw-bold font-mono">{{ $inv->number ?: ('#' . $inv->id) }}</td>
-                    <td>
-                        <span class="badge-type {{ $isCompany ? 'type-payin' : 'type-customer' }}">
-                            {{ $isCompany ? 'Company Pay-In' : 'Customer' }}
-                        </span>
-                    </td>
-                    <td>
-                        <div class="fw-bold">{{ $billedTo }}</div>
-                        @if(!$isCompany && $inv->customer?->email)
-                            <div style="font-size: 7px; color: #64748b;">{{ $inv->customer->email }}</div>
-                        @endif
-                    </td>
-                    <td class="font-mono text-muted">{{ $inv->account_id_code ?: '—' }}</td>
-                    <td class="text-center">{{ $inv->invoice_date ? date('d-m-Y', strtotime($inv->invoice_date)) : '—' }}</td>
-                    <td class="text-center">{{ $inv->due_date ? date('d-m-Y', strtotime($inv->due_date)) : '—' }}</td>
-                    <td class="text-right">{{ number_format($subtotalVal, 2) }}</td>
-                    <td class="text-right">{{ number_format($taxVal, 2) }}</td>
-                    <td class="text-right fw-bold">{{ number_format($grandVal, 2) }}</td>
-                    <td class="text-center">
-                        @if($inv->status === 'paid')
-                            <span class="badge-status status-paid">Paid</span>
-                        @elseif($inv->status === 'cancelled')
-                            <span class="badge-status status-cancelled">Cancelled</span>
+        </table>
+
+        <!-- 2. Statement Meta Bar -->
+        <table class="meta-table border-bottom">
+            <tr>
+                <td style="width: 50%;" class="border-right">
+                    <span class="fw-bold">Statement:</span> INVOICES &amp; COMMISSIONS REPORT
+                </td>
+                <td style="width: 50%; text-align: right;">
+                    <span class="fw-bold">Statement Date :</span> {{ date('d-m-Y') }} &nbsp;&nbsp;|&nbsp;&nbsp; <span class="fw-bold">Time:</span> {{ date('h:i A') }}
+                </td>
+            </tr>
+        </table>
+
+        <!-- 3. Scope / Filters & Overview Summary -->
+        <table class="border-bottom" style="width: 100%;">
+            <tr>
+                <!-- Left: Scope / Filter applied -->
+                <td style="width: 50%; vertical-align: top; padding: 5px 8px;" class="border-right">
+                    <div class="fw-bold" style="text-decoration: underline; margin-bottom: 3px; font-size: 8.5px;">Statement Scope / Applied Filters</div>
+                    <div style="font-size: 8px; line-height: 1.35;">
+                        @if($hasFilters)
+                            @if(!empty($filters['type']))
+                                <div>&bull; <strong>Type:</strong> {{ $filters['type'] === 'company_pay_in' ? 'Company Pay-In Invoices' : 'Customer Invoices' }}</div>
+                            @endif
+                            @if(!empty($filters['company']))
+                                <div>&bull; <strong>Company:</strong> {{ $filters['company'] }}</div>
+                            @endif
+                            @if(!empty($filters['status']))
+                                <div>&bull; <strong>Status:</strong> {{ ucfirst($filters['status']) }}</div>
+                            @endif
+                            @if(!empty($filters['start_date']) || !empty($filters['end_date']))
+                                <div>&bull; <strong>Date Period:</strong> {{ $filters['start_date'] ? date('d-m-Y', strtotime($filters['start_date'])) : 'All Previous' }} to {{ $filters['end_date'] ? date('d-m-Y', strtotime($filters['end_date'])) : 'Present' }}</div>
+                            @endif
+                            @if(!empty($filters['search']))
+                                <div>&bull; <strong>Search Filter:</strong> "{{ $filters['search'] }}"</div>
+                            @endif
+                            <div style="color: #64748b; font-size: 7.5px; margin-top: 2px;">(Exported based on active on-screen filters)</div>
                         @else
-                            <span class="badge-status status-unpaid">Unpaid</span>
+                            <div style="color: #1e40af; font-weight: bold;">&bull; All Invoices (Complete Full Statement)</div>
+                            <div style="color: #64748b; font-size: 7.5px; margin-top: 2px;">(No filters applied &mdash; includes all Pay-In &amp; Customer billings)</div>
                         @endif
-                    </td>
-                </tr>
-            @empty
+                    </div>
+                </td>
+
+                <!-- Right: Summary Totals -->
+                <td style="width: 50%; vertical-align: top; padding: 5px 8px;">
+                    <div class="fw-bold" style="text-decoration: underline; margin-bottom: 3px; font-size: 8.5px;">Summary Overview</div>
+                    <table style="width: 100%; font-size: 8px;">
+                        <tr>
+                            <td style="padding: 1px 0;">Total Records:</td>
+                            <td style="text-align: right; padding: 1px 0; font-weight: bold;">{{ $invoices->count() }} Invoices</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 1px 0;">Total Amount Invoiced:</td>
+                            <td style="text-align: right; padding: 1px 0; font-weight: bold;">₹{{ number_format($totalAmount, 2) }}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 1px 0; color: #15803d;">Total Paid / Remitted:</td>
+                            <td style="text-align: right; padding: 1px 0; color: #15803d; font-weight: bold;">₹{{ number_format($paidAmount, 2) }}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 1px 0; color: #b45309;">Total Pending / Due:</td>
+                            <td style="text-align: right; padding: 1px 0; color: #b45309; font-weight: bold;">₹{{ number_format($unpaidAmount, 2) }}</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <!-- 4. Line Items Table -->
+        <table class="items-table border-bottom">
+            <thead>
                 <tr>
-                    <td colspan="11" class="text-center" style="padding: 25px; color: #64748b; font-size: 10px;">
-                        No invoices found matching the specified filters.
-                    </td>
+                    <th style="width: 5%; text-align: center;">S.No</th>
+                    <th style="width: 25%; text-align: left; padding-left: 6px;">Invoice Number</th>
+                    <th style="width: 14%; text-align: center;">Invoice Type</th>
+                    <th style="width: 24%; text-align: left; padding-left: 6px;">Billed To</th>
+                    <th style="width: 10%; text-align: center;">Date</th>
+                    <th style="width: 8%; text-align: center;">Status</th>
+                    <th style="width: 14%; text-align: right; padding-right: 6px;">Total Value (₹)</th>
                 </tr>
-            @endforelse
-        </tbody>
-        @if($invoices->count() > 0)
-            <tfoot>
-                <tr class="total-row">
-                    <td colspan="7" class="text-right fw-bold">TOTAL:</td>
-                    <td class="text-right fw-bold">{{ number_format($totalSubtotal, 2) }}</td>
-                    <td class="text-right fw-bold">{{ number_format($totalTax, 2) }}</td>
-                    <td class="text-right fw-bold" style="color: #1e40af;">₹{{ number_format($totalAmount, 2) }}</td>
-                    <td></td>
-                </tr>
-            </tfoot>
-        @endif
-    </table>
+            </thead>
+            <tbody>
+                @forelse($invoices as $idx => $inv)
+                    @php
+                        $isCompany = ($inv->invoice_type === 'company_pay_in');
+                        $billedTo = $isCompany ? ($inv->company?->name ?: 'Insurance Company') : ($inv->customer?->name ?: 'Customer');
+                        $invTotal = (float) ($inv->grand_total ?: ($inv->total_amount ?: ($inv->subtotal + $inv->tax_amount)));
+                    @endphp
+                    <tr>
+                        <td class="text-center">{{ $idx + 1 }}</td>
+                        <td>
+                            <div class="fw-bold font-mono">{{ $inv->number ?: ('#' . $inv->id) }}</div>
+                            @if($inv->account_id_code)
+                                <div style="font-size: 7px; color: #64748b;">Acct: {{ $inv->account_id_code }}</div>
+                            @endif
+                        </td>
+                        <td class="text-center">
+                            {{ $isCompany ? 'Company Pay-In' : 'Customer' }}
+                        </td>
+                        <td>
+                            <div class="fw-bold">{{ $billedTo }}</div>
+                            @if(!$isCompany && $inv->customer?->email)
+                                <div style="font-size: 7px; color: #64748b;">{{ $inv->customer->email }}</div>
+                            @endif
+                        </td>
+                        <td class="text-center">
+                            {{ $inv->invoice_date ? date('d-m-Y', strtotime($inv->invoice_date)) : '—' }}
+                        </td>
+                        <td class="text-center">
+                            @if($inv->status === 'paid')
+                                <span class="badge-status status-paid">PAID</span>
+                            @elseif($inv->status === 'cancelled')
+                                <span class="badge-status status-cancelled">CANCELLED</span>
+                            @else
+                                <span class="badge-status status-unpaid">UNPAID</span>
+                            @endif
+                        </td>
+                        <td class="text-right fw-bold" style="padding-right: 6px;">
+                            {{ number_format($invTotal, 2) }}
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="7" class="text-center" style="padding: 20px; color: #64748b;">
+                            No invoices found matching the specified filters.
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
 
-    <!-- Footer -->
-    <div class="footer">
-        <span>Confidential &bull; Riskon Insurance CRM System &bull; Generated electronically on {{ date('d M Y, h:i:s A') }}</span>
+        <!-- 5. Totals Section -->
+        <table class="totals-table border-bottom">
+            <tr>
+                <td style="width: 72%; text-align: right; font-weight: bold;" class="border-right">
+                    Total Taxable Value (Subtotal)
+                </td>
+                <td style="width: 28%; text-align: right; font-weight: bold;">
+                    ₹{{ number_format($totalSubtotal, 2) }}
+                </td>
+            </tr>
+            <tr>
+                <td style="width: 72%; text-align: right; font-weight: bold;" class="border-right">
+                    Total Tax Amount (GST)
+                </td>
+                <td style="width: 28%; text-align: right; font-weight: bold;">
+                    ₹{{ number_format($totalTax, 2) }}
+                </td>
+            </tr>
+            <tr style="background-color: #f8fafc;">
+                <td style="width: 72%; text-align: right; font-weight: bold; font-size: 9.5px; padding: 4px 8px;" class="border-right">
+                    Amount Chargeable (Total Invoiced)
+                </td>
+                <td style="width: 28%; text-align: right; font-weight: bold; font-size: 9.5px; padding: 4px 8px;">
+                    ₹{{ number_format($totalAmount, 2) }}
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="padding: 4px 8px; font-size: 8px;">
+                    <span class="fw-bold">Rupees in Words :</span> {{ indianAmountToWordsReport($totalAmount) }}
+                </td>
+            </tr>
+        </table>
+
+        <!-- 6. Footer & Signatory Box -->
+        <table class="border-bottom">
+            <tr>
+                <td style="width: 58%; padding: 5px 8px; vertical-align: top;" class="border-right">
+                    <div class="fw-bold" style="text-decoration: underline; margin-bottom: 2px;">Declarations &amp; Terms</div>
+                    <div class="fw-bold" style="margin-bottom: 2px; font-size: 7.5px;">E. &amp; O.E.</div>
+                    <div style="line-height: 1.3; font-size: 7.5px; color: #222;">
+                        1. This statement reflects official invoice and brokerage commission records in the Riskon CRM.<br>
+                        2. Subject to 'Delhi' Jurisdiction Only.
+                    </div>
+                </td>
+                <td style="width: 42%; padding: 5px 8px; text-align: right; vertical-align: top;">
+                    <div class="fw-bold" style="font-size: 9px; color: #000; text-align: right;">
+                        For {{ strtoupper($companyName) }}
+                    </div>
+                    @if(!empty($signatureBase64))
+                        <div style="height: 42px; text-align: right; padding-top: 2px;">
+                            <img src="{{ $signatureBase64 }}" style="max-height: 38px; max-width: 130px; object-fit: contain;">
+                        </div>
+                    @else
+                        <div style="height: 42px;"></div>
+                    @endif
+                    <div style="font-weight: bold; font-size: 9px; text-align: right; display: inline-block; border-top: 1px solid #333; padding-top: 2px; min-width: 130px;">
+                        Authorized Signatory
+                    </div>
+                </td>
+            </tr>
+        </table>
     </div>
-
 </body>
 </html>
-
