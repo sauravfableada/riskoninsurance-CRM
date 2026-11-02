@@ -136,6 +136,68 @@ class InvoiceController extends Controller
         ]);
     }
 
+    /**
+     * AJAX endpoint to fetch unbilled/active policies of a specific customer for customer invoicing.
+     */
+    public function getCustomerPolicies(Request $request, $customerId)
+    {
+        $excludeInvoiceId = $request->query('invoice_id');
+
+        $invoicedItems = InvoiceItem::whereHas('invoice', function ($q) use ($excludeInvoiceId) {
+            $q->where('status', '!=', 'cancelled');
+            if ($excludeInvoiceId) {
+                $q->where('id', '!=', $excludeInvoiceId);
+            }
+        })->get(['policy_id', 'policy_number', 'product_name']);
+
+        $billedPolicyIds = [];
+        $billedPolicyNumbers = [];
+
+        foreach ($invoicedItems as $item) {
+            if (!empty($item->policy_id)) {
+                $billedPolicyIds[] = (int) $item->policy_id;
+            }
+            if (!empty($item->policy_number)) {
+                $billedPolicyNumbers[] = trim($item->policy_number);
+            }
+            if (!empty($item->product_name) && preg_match('/POL-[0-9]{8}-[0-9]+/i', $item->product_name, $matches)) {
+                $billedPolicyNumbers[] = trim($matches[0]);
+            }
+        }
+        $billedPolicyIds = array_unique(array_filter($billedPolicyIds));
+        $billedPolicyNumbers = array_unique(array_filter($billedPolicyNumbers));
+
+        $query = Policy::with(['company', 'policyType'])
+            ->where('holder_id', $customerId);
+
+        if (!empty($billedPolicyIds)) {
+            $query->whereNotIn('id', $billedPolicyIds);
+        }
+        if (!empty($billedPolicyNumbers)) {
+            $query->whereNotIn('policy_number', $billedPolicyNumbers);
+        }
+
+        $policies = $query->latest('id')->get();
+
+        $data = $policies->map(function ($policy) {
+            $premium = (float) ($policy->premium_amount ?? 0);
+
+            return [
+                'id' => $policy->id,
+                'policy_number' => $policy->policy_number ?: ('#' . $policy->id),
+                'company_name' => $policy->company?->name ?? 'Insurance Company',
+                'policy_type_name' => $policy->policyType?->name ?? 'General Insurance',
+                'premium_amount' => $premium,
+                'start_date' => $policy->start_date ? date('d-m-Y', strtotime($policy->start_date)) : '—',
+            ];
+        });
+
+        return response()->json([
+            'status' => true,
+            'policies' => $data,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $this->authorize('create', Invoice::class);

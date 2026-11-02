@@ -175,11 +175,15 @@
                 </div>
             </div>
 
+            @php
+                $isCompanyPayIn = ($invoice->invoice_type === 'company_pay_in' || !empty($invoice->company_id));
+            @endphp
+
             {{-- 4. Line Items Table --}}
             <div class="card border rounded-3 overflow-hidden mb-4 shadow-none">
                 <div class="card-header bg-light py-2 px-3 d-flex justify-content-between align-items-center">
                     <h6 class="mb-0 fw-bold text-dark">
-                        <i class="fa-solid fa-list text-primary me-2"></i>Itemized Policy / Commission Details
+                        <i class="fa-solid fa-list text-primary me-2"></i>{{ $isCompanyPayIn ? 'Itemized Policy / Commission Details' : 'Itemized Invoice Details' }}
                     </h6>
                     <span class="badge bg-secondary rounded-pill px-3">
                         {{ $invoice->items->count() }} line {{ $invoice->items->count() === 1 ? 'item' : 'items' }}
@@ -193,10 +197,14 @@
                                     <th class="ps-3" style="width: 40px;">#</th>
                                     <th>Description / Policy Info</th>
                                     <th class="text-center" style="width: 100px;">HSN/SAC</th>
-                                    <th>Holder Name</th>
-                                    <th class="text-end">Gross Premium</th>
-                                    <th class="text-center">Pay-In %</th>
-                                    <th class="text-end">Pay-In Commission</th>
+                                    @if($isCompanyPayIn)
+                                        <th>Holder Name</th>
+                                        <th class="text-end">Gross Premium</th>
+                                        <th class="text-center">Pay-In %</th>
+                                        <th class="text-end">Pay-In Commission</th>
+                                    @else
+                                        <th class="text-end">Rate / Unit Price</th>
+                                    @endif
                                     <th class="text-center" style="width: 70px;">Qty</th>
                                     <th class="text-end pe-3" style="width: 140px;">Total (₹)</th>
                                 </tr>
@@ -217,22 +225,26 @@
                                         <td class="text-center font-monospace small">
                                             <span class="badge bg-light text-dark border">{{ $item->hsn_sac ?: '997161' }}</span>
                                         </td>
-                                        <td>{{ $item->holder_name ?? '—' }}</td>
-                                        <td class="text-end">
-                                            @if($item->gross_premium)
-                                                ₹{{ number_format($item->gross_premium, 2) }}
-                                            @else
-                                                <span class="text-muted">—</span>
-                                            @endif
-                                        </td>
-                                        <td class="text-center">
-                                            @if($item->pay_in_percentage)
-                                                <span class="badge bg-primary-subtle text-primary">{{ number_format($item->pay_in_percentage, 2) }}%</span>
-                                            @else
-                                                <span class="text-muted">—</span>
-                                            @endif
-                                        </td>
-                                        <td class="text-end fw-semibold">₹{{ number_format($item->pay_in_amount ?? $item->amount, 2) }}</td>
+                                        @if($isCompanyPayIn)
+                                            <td>{{ $item->holder_name ?? '—' }}</td>
+                                            <td class="text-end">
+                                                @if($item->gross_premium)
+                                                    ₹{{ number_format($item->gross_premium, 2) }}
+                                                @else
+                                                    <span class="text-muted">—</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-center">
+                                                @if($item->pay_in_percentage)
+                                                    <span class="badge bg-primary-subtle text-primary">{{ number_format($item->pay_in_percentage, 2) }}%</span>
+                                                @else
+                                                    <span class="text-muted">—</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-end fw-semibold">₹{{ number_format($item->pay_in_amount ?? $item->amount, 2) }}</td>
+                                        @else
+                                            <td class="text-end fw-semibold">₹{{ number_format($item->amount ?: (($item->total_price ?: 0) / max(1, $item->quantity)), 2) }}</td>
+                                        @endif
                                         <td class="text-center">{{ $item->quantity }}</td>
                                         <td class="text-end pe-3 fw-bold text-dark">₹{{ number_format($item->total_price ?: (($item->pay_in_amount ?? $item->amount) * $item->quantity), 2) }}</td>
                                     </tr>
@@ -297,7 +309,7 @@
                 <div class="col-lg-5">
                     <div class="card border rounded-3 p-3 bg-light bg-opacity-50">
                         <div class="d-flex justify-content-between mb-2">
-                            <span class="text-muted">Subtotal (Commission):</span>
+                            <span class="text-muted">{{ $isCompanyPayIn ? 'Subtotal (Commission):' : 'Subtotal:' }}</span>
                             <span class="fw-semibold">₹{{ number_format($invoice->subtotal ?: $invoice->items->sum('total_price'), 2) }}</span>
                         </div>
                         <div class="d-flex justify-content-between mb-2">

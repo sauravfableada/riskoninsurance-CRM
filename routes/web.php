@@ -244,6 +244,7 @@ Route::middleware('auth.api')->group(function () {
 
     // Invoices web routes
     Route::get('invoices/company-policies/{companyId}', [InvoiceController::class, 'getCompanyPolicies'])->name('invoices.company_policies');
+    Route::get('invoices/customer-policies/{customerId}', [InvoiceController::class, 'getCustomerPolicies'])->name('invoices.customer_policies');
     Route::resource('invoices', InvoiceController::class)->middleware('matrix_permission:view_invoices');
     Route::post('invoices/{invoice}/status', [InvoiceController::class, 'updateStatus'])->middleware('matrix_permission:edit_invoices')->name('invoices.status');
     Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])->middleware('matrix_permission:view_invoices')->name('invoices.pdf');

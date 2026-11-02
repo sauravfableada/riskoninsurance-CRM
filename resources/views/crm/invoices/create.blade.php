@@ -262,6 +262,55 @@
                     </div>
                 </div>
 
+                {{-- 4b. Customer Policies Loader Panel --}}
+                <div id="customerPoliciesPanel" class="card border rounded-3 mb-4 shadow-none d-none">
+                    <div class="card-header bg-light py-2 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-secondary text-white"><i class="fa-solid fa-user-shield me-1"></i>Customer Policies</span>
+                            <span class="fw-semibold text-dark small">Select Active Policies of this Customer to Bill</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-light text-muted border small"><i class="fa-solid fa-filter me-1"></i>Only Unbilled / Pending</span>
+                            <div id="customerPolicyCounterBadge" class="badge bg-secondary-subtle text-secondary d-none">0 Available</div>
+                        </div>
+                    </div>
+
+                    <div class="card-body p-3">
+                        <div id="customerPolicyEmptyNotice" class="text-center py-4 text-muted">
+                            <i class="fa-solid fa-user-clock fs-2 mb-2 text-secondary opacity-50 d-block"></i>
+                            Select a Customer above to fetch their existing insurance policies.
+                        </div>
+
+                        <div id="customerPolicyLoadingSpinner" class="text-center py-4 d-none">
+                            <span class="spinner-border spinner-border-sm text-secondary me-2"></span>
+                            <span class="text-muted">Loading customer policies...</span>
+                        </div>
+
+                        <div id="customerPolicyTableContainer" class="table-responsive d-none">
+                            <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="selectAllCustomerPolicies">
+                                    <label class="form-check-label small fw-semibold" for="selectAllCustomerPolicies">Select All Policies</label>
+                                </div>
+                                <span class="text-muted small">Checked policies are automatically added to line items</span>
+                            </div>
+                            <table class="table table-sm table-hover table-bordered policy-select-table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th class="text-center" style="width: 40px;">Select</th>
+                                        <th>Policy Number</th>
+                                        <th>Insurance Company</th>
+                                        <th>Policy Type</th>
+                                        <th>Issue Date</th>
+                                        <th class="text-end">Gross Premium (₹)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="customerPoliciesTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 {{-- 5. Invoice Line Items Table --}}
                 <div class="card border rounded-3 mb-4 shadow-none">
                     <div class="card-header bg-light py-2 px-3 d-flex justify-content-between align-items-center">
@@ -280,9 +329,9 @@
                                     <tr>
                                         <th style="min-width: 250px;">Item / Policy Description <span class="text-danger">*</span></th>
                                         <th style="width: 110px;" class="text-center">HSN/SAC</th>
-                                        <th style="width: 140px;" class="text-end">Gross Premium (₹)</th>
-                                        <th style="width: 110px;" class="text-center">Pay-In %</th>
-                                        <th style="width: 140px;" class="text-end">Pay-In Amount (₹) <span class="text-danger">*</span></th>
+                                        <th style="width: 140px;" class="text-end col-payin">Gross Premium (₹)</th>
+                                        <th style="width: 110px;" class="text-center col-payin">Pay-In %</th>
+                                        <th style="width: 140px;" class="text-end" id="thAmount">Pay-In Amount (₹) <span class="text-danger">*</span></th>
                                         <th style="width: 90px;" class="text-center">Qty <span class="text-danger">*</span></th>
                                         <th style="width: 150px;" class="text-end">Total (₹)</th>
                                         <th style="width: 60px;" class="text-center">Action</th>
@@ -342,7 +391,7 @@
                                 <h6 class="fw-bold mb-3 border-bottom pb-2">Financial Summary</h6>
                                 
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="text-muted">Subtotal (Commission):</span>
+                                    <span class="text-muted" id="subtotalLabel">Subtotal (Commission):</span>
                                     <span class="fw-semibold">₹ <span id="displaySubtotal">0.00</span></span>
                                 </div>
 
@@ -410,6 +459,7 @@
 <script>
     let itemRowCounter = 0;
     let fetchedCompanyPolicies = [];
+    let fetchedCustomerPolicies = [];
 
     // Switch between Company Pay-In Invoice and Customer Invoice
     function switchInvoiceType(type) {
@@ -424,12 +474,60 @@
         document.getElementById('fieldCompany').classList.toggle('d-none', !isCompanyPayIn);
         document.getElementById('fieldCustomer').classList.toggle('d-none', isCompanyPayIn);
         document.getElementById('companyPoliciesPanel').classList.toggle('d-none', !isCompanyPayIn);
+        document.getElementById('customerPoliciesPanel')?.classList.toggle('d-none', isCompanyPayIn);
         document.getElementById('billingAccountSection').classList.toggle('d-none', !isCompanyPayIn);
+
+        // Toggle table header & row Pay-In columns
+        document.querySelectorAll('.col-payin').forEach(el => {
+            el.classList.toggle('d-none', !isCompanyPayIn);
+        });
+
+        const thAmount = document.getElementById('thAmount');
+        if (thAmount) {
+            thAmount.innerHTML = isCompanyPayIn 
+                ? 'Pay-In Amount (₹) <span class="text-danger">*</span>' 
+                : 'Rate / Amount (₹) <span class="text-danger">*</span>';
+        }
+
+        const subtotalLabel = document.getElementById('subtotalLabel');
+        if (subtotalLabel) {
+            subtotalLabel.textContent = isCompanyPayIn ? 'Subtotal (Commission):' : 'Subtotal:';
+        }
+
+        const commentArea = document.querySelector('textarea[name="comment"]');
+        if (commentArea) {
+            if (isCompanyPayIn) {
+                if (commentArea.value === 'Tax invoice for insurance policy premium and related services.' || !commentArea.value) {
+                    commentArea.value = 'Tax invoice for brokerage pay-in commission as per agreement.';
+                }
+                commentArea.placeholder = 'e.g. Tax invoice for insurance Pay-In brokerage commission. Direct remittance to Account 01E2F9-74AFE8-B222F4.';
+            } else {
+                if (commentArea.value === 'Tax invoice for brokerage pay-in commission as per agreement.' || !commentArea.value) {
+                    commentArea.value = 'Tax invoice for insurance policy premium and related services.';
+                }
+                commentArea.placeholder = 'e.g. Tax invoice for insurance policy premium and related services.';
+            }
+        }
+
+        // If only 1 line item and it still has default description, adjust it
+        const firstDescInput = document.querySelector('#invoiceItemsBody tr:first-child .item-desc');
+        if (firstDescInput) {
+            if (isCompanyPayIn && firstDescInput.value === 'Insurance Policy Premium / Service Fee') {
+                firstDescInput.value = 'Brokerage Pay-In Commission';
+            } else if (!isCompanyPayIn && firstDescInput.value === 'Brokerage Pay-In Commission') {
+                firstDescInput.value = 'Insurance Policy Premium / Service Fee';
+            }
+        }
 
         const companySelect = document.getElementById('company_id');
         const customerSelect = document.getElementById('customer_id');
         if (companySelect) companySelect.required = isCompanyPayIn;
         if (customerSelect) customerSelect.required = !isCompanyPayIn;
+
+        // If customer is already selected, fetch their policies
+        if (!isCompanyPayIn && customerSelect && customerSelect.value) {
+            loadCustomerPolicies(customerSelect.value);
+        }
 
         // Adjust default invoice prefix preview if empty or standard
         const numberInput = document.getElementById('invoiceNumberInput');
@@ -509,6 +607,74 @@
         });
     }
 
+    // Customer Policy Fetcher
+    function loadCustomerPolicies(customerId) {
+        const notice = document.getElementById('customerPolicyEmptyNotice');
+        const spinner = document.getElementById('customerPolicyLoadingSpinner');
+        const container = document.getElementById('customerPolicyTableContainer');
+        const tbody = document.getElementById('customerPoliciesTableBody');
+        const counter = document.getElementById('customerPolicyCounterBadge');
+
+        if (!customerId) {
+            if (notice) notice.classList.remove('d-none');
+            if (spinner) spinner.classList.add('d-none');
+            if (container) container.classList.add('d-none');
+            if (counter) counter.classList.add('d-none');
+            if (tbody) tbody.innerHTML = '';
+            fetchedCustomerPolicies = [];
+            return;
+        }
+
+        if (notice) notice.classList.add('d-none');
+        if (spinner) spinner.classList.remove('d-none');
+        if (container) container.classList.add('d-none');
+        if (counter) counter.classList.add('d-none');
+
+        $.ajax({
+            url: `/invoices/customer-policies/${customerId}`,
+            type: 'GET',
+            success: function (res) {
+                if (spinner) spinner.classList.add('d-none');
+                if (res.status && res.policies && res.policies.length > 0) {
+                    fetchedCustomerPolicies = res.policies;
+                    if (counter) {
+                        counter.textContent = `${res.policies.length} Policies Available`;
+                        counter.classList.remove('d-none');
+                    }
+                    if (container) container.classList.remove('d-none');
+
+                    if (tbody) {
+                        tbody.innerHTML = res.policies.map((p, idx) => `
+                            <tr>
+                                <td class="text-center">
+                                    <input type="checkbox" class="form-check-input customer-policy-check" 
+                                        data-idx="${idx}" data-policy-id="${p.id}">
+                                </td>
+                                <td class="fw-bold font-monospace text-dark">${p.policy_number}</td>
+                                <td>${p.company_name}</td>
+                                <td><span class="badge bg-light text-dark border">${p.policy_type_name}</span></td>
+                                <td class="text-muted small">${p.start_date}</td>
+                                <td class="text-end fw-bold text-primary">₹${parseFloat(p.premium_amount).toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                            </tr>
+                        `).join('');
+                    }
+                } else {
+                    if (notice) {
+                        notice.innerHTML = `<i class="fa-solid fa-circle-check text-success fs-3 mb-2 d-block"></i> No unbilled policies found for this customer. You can manually enter policy details or custom fees in the line items below.`;
+                        notice.classList.remove('d-none');
+                    }
+                }
+            },
+            error: function () {
+                if (spinner) spinner.classList.add('d-none');
+                if (notice) {
+                    notice.innerHTML = `<i class="fa-solid fa-circle-info text-secondary fs-3 mb-2 d-block"></i> You can enter custom policy details or services in the line items below.`;
+                    notice.classList.remove('d-none');
+                }
+            }
+        });
+    }
+
     // Add row to Line Items table
     function addLineItem(item = {}) {
         const tbody = document.getElementById('invoiceItemsBody');
@@ -518,16 +684,33 @@
         tr.id = `itemRow_${idx}`;
         tr.dataset.policyId = item.policy_id || '';
 
+        const isCustomer = document.getElementById('type_customer')?.checked;
         const grossPremium = item.gross_premium !== undefined ? parseFloat(item.gross_premium) : 0;
-        const payInPct = item.pay_in_percentage !== undefined ? parseFloat(item.pay_in_percentage) : 20;
-        const unitAmount = item.amount !== undefined ? parseFloat(item.amount) : (grossPremium > 0 ? (grossPremium * payInPct / 100) : 0);
+        const payInPct = item.pay_in_percentage !== undefined ? parseFloat(item.pay_in_percentage) : (isCustomer ? 0 : 20);
+        let unitAmount = 0;
+        if (item.amount !== undefined) {
+            unitAmount = parseFloat(item.amount);
+        } else if (isCustomer) {
+            unitAmount = grossPremium > 0 ? grossPremium : 0;
+        } else {
+            unitAmount = grossPremium > 0 ? (grossPremium * payInPct / 100) : 0;
+        }
         const qty = item.quantity || 1;
         const total = (unitAmount * qty).toFixed(2);
+
+        let defaultDesc = isCustomer ? 'Insurance Policy Premium / Service Fee' : 'Brokerage Pay-In Commission';
+        if (item.product_name) {
+            defaultDesc = item.product_name;
+        } else if (item.policy_number) {
+            defaultDesc = isCustomer 
+                ? `Insurance Policy Premium (${item.policy_number})`
+                : `Pay-In Commission for Policy ${item.policy_number}`;
+        }
 
         tr.innerHTML = `
             <td>
                 <input type="text" name="items[${idx}][product_name]" class="form-control form-control-sm item-desc" 
-                    value="${item.product_name || (item.policy_number ? `Pay-In Commission for Policy ${item.policy_number}` : 'Commission Remittance')}" required>
+                    value="${defaultDesc}" required>
                 ${item.policy_id ? `<input type="hidden" name="items[${idx}][policy_id]" value="${item.policy_id}">` : ''}
                 ${item.policy_number ? `<input type="hidden" name="items[${idx}][policy_number]" value="${item.policy_number}">` : ''}
                 ${item.holder_name ? `<input type="hidden" name="items[${idx}][holder_name]" value="${item.holder_name}">` : ''}
@@ -537,11 +720,11 @@
                 <input type="text" name="items[${idx}][hsn_sac]" class="form-control form-control-sm text-center font-monospace item-hsn" 
                     value="${item.hsn_sac || '997161'}" placeholder="997161">
             </td>
-            <td>
+            <td class="col-payin ${isCustomer ? 'd-none' : ''}">
                 <input type="number" step="0.01" min="0" name="items[${idx}][gross_premium]" class="form-control form-control-sm text-end item-premium" 
                     value="${grossPremium > 0 ? grossPremium.toFixed(2) : ''}" placeholder="0.00">
             </td>
-            <td>
+            <td class="col-payin ${isCustomer ? 'd-none' : ''}">
                 <input type="number" step="0.01" min="0" max="100" name="items[${idx}][pay_in_percentage]" class="form-control form-control-sm text-center item-pct" 
                     value="${payInPct > 0 ? payInPct.toFixed(2) : ''}" placeholder="%">
             </td>
@@ -611,9 +794,13 @@
     }
 
     $(document).ready(function () {
-        // Init with one default line item
+        // Init with appropriate type and default item
+        const initialType = $('input[name="invoice_type"]:checked').val() || 'company_pay_in';
+        switchInvoiceType(initialType);
+
+        const isCustomerInit = (initialType === 'customer');
         addLineItem({
-            product_name: 'Brokerage Pay-In Commission',
+            product_name: isCustomerInit ? 'Insurance Policy Premium / Service Fee' : 'Brokerage Pay-In Commission',
             amount: 0,
             quantity: 1
         });
@@ -623,13 +810,28 @@
             loadCompanyPolicies(this.value);
         });
 
-        // Checkbox events in policies table
+        // Customer dropdown change
+        $('#customer_id').on('change', function () {
+            loadCustomerPolicies(this.value);
+        });
+
+        // Checkbox events in company policies table
         $(document).on('change', '.policy-check', function () {
             const idx = $(this).data('idx');
             const policy = fetchedCompanyPolicies[idx];
             if (!policy) return;
 
             if (this.checked) {
+                // If only empty default item exists, replace it
+                const existingRows = document.querySelectorAll('#invoiceItemsBody tr');
+                if (existingRows.length === 1) {
+                    const firstDesc = existingRows[0].querySelector('.item-desc')?.value;
+                    const firstAmt = parseFloat(existingRows[0].querySelector('.item-amount')?.value) || 0;
+                    if ((firstDesc === 'Brokerage Pay-In Commission' || firstDesc === 'Insurance Policy Premium / Service Fee') && firstAmt === 0) {
+                        existingRows[0].remove();
+                    }
+                }
+
                 addLineItem({
                     policy_id: policy.id,
                     policy_number: policy.policy_number,
@@ -646,7 +848,38 @@
             }
         });
 
-        // Select All Policies
+        // Checkbox events in customer policies table
+        $(document).on('change', '.customer-policy-check', function () {
+            const idx = $(this).data('idx');
+            const policy = fetchedCustomerPolicies[idx];
+            if (!policy) return;
+
+            if (this.checked) {
+                // If only empty default item exists, replace it
+                const existingRows = document.querySelectorAll('#invoiceItemsBody tr');
+                if (existingRows.length === 1) {
+                    const firstDesc = existingRows[0].querySelector('.item-desc')?.value;
+                    const firstAmt = parseFloat(existingRows[0].querySelector('.item-amount')?.value) || 0;
+                    if ((firstDesc === 'Insurance Policy Premium / Service Fee' || firstDesc === 'Brokerage Pay-In Commission') && firstAmt === 0) {
+                        existingRows[0].remove();
+                    }
+                }
+
+                addLineItem({
+                    policy_id: policy.id,
+                    policy_number: policy.policy_number,
+                    policy_type_name: policy.policy_type_name,
+                    gross_premium: policy.premium_amount,
+                    amount: policy.premium_amount,
+                    quantity: 1,
+                    product_name: `Insurance Policy Premium - ${policy.policy_number} (${policy.policy_type_name})`
+                });
+            } else {
+                removeLineItemByPolicyId(policy.id);
+            }
+        });
+
+        // Select All Company Policies
         $('#selectAllPolicies').on('change', function () {
             const checked = this.checked;
             $('.policy-check').each(function () {
@@ -657,10 +890,22 @@
             });
         });
 
+        // Select All Customer Policies
+        $('#selectAllCustomerPolicies').on('change', function () {
+            const checked = this.checked;
+            $('.customer-policy-check').each(function () {
+                if (this.checked !== checked) {
+                    this.checked = checked;
+                    $(this).trigger('change');
+                }
+            });
+        });
+
         // Add custom line item button
         $('#addCustomItemBtn').on('click', function () {
+            const isCust = document.getElementById('type_customer')?.checked;
             addLineItem({
-                product_name: 'Custom Commission / Adjustment',
+                product_name: isCust ? 'Custom Fee / Policy Service' : 'Custom Commission / Adjustment',
                 amount: 0,
                 quantity: 1
             });
@@ -672,6 +917,7 @@
             const policyId = tr.data('policyId');
             if (policyId) {
                 $(`.policy-check[data-policy-id="${policyId}"]`).prop('checked', false);
+                $(`.customer-policy-check[data-policy-id="${policyId}"]`).prop('checked', false);
             }
             tr.remove();
             recalcTotals();

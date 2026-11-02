@@ -405,7 +405,9 @@
                 @forelse($invoice->items as $idx => $item)
                     @php
                         $itemTotal = (float) ($item->total_price ?: (($item->pay_in_amount ?? $item->amount) * $item->quantity));
-                        $itemRate = $item->pay_in_percentage ? number_format($item->pay_in_percentage, 0) . '%' : '1';
+                        $itemRate = $isCompany 
+                            ? ($item->pay_in_percentage ? number_format($item->pay_in_percentage, 0) . '%' : '1')
+                            : number_format($itemTotal / max(1, $item->quantity), 2);
                         $currentHsn = !empty($item->hsn_sac) ? trim($item->hsn_sac) : '997161';
                         // "same two time no need": Only print HSN/SAC if first row or different from previous
                         $displayHsn = ($idx === 0 || $currentHsn !== $lastHsn) ? $currentHsn : '';
@@ -414,14 +416,24 @@
                     <tr>
                         <td class="text-center">{{ $idx + 1 }}</td>
                         <td>
-                            <div class="fw-bold">IRDA Commission</div>
-                            @if($item->policy_number)
-                                <div style="font-size: 8px; color: #222;">({{ $item->policy_number }})</div>
-                            @elseif($item->product_name && !str_starts_with($item->product_name, 'Pay-In Commission'))
-                                <div style="font-size: 8px; color: #222;">({{ $item->product_name }})</div>
-                            @endif
-                            @if($item->holder_name && $item->holder_name !== '—')
-                                <div style="font-size: 7.5px; color: #555;">Holder: {{ $item->holder_name }}</div>
+                            @if($isCompany)
+                                <div class="fw-bold">IRDA Commission</div>
+                                @if($item->policy_number)
+                                    <div style="font-size: 8px; color: #222;">({{ $item->policy_number }})</div>
+                                @elseif($item->product_name && !str_starts_with($item->product_name, 'Pay-In Commission'))
+                                    <div style="font-size: 8px; color: #222;">({{ $item->product_name }})</div>
+                                @endif
+                                @if($item->holder_name && $item->holder_name !== '—')
+                                    <div style="font-size: 7.5px; color: #555;">Holder: {{ $item->holder_name }}</div>
+                                @endif
+                            @else
+                                <div class="fw-bold">{{ $item->product_name ?: 'Insurance Policy Premium' }}</div>
+                                @if($item->policy_number)
+                                    <div style="font-size: 8px; color: #222;">Policy No: {{ $item->policy_number }}</div>
+                                @endif
+                                @if($item->policy_type_name)
+                                    <div style="font-size: 7.5px; color: #555;">Type: {{ $item->policy_type_name }}</div>
+                                @endif
                             @endif
                         </td>
                         <td class="text-center">{{ $displayHsn }}</td>
@@ -433,7 +445,7 @@
                     <tr>
                         <td class="text-center">1</td>
                         <td>
-                            <div class="fw-bold">IRDA Commission</div>
+                            <div class="fw-bold">{{ $isCompany ? 'IRDA Commission' : 'Insurance Policy Premium / Service Fee' }}</div>
                         </td>
                         <td class="text-center">997161</td>
                         <td class="text-center">1</td>

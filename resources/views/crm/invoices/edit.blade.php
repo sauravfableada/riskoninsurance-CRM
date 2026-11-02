@@ -212,9 +212,9 @@
                                     <tr>
                                         <th style="min-width: 250px;">Item / Policy Description <span class="text-danger">*</span></th>
                                         <th style="width: 110px;" class="text-center">HSN/SAC</th>
-                                        <th style="width: 140px;" class="text-end">Gross Premium (₹)</th>
-                                        <th style="width: 110px;" class="text-center">Pay-In %</th>
-                                        <th style="width: 140px;" class="text-end">Pay-In Amount (₹) <span class="text-danger">*</span></th>
+                                        <th style="width: 140px;" class="text-end col-payin {{ $isCompanyPayIn ? '' : 'd-none' }}">Gross Premium (₹)</th>
+                                        <th style="width: 110px;" class="text-center col-payin {{ $isCompanyPayIn ? '' : 'd-none' }}">Pay-In %</th>
+                                        <th style="width: 140px;" class="text-end" id="thAmount">{{ $isCompanyPayIn ? 'Pay-In Amount (₹) *' : 'Rate / Amount (₹) *' }}</th>
                                         <th style="width: 90px;" class="text-center">Qty <span class="text-danger">*</span></th>
                                         <th style="width: 150px;" class="text-end">Total (₹)</th>
                                         <th style="width: 60px;" class="text-center">Action</th>
@@ -250,11 +250,11 @@
                                                 <input type="text" name="items[{{ $idx }}][hsn_sac]" class="form-control form-control-sm text-center font-monospace item-hsn" 
                                                     value="{{ $item->hsn_sac ?: '997161' }}" placeholder="997161">
                                             </td>
-                                            <td>
+                                            <td class="col-payin {{ $isCompanyPayIn ? '' : 'd-none' }}">
                                                 <input type="number" step="0.01" min="0" name="items[{{ $idx }}][gross_premium]" class="form-control form-control-sm text-end item-premium" 
                                                     value="{{ $premium > 0 ? number_format($premium, 2, '.', '') : '' }}" placeholder="0.00">
                                             </td>
-                                            <td>
+                                            <td class="col-payin {{ $isCompanyPayIn ? '' : 'd-none' }}">
                                                 <input type="number" step="0.01" min="0" max="100" name="items[{{ $idx }}][pay_in_percentage]" class="form-control form-control-sm text-center item-pct" 
                                                     value="{{ $pct > 0 ? number_format($pct, 2, '.', '') : '' }}" placeholder="%">
                                             </td>
@@ -331,7 +331,7 @@
                                 <h6 class="fw-bold mb-3 border-bottom pb-2">Financial Summary</h6>
                                 
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="text-muted">Subtotal (Commission):</span>
+                                    <span class="text-muted" id="subtotalLabel">{{ $isCompanyPayIn ? 'Subtotal (Commission):' : 'Subtotal:' }}</span>
                                     <span class="fw-semibold">₹ <span id="displaySubtotal">{{ number_format($invoice->subtotal ?? 0, 2) }}</span></span>
                                 </div>
 
@@ -420,6 +420,23 @@
         document.getElementById('fieldCustomer').classList.toggle('d-none', isCompanyPayIn);
         document.getElementById('billingAccountSection').classList.toggle('d-none', !isCompanyPayIn);
 
+        // Toggle table header & row Pay-In columns
+        document.querySelectorAll('.col-payin').forEach(el => {
+            el.classList.toggle('d-none', !isCompanyPayIn);
+        });
+
+        const thAmount = document.getElementById('thAmount');
+        if (thAmount) {
+            thAmount.innerHTML = isCompanyPayIn 
+                ? 'Pay-In Amount (₹) <span class="text-danger">*</span>' 
+                : 'Rate / Amount (₹) <span class="text-danger">*</span>';
+        }
+
+        const subtotalLabel = document.getElementById('subtotalLabel');
+        if (subtotalLabel) {
+            subtotalLabel.textContent = isCompanyPayIn ? 'Subtotal (Commission):' : 'Subtotal:';
+        }
+
         const companySelect = document.getElementById('company_id');
         const customerSelect = document.getElementById('customer_id');
         if (companySelect) companySelect.required = isCompanyPayIn;
@@ -434,26 +451,43 @@
         tr.id = `itemRow_${idx}`;
         tr.dataset.policyId = item.policy_id || '';
 
+        const isCustomer = document.getElementById('type_customer')?.checked;
         const grossPremium = item.gross_premium !== undefined ? parseFloat(item.gross_premium) : 0;
-        const payInPct = item.pay_in_percentage !== undefined ? parseFloat(item.pay_in_percentage) : 20;
-        const unitAmount = item.amount !== undefined ? parseFloat(item.amount) : 0;
+        const payInPct = item.pay_in_percentage !== undefined ? parseFloat(item.pay_in_percentage) : (isCustomer ? 0 : 20);
+        let unitAmount = 0;
+        if (item.amount !== undefined) {
+            unitAmount = parseFloat(item.amount);
+        } else if (isCustomer) {
+            unitAmount = grossPremium > 0 ? grossPremium : 0;
+        } else {
+            unitAmount = grossPremium > 0 ? (grossPremium * payInPct / 100) : 0;
+        }
         const qty = item.quantity || 1;
         const total = (unitAmount * qty).toFixed(2);
+
+        let defaultDesc = isCustomer ? 'Insurance Policy Premium / Service Fee' : 'Brokerage Pay-In Commission';
+        if (item.product_name) {
+            defaultDesc = item.product_name;
+        } else if (item.policy_number) {
+            defaultDesc = isCustomer 
+                ? `Insurance Policy Premium (${item.policy_number})`
+                : `Pay-In Commission for Policy ${item.policy_number}`;
+        }
 
         tr.innerHTML = `
             <td>
                 <input type="text" name="items[${idx}][product_name]" class="form-control form-control-sm item-desc" 
-                    value="${item.product_name || 'Commission Remittance'}" required>
+                    value="${defaultDesc}" required>
             </td>
             <td>
                 <input type="text" name="items[${idx}][hsn_sac]" class="form-control form-control-sm text-center font-monospace item-hsn" 
                     value="${item.hsn_sac || '997161'}" placeholder="997161">
             </td>
-            <td>
+            <td class="col-payin ${isCustomer ? 'd-none' : ''}">
                 <input type="number" step="0.01" min="0" name="items[${idx}][gross_premium]" class="form-control form-control-sm text-end item-premium" 
                     value="${grossPremium > 0 ? grossPremium.toFixed(2) : ''}" placeholder="0.00">
             </td>
-            <td>
+            <td class="col-payin ${isCustomer ? 'd-none' : ''}">
                 <input type="number" step="0.01" min="0" max="100" name="items[${idx}][pay_in_percentage]" class="form-control form-control-sm text-center item-pct" 
                     value="${payInPct > 0 ? payInPct.toFixed(2) : ''}" placeholder="%">
             </td>
