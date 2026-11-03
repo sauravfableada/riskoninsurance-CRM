@@ -89,8 +89,7 @@
                         data-bs-target="#commission-settings" type="button" role="tab"><i class="fa-solid fa-percent me-1 text-primary"></i> Commission Settings</button></li>
                 <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab"
                         data-bs-target="#bank-signature" type="button" role="tab"><i class="fa-solid fa-building-columns me-1 text-primary"></i> Bank &amp; Signature</button></li>
-                <li class="nav-
-                item" role="presentation"><button class="nav-link" data-bs-toggle="tab"
+                <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab"
                         data-bs-target="#smtp" type="button" role="tab">Email SMTP</button></li>
                 {{-- WhatsApp configuration is intentionally hidden.
                 <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab"
