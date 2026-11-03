@@ -777,9 +777,9 @@ $(document).ready(function () {
                 let feedback = container.find('#' + field + '-error');
 
                 if (feedback.length) {
-                    feedback.html(errors[field][0]);
+                    feedback.html(errors[field][0]).addClass('d-block').show();
                 } else {
-                    fieldEl.after(`<div class="invalid-feedback ajax-error">${errors[field][0]}</div>`);
+                    fieldEl.after(`<div class="invalid-feedback ajax-error d-block">${errors[field][0]}</div>`);
                 }
             }
         });
@@ -798,7 +798,7 @@ $(document).ready(function () {
         $form.find('.ts-wrapper.is-invalid').removeClass('is-invalid');
         $form.find('.invalid-feedback.ajax-error').remove();
         $form.find('.ajax-alert').remove();
-        $form.find('.invalid-feedback').html('');
+        $form.find('.invalid-feedback').removeClass('d-block').hide().html('');
 
         const formData = new FormData(this);
 
@@ -853,10 +853,11 @@ $(document).ready(function () {
         if ($field.is('select')) {
             $field.next('.ts-wrapper').removeClass('is-invalid');
         }
-        const id = $field.attr('id');
+        const id = $field.attr('id') || $field.attr('name');
         if (id) {
-            $('#' + id + '-error').html('');
+            $('#' + id + '-error').removeClass('d-block').hide().html('');
         }
+        $field.closest('.col-md-6, .col-12, .col-md-12').find('.invalid-feedback').removeClass('d-block').hide().html('');
         $field.siblings('.invalid-feedback.ajax-error').remove();
     });
 });

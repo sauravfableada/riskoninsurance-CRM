@@ -157,13 +157,13 @@ class CustomerController extends Controller
         $this->mergeInternationalContactFields($request);
 
         try {
-            $data = $request->validate([
+            $rules = [
                 'name' => ['required', 'string', 'max:255'],
                 'email' => ['nullable', 'email', 'max:255', Rule::unique('customers', 'email')->whereNull('deleted_at')],
                 'password' => ['nullable', 'string', 'min:6'],
-                'country_code' => ['required', 'regex:/^\+[0-9]{1,4}$/'],
+                'country_code' => ['nullable', 'regex:/^\+[0-9]{1,4}$/'],
                 'phone' => ['required', 'regex:/^\+[0-9]{5,19}$/', Rule::unique('customers', 'phone')->whereNull('deleted_at')],
-                'whatsapp_country_code' => ['required_with:whatsapp', 'regex:/^\+[0-9]{1,4}$/'],
+                'whatsapp_country_code' => ['nullable', 'regex:/^\+[0-9]{1,4}$/'],
                 'whatsapp' => ['nullable', 'regex:/^\+[0-9]{5,19}$/'],
                 'address' => ['nullable', 'string'],
                 'dob' => ['nullable', 'date'],
@@ -175,7 +175,12 @@ class CustomerController extends Controller
                 'country_id' => ['nullable', 'exists:countries,id'],
                 'city_id' => ['nullable', 'exists:cities,id'],
                 'image' => ['nullable', 'image', 'max:2048'],
-            ]);
+            ];
+            $messages = [];
+            $customAttributes = [];
+            $rules = \App\Services\FieldCustomizationService::applyDynamicValidation('customers', $rules, $messages, $customAttributes);
+
+            $data = $request->validate($rules, $messages, $customAttributes);
 
             if (!empty($data['password'])) {
                 $data['password'] = \Illuminate\Support\Facades\Hash::make($data['password']);
@@ -256,13 +261,13 @@ class CustomerController extends Controller
         $this->mergeInternationalContactFields($request, $customer);
 
         try {
-            $data = $request->validate([
+            $rules = [
                 'name' => ['required', 'string', 'max:255'],
                 'email' => ['nullable', 'email', 'max:255', Rule::unique('customers', 'email')->ignore($customer->id)->whereNull('deleted_at')],
                 'password' => ['nullable', 'string', 'min:6'],
-                'country_code' => ['required', 'regex:/^\+[0-9]{1,4}$/'],
+                'country_code' => ['nullable', 'regex:/^\+[0-9]{1,4}$/'],
                 'phone' => ['required', 'regex:/^\+[0-9]{5,19}$/', Rule::unique('customers', 'phone')->ignore($customer->id)->whereNull('deleted_at')],
-                'whatsapp_country_code' => ['required_with:whatsapp', 'regex:/^\+[0-9]{1,4}$/'],
+                'whatsapp_country_code' => ['nullable', 'regex:/^\+[0-9]{1,4}$/'],
                 'whatsapp' => ['nullable', 'regex:/^\+[0-9]{5,19}$/'],
                 'address' => ['nullable', 'string'],
                 'dob' => ['nullable', 'date'],
@@ -274,7 +279,12 @@ class CustomerController extends Controller
                 'country_id' => ['nullable', 'exists:countries,id'],
                 'city_id' => ['nullable', 'exists:cities,id'],
                 'image' => ['nullable', 'image', 'max:2048'],
-            ]);
+            ];
+            $messages = [];
+            $customAttributes = [];
+            $rules = \App\Services\FieldCustomizationService::applyDynamicValidation('customers', $rules, $messages, $customAttributes, true);
+
+            $data = $request->validate($rules, $messages, $customAttributes);
 
             if (!empty($data['password'])) {
                 $data['password'] = \Illuminate\Support\Facades\Hash::make($data['password']);

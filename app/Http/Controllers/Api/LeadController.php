@@ -111,12 +111,12 @@ class LeadController extends ApiBaseController
         $this->authorize('create', Lead::class);
 
         $this->mergeInternationalContactFields($request);
-        $validator = Validator::make($request->all(), [
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255', 'unique:leads,email'],
-            'country_code' => ['required', 'regex:/^\+[0-9]{1,4}$/'],
+            'country_code' => ['nullable', 'regex:/^\+[0-9]{1,4}$/'],
             'phone' => ['required', 'regex:/^\+[0-9]{5,19}$/', 'unique:leads,phone'],
-            'whatsapp_country_code' => ['required_with:whatsapp', 'regex:/^\+[0-9]{1,4}$/'],
+            'whatsapp_country_code' => ['nullable', 'regex:/^\+[0-9]{1,4}$/'],
             'whatsapp' => ['nullable', 'regex:/^\+[0-9]{5,19}$/'],
             'address' => ['nullable', 'string'],
             'image' => ['nullable', 'mimes:jpg,jpeg,png,gif,bmp,webp,avif,svg', 'max:2048'],
@@ -130,7 +130,13 @@ class LeadController extends ApiBaseController
             'assigned_user_id' => ['nullable', 'exists:users,id'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'status_comment' => ['nullable', 'string', 'max:2000'],
-        ], $this->messages());
+        ];
+
+        $messages = $this->messages();
+        $customAttributes = [];
+        $rules = \App\Services\FieldCustomizationService::applyDynamicValidation('leads', $rules, $messages, $customAttributes);
+
+        $validator = Validator::make($request->all(), $rules, $messages, $customAttributes);
 
         if ($validator->fails()) {
             return response()->json([
@@ -349,12 +355,12 @@ class LeadController extends ApiBaseController
         $this->authorize('update', $lead);
         $originalStatus = $lead->status;
         $this->mergeInternationalContactFields($request, $lead);
-        $validator = Validator::make($request->all(), [
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255', 'unique:leads,email,' . $lead->id],
-            'country_code' => ['required', 'regex:/^\+[0-9]{1,4}$/'],
+            'country_code' => ['nullable', 'regex:/^\+[0-9]{1,4}$/'],
             'phone' => ['required', 'regex:/^\+[0-9]{5,19}$/', 'unique:leads,phone,' . $lead->id],
-            'whatsapp_country_code' => ['required_with:whatsapp', 'regex:/^\+[0-9]{1,4}$/'],
+            'whatsapp_country_code' => ['nullable', 'regex:/^\+[0-9]{1,4}$/'],
             'whatsapp' => ['nullable', 'regex:/^\+[0-9]{5,19}$/'],
             'address' => ['nullable', 'string'],
             'image' => ['nullable', 'mimes:jpg,jpeg,png,gif,bmp,webp,avif,svg', 'max:2048'],
@@ -368,7 +374,13 @@ class LeadController extends ApiBaseController
             'assigned_user_id' => ['nullable', 'exists:users,id'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'status_comment' => ['nullable', 'string', 'max:2000'],
-        ], $this->messages());
+        ];
+
+        $messages = $this->messages();
+        $customAttributes = [];
+        $rules = \App\Services\FieldCustomizationService::applyDynamicValidation('leads', $rules, $messages, $customAttributes, true);
+
+        $validator = Validator::make($request->all(), $rules, $messages, $customAttributes);
 
         if ($validator->fails()) {
             return response()->json([
