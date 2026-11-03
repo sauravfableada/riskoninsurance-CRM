@@ -1,72 +1,117 @@
+@php
+    if (!function_exists('field_label') && file_exists(app_path('Helpers/FieldCustomizationHelper.php'))) {
+        require_once app_path('Helpers/FieldCustomizationHelper.php');
+    }
+    $customService = app(\App\Services\FieldCustomizationService::class);
+    $fieldLabel = function(string $field, string $default) use ($customService) {
+        return $customService->getFieldLabel('claim_trackers', $field, $default);
+    };
+    $isRequired = function(string $field, bool $default = false) use ($customService) {
+        return $customService->isFieldRequired('claim_trackers', $field);
+    };
+    $isVisible = function(string $field, bool $default = true) use ($customService) {
+        return $customService->isFieldVisible('claim_trackers', $field);
+    };
+@endphp
 @php($selectedFamilyGroup = old('family_group_id', $claimTracker->family_group_id ?? $claimTracker->policy?->family_group_id ?? ''))
 @php($selectedProposer = old('proposer_id', $claimTracker->proposer_id ?? $claimTracker->policy?->holder_id ?? ''))
 @php($selectedPolicy = old('policy_id', $claimTracker->policy_id ?? ''))
 @php($selectedInsuredMember = old('insured_member_id', $claimTracker->insured_member_id ?? ''))
 @php($selectedIssuer = old('issued_by', $claimTracker->issued_by ?? auth()->id()))
 <div class="row">
+    @if($isVisible('family_group_id', true))
     <div class="col-md-6 mb-3">
-        <label class="form-label">Family Group <span class="text-danger">*</span></label>
-        <select name="family_group_id" id="family_group_id" class="form-select select2 @error('family_group_id') is-invalid @enderror" required>
+        <label class="form-label">{{ $fieldLabel('family_group_id', 'Family Group') }} @if($isRequired('family_group_id', true))<span class="text-danger">*</span>@endif</label>
+        <select name="family_group_id" id="family_group_id" class="form-select select2 @error('family_group_id') is-invalid @enderror" {{ $isRequired('family_group_id', true) ? 'required' : '' }}>
             <option value="">Search and select family group</option>
             @foreach($familyGroups as $familyGroup)<option value="{{ $familyGroup->id }}" @selected((string)$selectedFamilyGroup === (string)$familyGroup->id)>{{ $familyGroup->group_name }}</option>@endforeach
         </select>
         @error('family_group_id')<div class="text-danger small">{{ $message }}</div>@enderror
     </div>
+    @endif
+
+    @if($isVisible('proposer_id', true))
     <div class="col-md-6 mb-3">
-        <label class="form-label">Proposer Name <span class="text-danger">*</span></label>
-        <select name="proposer_id" id="proposer_id" class="form-select select2 @error('proposer_id') is-invalid @enderror" required disabled><option value="">Select family group first</option></select>
+        <label class="form-label">{{ $fieldLabel('proposer_id', 'Proposer Name') }} @if($isRequired('proposer_id', true))<span class="text-danger">*</span>@endif</label>
+        <select name="proposer_id" id="proposer_id" class="form-select select2 @error('proposer_id') is-invalid @enderror" {{ $isRequired('proposer_id', true) ? 'required' : '' }} disabled><option value="">Select family group first</option></select>
         @error('proposer_id')<div class="text-danger small">{{ $message }}</div>@enderror
     </div>
+    @endif
+
+    @if($isVisible('policy_id', true))
     <div class="col-md-6 mb-3">
-        <label class="form-label">Policy No. <span class="text-danger">*</span></label>
-        <select name="policy_id" id="policy_id" class="form-select select2 @error('policy_id') is-invalid @enderror" required disabled><option value="">Select proposer first</option></select>
+        <label class="form-label">{{ $fieldLabel('policy_id', 'Policy No.') }} @if($isRequired('policy_id', true))<span class="text-danger">*</span>@endif</label>
+        <select name="policy_id" id="policy_id" class="form-select select2 @error('policy_id') is-invalid @enderror" {{ $isRequired('policy_id', true) ? 'required' : '' }} disabled><option value="">Select proposer first</option></select>
         @error('policy_id')<div class="text-danger small">{{ $message }}</div>@enderror
     </div>
+    @endif
+
+    @if($isVisible('insured_member_id', true))
     <div class="col-md-6 mb-3">
-        <label class="form-label">Insured Member <span class="text-danger">*</span></label>
-        <select name="insured_member_id" id="insured_member_id" class="form-select select2 @error('insured_member_id') is-invalid @enderror" required disabled><option value="">Select family group first</option></select>
+        <label class="form-label">{{ $fieldLabel('insured_member_id', 'Insured Member') }} @if($isRequired('insured_member_id', true))<span class="text-danger">*</span>@endif</label>
+        <select name="insured_member_id" id="insured_member_id" class="form-select select2 @error('insured_member_id') is-invalid @enderror" {{ $isRequired('insured_member_id', true) ? 'required' : '' }} disabled><option value="">Select family group first</option></select>
         @error('insured_member_id')<div class="text-danger small">{{ $message }}</div>@enderror
     </div>
+    @endif
+
     <div class="col-md-6 mb-3">
         <label class="form-label">Insurance Company</label>
         <input id="company_name" class="form-control" readonly placeholder="Auto-filled from policy">
     </div>
+
+    @if($isVisible('claim_amount', true))
     <div class="col-md-6 mb-3">
-        <label class="form-label">Claim Amount <span class="text-danger">*</span></label>
-        <input type="number" min="0" step="0.01" name="claim_amount" class="form-control @error('claim_amount') is-invalid @enderror" value="{{ old('claim_amount', $claimTracker->claim_amount ?? '') }}" required>
+        <label class="form-label">{{ $fieldLabel('claim_amount', 'Claim Amount') }} @if($isRequired('claim_amount', true))<span class="text-danger">*</span>@endif</label>
+        <input type="number" min="0" step="0.01" name="claim_amount" class="form-control @error('claim_amount') is-invalid @enderror" value="{{ old('claim_amount', $claimTracker->claim_amount ?? '') }}" placeholder="{{ $fieldLabel('claim_amount', 'Enter claim amount') }}" {{ $isRequired('claim_amount', true) ? 'required' : '' }}>
         @error('claim_amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
+    @endif
+
+    @if($isVisible('issued_by', true))
     <div class="col-md-6 mb-3">
-        <label class="form-label"><i class="fa-solid fa-user-tie text-muted me-1"></i> Claim Issued By <span class="text-danger">*</span></label>
-        <select name="issued_by" class="form-select select2 @error('issued_by') is-invalid @enderror" required>
+        <label class="form-label"><i class="fa-solid fa-user-tie text-muted me-1"></i> {{ $fieldLabel('issued_by', 'Claim Issued By') }} @if($isRequired('issued_by', true))<span class="text-danger">*</span>@endif</label>
+        <select name="issued_by" class="form-select select2 @error('issued_by') is-invalid @enderror" {{ $isRequired('issued_by', true) ? 'required' : '' }}>
             @foreach($issuers as $issuer)
                 <option value="{{ $issuer->id }}" @selected((string)$selectedIssuer === (string)$issuer->id)>{{ $issuer->name }}{{ $issuer->id === auth()->id() ? ' (You)' : '' }}</option>
             @endforeach
         </select>
         @error('issued_by')<div class="text-danger small">{{ $message }}</div>@enderror
     </div>
+    @endif
+
+    @if($isVisible('claim_file', true))
     <div class="col-md-6 mb-3">
-        <label class="form-label">Claim File</label>
-        <input type="file" name="claim_file" class="form-control claim-file-input @error('claim_file') is-invalid @enderror" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+        <label class="form-label">{{ $fieldLabel('claim_file', 'Claim File') }} @if($isRequired('claim_file', false))<span class="text-danger">*</span>@endif</label>
+        <input type="file" name="claim_file" class="form-control claim-file-input @error('claim_file') is-invalid @enderror" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" {{ $isRequired('claim_file', false) ? 'required' : '' }}>
         @if(isset($claimTracker) && $claimTracker->claim_file)<small><a href="{{ Storage::url($claimTracker->claim_file) }}" target="_blank">View current file</a></small>@endif
         @error('claim_file')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
+    @endif
+
+    @if($isVisible('claim_file_received_date', true))
     <div class="col-md-3 mb-3">
-        <label class="form-label">Claim File Received Date <span class="text-danger">*</span></label>
-        <input type="date" name="claim_file_received_date" data-allow-past-date="true" class="form-control @error('claim_file_received_date') is-invalid @enderror" value="{{ old('claim_file_received_date', isset($claimTracker) ? $claimTracker->claim_file_received_date?->format('Y-m-d') : now()->format('Y-m-d')) }}" required>
+        <label class="form-label">{{ $fieldLabel('claim_file_received_date', 'Claim File Received Date') }} @if($isRequired('claim_file_received_date', true))<span class="text-danger">*</span>@endif</label>
+        <input type="date" name="claim_file_received_date" data-allow-past-date="true" class="form-control @error('claim_file_received_date') is-invalid @enderror" value="{{ old('claim_file_received_date', isset($claimTracker) ? $claimTracker->claim_file_received_date?->format('Y-m-d') : now()->format('Y-m-d')) }}" {{ $isRequired('claim_file_received_date', true) ? 'required' : '' }}>
         @error('claim_file_received_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
+    @endif
+
+    @if($isVisible('claim_file_submit_date', true))
     <div class="col-md-3 mb-3">
-        <label class="form-label">Claim File Submit Date</label>
-        <input type="date" name="claim_file_submit_date" data-allow-past-date="true" class="form-control @error('claim_file_submit_date') is-invalid @enderror" value="{{ old('claim_file_submit_date', isset($claimTracker) ? $claimTracker->claim_file_submit_date?->format('Y-m-d') : '') }}">
+        <label class="form-label">{{ $fieldLabel('claim_file_submit_date', 'Claim File Submit Date') }} @if($isRequired('claim_file_submit_date', false))<span class="text-danger">*</span>@endif</label>
+        <input type="date" name="claim_file_submit_date" data-allow-past-date="true" class="form-control @error('claim_file_submit_date') is-invalid @enderror" value="{{ old('claim_file_submit_date', isset($claimTracker) ? $claimTracker->claim_file_submit_date?->format('Y-m-d') : '') }}" {{ $isRequired('claim_file_submit_date', false) ? 'required' : '' }}>
         @error('claim_file_submit_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
+    @endif
+
+    @if($isVisible('claim_status', true))
     <div class="col-md-6 mb-3">
-        <label class="form-label">Claim Status <span class="text-danger">*</span></label>
-        <select name="claim_status" class="form-select" required>
+        <label class="form-label">{{ $fieldLabel('claim_status', 'Claim Status') }} @if($isRequired('claim_status', true))<span class="text-danger">*</span>@endif</label>
+        <select name="claim_status" class="form-select" {{ $isRequired('claim_status', true) ? 'required' : '' }}>
             @foreach(['Processed', 'Query', 'Closed', 'Rejected'] as $status)<option value="{{ $status }}" @selected(old('claim_status', $claimTracker->claim_status ?? 'Processed') === $status)>{{ $status }}</option>@endforeach
         </select>
     </div>
+    @endif
 </div>
 
 @push('styles')

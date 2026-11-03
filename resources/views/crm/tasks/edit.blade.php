@@ -27,19 +27,35 @@
                 </div>
 
                 <div class="p-4">
+                @php
+                    if (!function_exists('field_label') && file_exists(app_path('Helpers/FieldCustomizationHelper.php'))) {
+                        require_once app_path('Helpers/FieldCustomizationHelper.php');
+                    }
+                    $customService = app(\App\Services\FieldCustomizationService::class);
+                    $fieldLabel = function(string $field, string $default) use ($customService) {
+                        return $customService->getFieldLabel('tasks', $field, $default);
+                    };
+                    $isRequired = function(string $field, bool $default = false) use ($customService) {
+                        return $customService->isFieldRequired('tasks', $field);
+                    };
+                    $isVisible = function(string $field, bool $default = true) use ($customService) {
+                        return $customService->isFieldVisible('tasks', $field);
+                    };
+                @endphp
                 <form method="POST" action="/api/tasks/{{ $task->id }}" id="taskForm"
                     class="needs-validation ajax-task-form js-status-comment-form" novalidate>
                     @csrf
                     @method('PUT')
 
                     <div class="row g-3">
+                        @if($isVisible('policy_type_id', true))
                         <div class="col-md-6">
-                            <label class="form-label">Policy Type <span class="text-danger">*</span></label>
+                            <label class="form-label">{{ $fieldLabel('policy_type_id', 'Policy Type') }} @if($isRequired('policy_type_id', false))<span class="text-danger">*</span>@endif</label>
                             <div class="d-flex gap-2">
                                 <div class="flex-grow-1">
                                     <select name="policy_type_id" id="policy_type_id"
-                                        class="form-select @error('policy_type_id') is-invalid @enderror" required>
-                                        <option value="">-- Select Policy Type --</option>
+                                        class="form-select @error('policy_type_id') is-invalid @enderror" {{ $isRequired('policy_type_id', false) ? 'required' : '' }}>
+                                        <option value="">-- {{ $fieldLabel('policy_type_id', 'Select Policy Type') }} --</option>
                                         @foreach($policyTypes as $type)
                                             <option value="{{ $type->id }}" @selected(old('policy_type_id', $task->policy_type_id) == $type->id)>
                                                 {{ $type->name }}</option>
@@ -52,15 +68,17 @@
                                 </div>
                             </div>
                         </div>
+                        @endif
 
+                        @if($isVisible('policy_sub_type_id', true))
                         <div class="col-md-6">
-                            <label class="form-label">Policy Sub Type <span class="text-muted small fw-normal">(Optional)</span></label>
+                            <label class="form-label">{{ $fieldLabel('policy_sub_type_id', 'Policy Sub Type') }} @if($isRequired('policy_sub_type_id', false))<span class="text-danger">*</span>@else<span class="text-muted small fw-normal">(Optional)</span>@endif</label>
                             <div class="d-flex gap-2">
                                 <div class="flex-grow-1">
                                     <select name="policy_sub_type_id" id="policy_sub_type_id"
                                         data-selected="{{ old('policy_sub_type_id', $task->policy_sub_type_id) }}"
-                                        class="form-select @error('policy_sub_type_id') is-invalid @enderror">
-                                        <option value="">-- Select Policy Sub Type --</option>
+                                        class="form-select @error('policy_sub_type_id') is-invalid @enderror" {{ $isRequired('policy_sub_type_id', false) ? 'required' : '' }}>
+                                        <option value="">-- {{ $fieldLabel('policy_sub_type_id', 'Select Policy Sub Type') }} --</option>
                                         @foreach($policySubTypes as $subType)
                                             <option value="{{ $subType->id }}" @selected(old('policy_sub_type_id', $task->policy_sub_type_id) == $subType->id)>
                                                 {{ $subType->name }}</option>
@@ -73,20 +91,29 @@
                                 </div>
                             </div>
                         </div>
+                        @endif
 
+                        @if($isVisible('assigned_user_id', true))
                         <div class="col-md-6">
-                            @include('crm.partials.assigned-user-field', ['users' => $users, 'selected' => $task->assigned_user_id ?? auth()->id()])
+                            @include('crm.partials.assigned-user-field', [
+                                'users' => $users, 
+                                'selected' => $task->assigned_user_id ?? auth()->id(),
+                                'label' => $fieldLabel('assigned_user_id', 'Assigned Staff'),
+                                'required' => $isRequired('assigned_user_id', false)
+                            ])
                         </div>
+                        @endif
 
+                        @if($isVisible('related_id', true))
                         <div class="col-md-6">
-                            <label class="form-label">Assigned For <span class="text-danger">*</span></label>
+                            <label class="form-label">{{ $fieldLabel('related_id', 'Assigned For') }} @if($isRequired('related_id', false))<span class="text-danger">*</span>@endif</label>
                             <div class="d-flex gap-2">
                                 <div class="flex-grow-1">
                                     <select name="related_id" id="related_id"
                                         class="form-select @error('related_id') is-invalid @enderror"
                                         data-search-url="{{ route('api.customers.search') }}" data-search-type="customer"
-                                        data-search-placeholder="-- Search Customer --">
-                                        <option value="">-- Search Customer --</option>
+                                        data-search-placeholder="-- {{ $fieldLabel('related_id', 'Search Customer') }} --" {{ $isRequired('related_id', false) ? 'required' : '' }}>
+                                        <option value="">-- {{ $fieldLabel('related_id', 'Search Customer') }} --</option>
                                         @foreach ($customers as $customer)
                                             <option value="{{ $customer->id }}" data-email="{{ $customer->email }}"
                                                 data-phone="{{ $customer->phone }}" @selected(old('related_id', $task->related_type === 'customer' ? $task->related_id : null) == $customer->id)>
@@ -100,27 +127,34 @@
                                 </div>
                             </div>
                         </div>
+                        @endif
 
+                        @if($isVisible('title', true))
                         <div class="col-md-6">
-                            <label class="form-label">Task Title <span class="text-danger">*</span></label>
+                            <label class="form-label">{{ $fieldLabel('title', 'Task Title') }} @if($isRequired('title', true))<span class="text-danger">*</span>@endif</label>
                             <input name="title" id="title" value="{{ old('title', $task->title) }}"
-                                class="form-control @error('title') is-invalid @enderror" required>
+                                placeholder="{{ $fieldLabel('title', 'Task Title') }}"
+                                class="form-control @error('title') is-invalid @enderror" {{ $isRequired('title', true) ? 'required' : '' }}>
                             <div class="invalid-feedback" id="title-error">{{ $errors->first('title') }}</div>
                         </div>
+                        @endif
 
+                        @if($isVisible('due_date', true))
                         <div class="col-md-6">
-                            <label class="form-label">Due Date</label>
+                            <label class="form-label">{{ $fieldLabel('due_date', 'Due Date') }} @if($isRequired('due_date', false))<span class="text-danger">*</span>@endif</label>
                             <input type="text" name="due_date" id="due_date"
                                 value="{{ old('due_date', optional($task->due_date)->format('Y-m-d')) }}"
                                 placeholder="dd/mm/yyyy" min="{{ date('Y-m-d') }}"
-                                class="form-control js-date @error('due_date') is-invalid @enderror">
+                                class="form-control js-date @error('due_date') is-invalid @enderror" {{ $isRequired('due_date', false) ? 'required' : '' }}>
                             <div class="invalid-feedback" id="due_date-error">{{ $errors->first('due_date') }}</div>
                         </div>
+                        @endif
 
+                        @if($isVisible('priority', true))
                         <div class="col-md-6">
-                            <label class="form-label">Priority <span class="text-danger">*</span></label>
+                            <label class="form-label">{{ $fieldLabel('priority', 'Priority') }} @if($isRequired('priority', true))<span class="text-danger">*</span>@endif</label>
                             <select name="priority" id="priority"
-                                class="form-select @error('priority') is-invalid @enderror" required>
+                                class="form-select @error('priority') is-invalid @enderror" {{ $isRequired('priority', true) ? 'required' : '' }}>
                                 <option value="">Select Priority</option>
                                 <option value="low" @selected(old('priority', $task->priority) === 'low')>Low</option>
                                 <option value="medium" @selected(old('priority', $task->priority) === 'medium')>Medium
@@ -129,15 +163,33 @@
                             </select>
                             <div class="invalid-feedback" id="priority-error">{{ $errors->first('priority') }}</div>
                         </div>
+                        @endif
 
+                        @if($isVisible('status', true))
                         <div class="col-md-6">
-                            <label class="form-label">Status <span class="text-danger">*</span></label>
+                            <label class="form-label">{{ $fieldLabel('status', 'Status') }} @if($isRequired('status', true))<span class="text-danger">*</span>@endif</label>
                             <select name="status" id="status"
                                 class="form-select @error('status') is-invalid @enderror js-status-comment-trigger"
-                                required>
+                                {{ $isRequired('status', true) ? 'required' : '' }}>
                                 <option value="">Select Status</option>
                                 <option value="pending" @selected(old('status', $task->status) === 'pending')>Pending</option>
-                                <option value="in_progress" @selected(old('status', $task->status) === 'in_progress')>In
+                                <option value="in_progress" @selected(old('status', $task->status) === 'in_progress')>In Progress</option>
+                                <option value="completed" @selected(old('status', $task->status) === 'completed')>Completed</option>
+                            </select>
+                            <div class="invalid-feedback" id="status-error">{{ $errors->first('status') }}</div>
+                        </div>
+                        @endif
+
+                        @if($isVisible('description', true))
+                        <div class="col-12">
+                            <label class="form-label">{{ $fieldLabel('description', 'Description') }} @if($isRequired('description', false))<span class="text-danger">*</span>@endif</label>
+                            <textarea name="description" id="description" rows="2"
+                                placeholder="{{ $fieldLabel('description', 'Task Description') }}"
+                                class="form-control @error('description') is-invalid @enderror" {{ $isRequired('description', false) ? 'required' : '' }}>{{ old('description', $task->description) }}</textarea>
+                            <div class="invalid-feedback" id="description-error">{{ $errors->first('description') }}</div>
+                        </div>
+                        @endif
+                    </div>
                                     Progress</option>
                                 <option value="completed" @selected(old('status', $task->status) === 'completed')>Completed
                                 </option>

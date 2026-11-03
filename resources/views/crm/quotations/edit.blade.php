@@ -21,6 +21,22 @@
         </div>
     </div>
 
+    @php
+        if (!function_exists('field_label') && file_exists(app_path('Helpers/FieldCustomizationHelper.php'))) {
+            require_once app_path('Helpers/FieldCustomizationHelper.php');
+        }
+        $customService = app(\App\Services\FieldCustomizationService::class);
+        $fieldLabel = function(string $field, string $default) use ($customService) {
+            return $customService->getFieldLabel('quotations', $field, $default);
+        };
+        $isRequired = function(string $field, bool $default = false) use ($customService) {
+            return $customService->isFieldRequired('quotations', $field);
+        };
+        $isVisible = function(string $field, bool $default = true) use ($customService) {
+            return $customService->isFieldVisible('quotations', $field);
+        };
+    @endphp
+
     <form id="quotationForm" action="{{ route('quotations.update', $quotation) }}" method="POST">
         @csrf
         @method('PUT')
@@ -95,12 +111,14 @@
                     </div>
                 </div>
 
+                @if($isVisible('notes', true))
                 <div class="card shadow-sm border-0">
                     <div class="card-body">
-                        <h6 class="mb-3 fw-bold">Terms & Notes</h6>
-                        <textarea name="notes" rows="4" class="form-control">{{ $quotation->notes }}</textarea>
+                        <h6 class="mb-3 fw-bold">{{ $fieldLabel('notes', 'Terms & Notes') }} @if($isRequired('notes', false))<span class="text-danger">*</span>@endif</h6>
+                        <textarea name="notes" rows="4" class="form-control" placeholder="{{ $fieldLabel('notes', 'Terms & Notes') }}" {{ $isRequired('notes', false) ? 'required' : '' }}>{{ $quotation->notes }}</textarea>
                     </div>
                 </div>
+                @endif
             </div>
 
             <div class="col-lg-4">
@@ -109,19 +127,23 @@
                         <h6 class="mb-0 fw-bold">Quotation Details</h6>
                     </div>
                     <div class="card-body">
+                        @if($isVisible('reference', true))
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Reference</label>
+                            <label class="form-label fw-semibold">{{ $fieldLabel('reference', 'Reference') }} @if($isRequired('reference', false))<span class="text-danger">*</span>@endif</label>
                             <input type="text" name="reference" class="form-control" value="{{ $quotation->reference }}" readonly>
                         </div>
+                        @endif
 
+                        @if($isVisible('lead_id', true))
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Lead / Customer</label>
-                            <select name="lead_id" class="form-select" required>
+                            <label class="form-label fw-semibold">{{ $fieldLabel('lead_id', 'Lead / Customer') }} @if($isRequired('lead_id', true))<span class="text-danger">*</span>@endif</label>
+                            <select name="lead_id" class="form-select" {{ $isRequired('lead_id', true) ? 'required' : '' }}>
                                 @foreach ($leads as $lead)
                                     <option value="{{ $lead->id }}" @selected($quotation->lead_id == $lead->id)>{{ $lead->name }}</option>
                                 @endforeach
                             </select>
                         </div>
+                        @endif
 
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Tour Package</label>
@@ -133,24 +155,28 @@
                             </select>
                         </div>
 
+                        @if($isVisible('valid_until', true))
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Valid Until</label>
-                            <input type="date" name="valid_until" class="form-control" value="{{ $quotation->valid_until ? date('Y-m-d', strtotime($quotation->valid_until)) : '' }}">
+                            <label class="form-label fw-semibold">{{ $fieldLabel('valid_until', 'Valid Until') }} @if($isRequired('valid_until', false))<span class="text-danger">*</span>@endif</label>
+                            <input type="date" name="valid_until" class="form-control" value="{{ $quotation->valid_until ? date('Y-m-d', strtotime($quotation->valid_until)) : '' }}" {{ $isRequired('valid_until', false) ? 'required' : '' }}>
                         </div>
+                        @endif
 
+                        @if($isVisible('status', true))
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Status</label>
-                            <select name="status" class="form-select">
+                            <label class="form-label fw-semibold">{{ $fieldLabel('status', 'Status') }} @if($isRequired('status', true))<span class="text-danger">*</span>@endif</label>
+                            <select name="status" class="form-select" {{ $isRequired('status', true) ? 'required' : '' }}>
                                 <option value="quotation" @selected($quotation->status == 'quotation')>Quotation (Draft)</option>
                                 <option value="estimate" @selected($quotation->status == 'estimate')>Estimate (Sent)</option>
                                 <option value="confirmed" @selected($quotation->status == 'confirmed')>Confirmed</option>
                                 <option value="cancelled" @selected($quotation->status == 'cancelled')>Cancelled</option>
                             </select>
                         </div>
+                        @endif
 
                         <div class="border-top pt-3 mt-4">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="fw-bold">Grand Total</span>
+                                <span class="fw-bold">{{ $fieldLabel('total_amount', 'Grand Total') }}</span>
                                 <h4 class="mb-0 text-primary">
                                     <span class="fs-6 text-muted">INR</span> <span id="grandTotalDisplay">{{ number_format($quotation->total_amount, 2, '.', '') }}</span>
                                 </h4>

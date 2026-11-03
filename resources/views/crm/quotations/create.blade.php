@@ -14,6 +14,22 @@
         </a>
     </div>
 
+    @php
+        if (!function_exists('field_label') && file_exists(app_path('Helpers/FieldCustomizationHelper.php'))) {
+            require_once app_path('Helpers/FieldCustomizationHelper.php');
+        }
+        $customService = app(\App\Services\FieldCustomizationService::class);
+        $fieldLabel = function(string $field, string $default) use ($customService) {
+            return $customService->getFieldLabel('quotations', $field, $default);
+        };
+        $isRequired = function(string $field, bool $default = false) use ($customService) {
+            return $customService->isFieldRequired('quotations', $field);
+        };
+        $isVisible = function(string $field, bool $default = true) use ($customService) {
+            return $customService->isFieldVisible('quotations', $field);
+        };
+    @endphp
+
     <form id="quotationForm">
         @csrf
         <div class="row g-3">
@@ -67,12 +83,14 @@
                     </div>
                 </div>
 
+                @if($isVisible('notes', true))
                 <div class="card shadow-sm border-0">
                     <div class="card-body">
-                        <h6 class="mb-3 fw-bold">Terms & Notes</h6>
-                        <textarea name="notes" rows="4" class="form-control" placeholder="Add terms and conditions or special notes for the client..."></textarea>
+                        <h6 class="mb-3 fw-bold">{{ $fieldLabel('notes', 'Terms & Notes') }} @if($isRequired('notes', false))<span class="text-danger">*</span>@endif</h6>
+                        <textarea name="notes" rows="4" class="form-control" placeholder="{{ $fieldLabel('notes', 'Add terms and conditions or special notes for the client...') }}" {{ $isRequired('notes', false) ? 'required' : '' }}></textarea>
                     </div>
                 </div>
+                @endif
             </div>
 
             <div class="col-lg-4">
@@ -81,15 +99,17 @@
                         <h6 class="mb-0 fw-bold">Quotation Details</h6>
                     </div>
                     <div class="card-body">
+                        @if($isVisible('lead_id', true))
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Lead / Customer</label>
-                            <select name="lead_id" class="form-select" required>
-                                <option value="">-- Select Lead --</option>
+                            <label class="form-label fw-semibold">{{ $fieldLabel('lead_id', 'Lead / Customer') }} @if($isRequired('lead_id', true))<span class="text-danger">*</span>@endif</label>
+                            <select name="lead_id" class="form-select" {{ $isRequired('lead_id', true) ? 'required' : '' }}>
+                                <option value="">-- {{ $fieldLabel('lead_id', 'Select Lead') }} --</option>
                                 @foreach ($leads as $lead)
                                     <option value="{{ $lead->id }}" @selected($selectedLead == $lead->id)>{{ $lead->name }}</option>
                                 @endforeach
                             </select>
                         </div>
+                        @endif
 
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Tour Package (Base)</label>
@@ -102,24 +122,28 @@
                             <div class="form-text">Selecting a package will copy its itinerary if one exists.</div>
                         </div>
 
+                        @if($isVisible('valid_until', true))
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Valid Until</label>
-                            <input type="date" name="valid_until" class="form-control" value="{{ date('Y-m-d', strtotime('+14 days')) }}">
+                            <label class="form-label fw-semibold">{{ $fieldLabel('valid_until', 'Valid Until') }} @if($isRequired('valid_until', false))<span class="text-danger">*</span>@endif</label>
+                            <input type="date" name="valid_until" class="form-control" value="{{ date('Y-m-d', strtotime('+14 days')) }}" {{ $isRequired('valid_until', false) ? 'required' : '' }}>
                         </div>
+                        @endif
 
+                        @if($isVisible('status', true))
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Status</label>
-                            <select name="status" class="form-select">
+                            <label class="form-label fw-semibold">{{ $fieldLabel('status', 'Status') }} @if($isRequired('status', true))<span class="text-danger">*</span>@endif</label>
+                            <select name="status" class="form-select" {{ $isRequired('status', true) ? 'required' : '' }}>
                                 <option value="quotation" selected>Quotation (Draft)</option>
                                 <option value="estimate">Estimate (Sent)</option>
                                 <option value="confirmed">Confirmed</option>
                                 <option value="cancelled">Cancelled</option>
                             </select>
                         </div>
+                        @endif
 
                         <div class="border-top pt-3 mt-4">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="fw-bold">Grand Total</span>
+                                <span class="fw-bold">{{ $fieldLabel('total_amount', 'Grand Total') }}</span>
                                 <h4 class="mb-0 text-primary">
                                     <span class="fs-6 text-muted">INR</span> <span id="grandTotalDisplay">0.00</span>
                                 </h4>

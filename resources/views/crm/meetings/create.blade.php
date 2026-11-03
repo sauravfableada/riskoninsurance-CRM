@@ -18,6 +18,21 @@
                 </div>
             </div>
             <div class="card-body p-3 p-md-4">
+                @php
+                    if (!function_exists('field_label') && file_exists(app_path('Helpers/FieldCustomizationHelper.php'))) {
+                        require_once app_path('Helpers/FieldCustomizationHelper.php');
+                    }
+                    $customService = app(\App\Services\FieldCustomizationService::class);
+                    $fieldLabel = function(string $field, string $default) use ($customService) {
+                        return $customService->getFieldLabel('meetings', $field, $default);
+                    };
+                    $isRequired = function(string $field, bool $default = false) use ($customService) {
+                        return $customService->isFieldRequired('meetings', $field);
+                    };
+                    $isVisible = function(string $field, bool $default = true) use ($customService) {
+                        return $customService->isFieldVisible('meetings', $field);
+                    };
+                @endphp
 
                 <form method="POST" action="/api/meetings" id="meetingForm" class="needs-validation" novalidate>
                     @csrf
@@ -27,17 +42,17 @@
                         <div class="col-md-6">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <label class="form-label fw-semibold mb-0" id="meetingParticipantLabel">
-                                    Customer <span class="text-danger">*</span>
+                                    {{ $fieldLabel('customer_id', 'Customer') }} <span class="text-danger">*</span>
                                 </label>
                                 <div class="btn-group btn-group-sm" role="group" aria-label="Meeting Target Type">
                                     <input type="radio" class="btn-check" name="participant_type" id="participant_customer" value="customer" checked autocomplete="off">
                                     <label class="btn btn-outline-dark-blue btn-sm py-0 px-2 fw-medium" for="participant_customer">
-                                        <i class="bi bi-person me-1"></i>Customer
+                                        <i class="bi bi-person me-1"></i>{{ $fieldLabel('customer_id', 'Customer') }}
                                     </label>
 
                                     <input type="radio" class="btn-check" name="participant_type" id="participant_lead" value="lead" autocomplete="off">
                                     <label class="btn btn-outline-dark-blue btn-sm py-0 px-2 fw-medium" for="participant_lead">
-                                        <i class="bi bi-person-lines-fill me-1"></i>Lead
+                                        <i class="bi bi-person-lines-fill me-1"></i>{{ $fieldLabel('lead_id', 'Lead') }}
                                     </label>
                                 </div>
                             </div>
@@ -48,8 +63,8 @@
                                     <div class="flex-grow-1">
                                         <select name="customer_id" id="customer_id" class="form-select"
                                             data-search-url="{{ route('api.customers.search') }}" data-search-type="customer"
-                                            data-search-placeholder="-- Search Customer --">
-                                            <option value="">-- Search Customer --</option>
+                                            data-search-placeholder="-- {{ $fieldLabel('customer_id', 'Search Customer') }} --">
+                                            <option value="">-- {{ $fieldLabel('customer_id', 'Search Customer') }} --</option>
                                             @foreach ($customers as $customer)
                                                 <option value="{{ $customer->id }}" data-email="{{ $customer->email }}"
                                                     data-phone="{{ $customer->phone }}">
@@ -71,8 +86,8 @@
                                     <div class="flex-grow-1">
                                         <select name="lead_id" id="lead_id" class="form-select"
                                             data-search-url="{{ route('api.leads.search') }}" data-search-type="lead"
-                                            data-search-placeholder="-- Search Lead --">
-                                            <option value="">-- Search Lead --</option>
+                                            data-search-placeholder="-- {{ $fieldLabel('lead_id', 'Search Lead') }} --">
+                                            <option value="">-- {{ $fieldLabel('lead_id', 'Search Lead') }} --</option>
                                             @foreach ($leads as $lead)
                                                 <option value="{{ $lead->id }}" data-email="{{ $lead->email }}"
                                                     data-phone="{{ $lead->phone }}">
@@ -90,29 +105,40 @@
                         </div>
 
                         <!-- Assigned To -->
+                        @if($isVisible('assigned_user_id', true))
                         <div class="col-md-6">
-                            @include('crm.partials.assigned-user-field', ['users' => $users])
+                            @include('crm.partials.assigned-user-field', [
+                                'users' => $users,
+                                'label' => $fieldLabel('assigned_user_id', 'Assigned To'),
+                                'required' => $isRequired('assigned_user_id', false)
+                            ])
                         </div>
+                        @endif
 
                         <!-- Meeting Title -->
+                        @if($isVisible('title', true))
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Meeting Title <span class="text-danger">*</span></label>
-                            <input type="text" name="title" id="title" class="form-control" required>
+                            <label class="form-label fw-semibold">{{ $fieldLabel('title', 'Meeting Title') }} @if($isRequired('title', true))<span class="text-danger">*</span>@endif</label>
+                            <input type="text" name="title" id="title" class="form-control" placeholder="{{ $fieldLabel('title', 'Meeting Title') }}" {{ $isRequired('title', true) ? 'required' : '' }}>
                             <div class="invalid-feedback" id="title-error"></div>
                         </div>
+                        @endif
 
                         <!-- Scheduled On -->
+                        @if($isVisible('scheduled_at', true))
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Scheduled On <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold">{{ $fieldLabel('scheduled_at', 'Scheduled On') }} @if($isRequired('scheduled_at', true))<span class="text-danger">*</span>@endif</label>
                             <input type="datetime-local" name="scheduled_at" id="scheduled_at" class="form-control"
-                                value="{{ old('scheduled_at') }}" required>
+                                value="{{ old('scheduled_at') }}" {{ $isRequired('scheduled_at', true) ? 'required' : '' }}>
                             <div class="invalid-feedback" id="scheduled_at-error"></div>
                         </div>
+                        @endif
 
                         <!-- Meeting Type -->
+                        @if($isVisible('meeting_type', true))
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Meeting Type</label>
-                            <select name="meeting_type" id="meeting_type" class="form-select">
+                            <label class="form-label fw-semibold">{{ $fieldLabel('meeting_type', 'Meeting Type') }} @if($isRequired('meeting_type', false))<span class="text-danger">*</span>@endif</label>
+                            <select name="meeting_type" id="meeting_type" class="form-select" {{ $isRequired('meeting_type', false) ? 'required' : '' }}>
                                 <option value="">Select Meeting Type</option>
                                 <option value="online">Online</option>
                                 <option value="offline">Offline</option>
@@ -121,33 +147,40 @@
                             </select>
                             <div class="invalid-feedback" id="meeting_type-error"></div>
                         </div>
+                        @endif
 
                         <!-- Status -->
+                        @if($isVisible('status', true))
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
-                            <select name="status" id="status" class="form-select" required>
+                            <label class="form-label fw-semibold">{{ $fieldLabel('status', 'Status') }} @if($isRequired('status', true))<span class="text-danger">*</span>@endif</label>
+                            <select name="status" id="status" class="form-select" {{ $isRequired('status', true) ? 'required' : '' }}>
                                 <option value="scheduled" selected>Scheduled</option>
                                 <option value="completed">Completed</option>
                                 <option value="cancelled">Cancelled</option>
                             </select>
                             <div class="invalid-feedback" id="status-error"></div>
                         </div>
+                        @endif
 
                         <!-- Agenda (Optional) -->
+                        @if($isVisible('agenda', true))
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Agenda</label>
+                            <label class="form-label fw-semibold">{{ $fieldLabel('agenda', 'Agenda') }} @if($isRequired('agenda', false))<span class="text-danger">*</span>@endif</label>
                             <textarea name="agenda" id="agenda" rows="4" class="form-control"
-                                placeholder="Enter meeting agenda (Optional)"></textarea>
+                                placeholder="{{ $fieldLabel('agenda', 'Enter meeting agenda (Optional)') }}" {{ $isRequired('agenda', false) ? 'required' : '' }}></textarea>
                             <div class="invalid-feedback" id="agenda-error"></div>
                         </div>
+                        @endif
 
                         <!-- Address (Optional) -->
+                        @if($isVisible('address', true))
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Address</label>
+                            <label class="form-label fw-semibold">{{ $fieldLabel('address', 'Address') }} @if($isRequired('address', false))<span class="text-danger">*</span>@endif</label>
                             <textarea name="address" id="address" rows="4" class="form-control"
-                                placeholder="Enter meeting address/location (Optional)"></textarea>
+                                placeholder="{{ $fieldLabel('address', 'Enter meeting address/location (Optional)') }}" {{ $isRequired('address', false) ? 'required' : '' }}></textarea>
                             <div class="invalid-feedback" id="address-error"></div>
                         </div>
+                        @endif
                     </div>
 
                     <div class="mt-4 pt-4 border-top d-flex flex-sm-row justify-content-end gap-2 form-actions">

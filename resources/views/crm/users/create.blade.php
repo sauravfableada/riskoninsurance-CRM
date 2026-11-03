@@ -26,6 +26,21 @@
 
             <!-- Card Body -->
             <div class="card-body p-3 p-md-4">
+                @php
+                    if (!function_exists('field_label') && file_exists(app_path('Helpers/FieldCustomizationHelper.php'))) {
+                        require_once app_path('Helpers/FieldCustomizationHelper.php');
+                    }
+                    $customService = app(\App\Services\FieldCustomizationService::class);
+                    $fieldLabel = function(string $field, string $default) use ($customService) {
+                        return $customService->getFieldLabel('users', $field, $default);
+                    };
+                    $isRequired = function(string $field, bool $default = false) use ($customService) {
+                        return $customService->isFieldRequired('users', $field);
+                    };
+                    $isVisible = function(string $field, bool $default = true) use ($customService) {
+                        return $customService->isFieldVisible('users', $field);
+                    };
+                @endphp
                 <form action="{{ url('/api/users') }}" method="POST" enctype="multipart/form-data" id="staffCreateForm" class="ajax-user-form" autocomplete="off">
 
                     @csrf
@@ -36,26 +51,30 @@
 
                     <div class="row g-3">
                         <!-- Name -->
+                        @if($isVisible('name', true))
                         <div class="col-12">
                             <label class="form-label d-flex align-items-center gap-2" for="name">
-                                <i class="bi bi-person-fill"></i> Name <span class="text-danger">*</span>
+                                <i class="bi bi-person-fill"></i> {{ $fieldLabel('name', 'Name') }} @if($isRequired('name', true))<span class="text-danger">*</span>@endif
                             </label>
-                            <input type="text" id="name" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name') }}" autocomplete="off">
+                            <input type="text" id="name" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name') }}" placeholder="{{ $fieldLabel('name', 'Full Name') }}" autocomplete="off" {{ $isRequired('name', true) ? 'required' : '' }}>
                             @error('name')
                                 <div class="staff-validation">{{ $message }}</div>
                             @enderror
                         </div>
+                        @endif
 
                         <!-- Email -->
+                        @if($isVisible('email', true))
                         <div class="col-md-6">
                             <label class="form-label d-flex align-items-center gap-2" for="email">
-                                <i class="bi bi-envelope-fill"></i> Email <span class="text-danger">*</span>
+                                <i class="bi bi-envelope-fill"></i> {{ $fieldLabel('email', 'Email') }} @if($isRequired('email', true))<span class="text-danger">*</span>@endif
                             </label>
-                            <input type="email" id="email" name="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email') }}" autocomplete="new-password">
+                            <input type="email" id="email" name="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email') }}" placeholder="{{ $fieldLabel('email', 'Email') }}" autocomplete="new-password" {{ $isRequired('email', true) ? 'required' : '' }}>
                             @error('email')
                                 <div class="staff-validation">{{ $message }}</div>
                             @enderror
                         </div>
+                        @endif
 
                         <!-- Password -->
                         <div class="col-md-6">
@@ -75,32 +94,16 @@
 
                         <!-- Role -->
                         <input type="hidden" name="role" value="staff">
-                        {{-- Role selection is disabled in the Sub Agent module; all users are Staff.
-                        <div class="col-md-6">
-                            <label class="form-label d-flex align-items-center gap-2" for="role">
-                                <i class="bi bi-shield-lock-fill"></i> Role <span class="text-danger">*</span>
-                            </label>
-                            <select id="role" name="role" class="form-select @error('role') is-invalid @enderror">
-                                <option value="">Select Role</option>
-                                @foreach($roles as $role)
-                                    <option value="{{ $role->name }}" {{ old('role', 'staff') == $role->name ? 'selected' : '' }}>
-                                        {{ ucfirst($role->name) }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('role')
-                                <div class="staff-validation">{{ $message }}</div>
-                            @enderror
-                        </div> --}}
 
                         <!-- Phone -->
+                        @if($isVisible('phone', true))
                         <div class="col-md-6">
                             <label class="form-label d-flex align-items-center gap-2" for="phone">
-                                <i class="bi bi-telephone-fill"></i> Phone no. <span class="text-danger">*</span>
+                                <i class="bi bi-telephone-fill"></i> {{ $fieldLabel('phone', 'Phone no.') }} @if($isRequired('phone', false))<span class="text-danger">*</span>@endif
                             </label>
                             <div class="input-group">
                                 <input type="text" id="country_code" name="country_code" class="form-control flex-grow-0 @error('country_code') is-invalid @enderror" value="{{ old('country_code', '+91') }}" list="staffCountryCodes" maxlength="5" aria-label="Country code" style="width: 95px;">
-                                <input type="tel" id="phone" name="phone" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone') }}" inputmode="numeric" maxlength="15" placeholder="Phone number">
+                                <input type="tel" id="phone" name="phone" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone') }}" inputmode="numeric" maxlength="15" placeholder="{{ $fieldLabel('phone', 'Phone number') }}" {{ $isRequired('phone', false) ? 'required' : '' }}>
                             </div>
                             <datalist id="staffCountryCodes">
                                 <option value="+91">India</option><option value="+1">USA / Canada</option><option value="+44">United Kingdom</option>
@@ -114,15 +117,17 @@
                                 <div class="staff-validation">{{ $message }}</div>
                             @enderror
                         </div>
+                        @endif
 
                         <!-- WhatsApp -->
+                        @if($isVisible('whatsapp', true))
                         <div class="col-md-6">
                             <label class="form-label d-flex align-items-center gap-2" for="whatsapp">
-                                <i class="bi bi-whatsapp"></i> WhatsApp no.
+                                <i class="bi bi-whatsapp"></i> {{ $fieldLabel('whatsapp', 'WhatsApp no.') }} @if($isRequired('whatsapp', false))<span class="text-danger">*</span>@endif
                             </label>
                             <div class="input-group">
                                 <input type="text" id="whatsapp_country_code" name="whatsapp_country_code" class="form-control flex-grow-0 @error('whatsapp_country_code') is-invalid @enderror" value="{{ old('whatsapp_country_code', '+91') }}" list="staffCountryCodes" maxlength="5" aria-label="WhatsApp country code" style="width: 95px;">
-                                <input type="tel" id="whatsapp" name="whatsapp" class="form-control @error('whatsapp') is-invalid @enderror" value="{{ old('whatsapp') }}" inputmode="numeric" maxlength="15" placeholder="WhatsApp number">
+                                <input type="tel" id="whatsapp" name="whatsapp" class="form-control @error('whatsapp') is-invalid @enderror" value="{{ old('whatsapp') }}" inputmode="numeric" maxlength="15" placeholder="{{ $fieldLabel('whatsapp', 'WhatsApp number') }}" {{ $isRequired('whatsapp', false) ? 'required' : '' }}>
                             </div>
                             @error('whatsapp_country_code')
                                 <div class="staff-validation">{{ $message }}</div>
@@ -131,13 +136,15 @@
                                 <div class="staff-validation">{{ $message }}</div>
                             @enderror
                         </div>
+                        @endif
 
                         <!-- Image -->
+                        @if($isVisible('image', true))
                         <div class="col-md-12">
                             <label class="form-label d-flex align-items-center gap-2" for="image">
-                                <i class="bi bi-person-circle"></i> Profile Image
+                                <i class="bi bi-person-circle"></i> {{ $fieldLabel('image', 'Profile Image') }} @if($isRequired('image', false))<span class="text-danger">*</span>@endif
                             </label>
-                            <input type="file" id="image" name="image" class="form-control @error('image') is-invalid @enderror" accept=".avif,.webp,.jpg,.jpeg,.png,.gif,.bmp,.svg">
+                            <input type="file" id="image" name="image" class="form-control @error('image') is-invalid @enderror" accept=".avif,.webp,.jpg,.jpeg,.png,.gif,.bmp,.svg" {{ $isRequired('image', false) ? 'required' : '' }}>
                             @error('image')
                                 <div class="staff-validation">{{ $message }}</div>
                             @enderror
@@ -146,17 +153,20 @@
                                 <img src="" alt="Sub-agent preview" id="createImagePreview" class="img-thumbnail" style="max-width: 120px; max-height: 120px;">
                             </div>
                         </div>
+                        @endif
 
                         <!-- Address -->
+                        @if($isVisible('address', true))
                         <div class="col-12">
                             <label class="form-label d-flex align-items-center gap-2" for="address">
-                                <i class="bi bi-geo-alt-fill"></i> Address
+                                <i class="bi bi-geo-alt-fill"></i> {{ $fieldLabel('address', 'Address') }} @if($isRequired('address', false))<span class="text-danger">*</span>@endif
                             </label>
-                            <textarea id="address" name="address" class="form-control @error('address') is-invalid @enderror" rows="3">{{ old('address') }}</textarea>
+                            <textarea id="address" name="address" class="form-control @error('address') is-invalid @enderror" rows="3" placeholder="{{ $fieldLabel('address', 'Address') }}" {{ $isRequired('address', false) ? 'required' : '' }}>{{ old('address') }}</textarea>
                             @error('address')
                                 <div class="staff-validation">{{ $message }}</div>
                             @enderror
                         </div>
+                        @endif
                     </div>
 
                     <!-- Form Actions -->

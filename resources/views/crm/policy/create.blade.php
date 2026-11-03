@@ -140,6 +140,21 @@
         </div>
 
 
+@php
+    if (!function_exists('field_label') && file_exists(app_path('Helpers/FieldCustomizationHelper.php'))) {
+        require_once app_path('Helpers/FieldCustomizationHelper.php');
+    }
+    $customService = app(\App\Services\FieldCustomizationService::class);
+    $fieldLabel = function(string $field, string $default) use ($customService) {
+        return $customService->getFieldLabel('policies', $field, $default);
+    };
+    $isRequired = function(string $field, bool $default = false) use ($customService) {
+        return $customService->isFieldRequired('policies', $field);
+    };
+    $isVisible = function(string $field, bool $default = true) use ($customService) {
+        return $customService->isFieldVisible('policies', $field);
+    };
+@endphp
                     <form class="m-3" id="add_policy_form">
                         @csrf
                         <input type="hidden" name="base_url" id="base_url" value="<?= base_url(); ?>">
@@ -155,18 +170,21 @@
                         <!-- Step 1: User Selection -->
                         <div class="step step-1">
                             <div class="row">
+                                @if($isVisible('policy_number', true))
                                 <div class="mb-3 col-lg-6">
-                                    <label for="policy_number" class="form-label">Policy Number <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" name="policy_number" id="policy_number" placeholder="Enter policy number">
+                                    <label for="policy_number" class="form-label">{{ $fieldLabel('policy_number', 'Policy Number') }} @if($isRequired('policy_number', true))<span class="text-danger">*</span>@endif</label>
+                                    <input type="text" class="form-control" name="policy_number" id="policy_number" placeholder="{{ $fieldLabel('policy_number', 'Enter policy number') }}">
                                     <div class="invalid-feedback" id="policy_number_err"></div>
                                 </div>
+                                @endif
+
                                 <?php
                                 $session = session();
                                 $currentUserId = $session->get('id');
 
                                 if ($session->get("user_role") == 3) {  ?>
                                     <div class="mb-3 col-lg-6">
-                                        <label class="form-label" for="user_id">Self / Sub Agent</label>
+                                        <label class="form-label" for="user_id">{{ $fieldLabel('staff_id', 'Self / Sub Agent') }} @if($isRequired('staff_id', false))<span class="text-danger">*</span>@endif</label>
                                         <select class="form-control" name="staff_id" id="staff_id">
                                             <!-- <option value="">-- Select Staff --</option> -->
                                             <?php foreach ($staffs as $staff): ?>
@@ -182,7 +200,7 @@
                                 <?php } ?>
                                 <?php if ($session->get("user_role") == 1): ?>
                                     <div class="mb-3 col-lg-6">
-                                        <label class="form-label" for="staff_id">Sub Agent Name</label>
+                                        <label class="form-label" for="staff_id">{{ $fieldLabel('staff_id', 'Sub Agent Name') }} @if($isRequired('staff_id', false))<span class="text-danger">*</span>@endif</label>
                                         <select class="form-control" name="staff_id" id="staff_id">
                                             <?php foreach ($staffs as $staff): ?>
                                                 <option
@@ -197,14 +215,13 @@
                                 <?php endif; ?>
 
                                 <!-- Policy Holder -->
-
-
+                                @if($isVisible('family_group_id', true))
                                 <div class="mb-3 col-lg-6">
-                                    <label class="form-label" for="family_group_id">Family Group <span class="text-muted small">(Optional)</span></label>
+                                    <label class="form-label" for="family_group_id">{{ $fieldLabel('family_group_id', 'Family Group') }} @if($isRequired('family_group_id', false))<span class="text-danger">*</span>@else<span class="text-muted small">(Optional)</span>@endif</label>
                                     <div class="d-flex gap-2">
                                         <div style="flex: 1;">
                                             <select class="form-control" name="family_group_id" id="family_group_id">
-                                                <option value="">-- Select Family Group --</option>
+                                                <option value="">-- {{ $fieldLabel('family_group_id', 'Select Family Group') }} --</option>
                                                 <?php foreach ($familyGroups as $familyGroup): ?>
                                                     <option
                                                         value="<?= $familyGroup['id'] ?>"
@@ -218,13 +235,15 @@
                                     </div>
                                     <div class="invalid-feedback d-block text-danger small mt-1" id="family_group_id_err"></div>
                                 </div>
+                                @endif
 
+                                @if($isVisible('user_id', true))
                                 <div class="mb-3 col-lg-6">
-                                    <label class="form-label" for="user_id">Policy Holder Name <span class="text-danger">*</span></label>
+                                    <label class="form-label" for="user_id">{{ $fieldLabel('user_id', 'Policy Holder Name') }} @if($isRequired('user_id', true))<span class="text-danger">*</span>@endif</label>
                                     <div class="d-flex gap-2">
                                         <div style="flex: 1;">
                                             <select class="form-control" name="user_id" id="user_id">
-                                                <option value="">-- Select Holder --</option>
+                                                <option value="">-- {{ $fieldLabel('user_id', 'Select Holder') }} --</option>
                                                 <?php foreach ($users as $u): ?>
                                                     <option value="<?= $u['id'] ?>">
                                                         <?= htmlspecialchars($u['name']) ?> <?= !empty($u['email']) ? '('.htmlspecialchars($u['email']).')' : '' ?>
@@ -236,12 +255,15 @@
                                     </div>
                                     <div class="invalid-feedback d-block text-danger small mt-1" id="user_id_err"></div>
                                 </div>
+                                @endif
+
+                                @if($isVisible('policy_type_id', true))
                                 <div class="mb-3 col-lg-6">
-                                    <label class="form-label" for="policy_type_id">Select Policy Type <span class="text-danger">*</span></label>
+                                    <label class="form-label" for="policy_type_id">{{ $fieldLabel('policy_type_id', 'Select Policy Type') }} @if($isRequired('policy_type_id', true))<span class="text-danger">*</span>@endif</label>
                                     <div class="d-flex gap-2">
                                         <div style="flex: 1;">
                                             <select class="form-control" name="policy_type_id" id="policy_type_id">
-                                                <option value="">-- Select Policy Type --</option>
+                                                <option value="">-- {{ $fieldLabel('policy_type_id', 'Select Policy Type') }} --</option>
                                                 <?php foreach ($policyTypes as $pt): ?>
                                                     <option value="<?= $pt['id'] ?>"><?= $pt['name'] ?></option>
                                                 <?php endforeach; ?>
@@ -251,42 +273,50 @@
                                     </div>
                                     <div class="invalid-feedback d-block text-danger small mt-1" id="policy_type_err"></div>
                                 </div>
+                                @endif
 
                                 <!-- Hidden input for storing policy type name -->
                                 <input type="hidden" name="policy_type_name" id="policy_type_name">
 
                                 <!-- Policy Sub Type -->
+                                @if($isVisible('sub_type_id', true))
                                 <div class="mb-3 col-lg-6">
-                                    <label class="form-label" for="sub_type_id">Policy Sub Type <span class="text-muted small">(Optional)</span></label>
+                                    <label class="form-label" for="sub_type_id">{{ $fieldLabel('sub_type_id', 'Policy Sub Type') }} @if($isRequired('sub_type_id', false))<span class="text-danger">*</span>@else<span class="text-muted small">(Optional)</span>@endif</label>
                                     <div class="d-flex gap-2">
                                         <div style="flex: 1;">
                                             <select class="form-control" name="sub_type_id" id="sub_type_id">
-                                                <option value="">-- Select Sub Type --</option>
+                                                <option value="">-- {{ $fieldLabel('sub_type_id', 'Select Sub Type') }} --</option>
                                             </select>
                                         </div>
                                         <button type="button" class="btn btn-dark-blue px-3" data-bs-toggle="modal" data-bs-target="#modalPolicySubType"><i class="bi bi-plus-lg me-1"></i> Add</button>
                                     </div>
                                     <div class="invalid-feedback d-block text-danger small mt-1" id="sub_type_err"></div>
                                 </div>
+                                @endif
+
+                                @if($isVisible('segment_id', true))
                                 <div class="mb-3 col-lg-6">
-                                    <label class="form-label" for="segment_id">Segment <span class="text-muted small">(Optional)</span></label>
+                                    <label class="form-label" for="segment_id">{{ $fieldLabel('segment_id', 'Segment') }} @if($isRequired('segment_id', false))<span class="text-danger">*</span>@else<span class="text-muted small">(Optional)</span>@endif</label>
                                     <div class="d-flex gap-2">
                                         <div style="flex: 1;">
                                             <select class="form-control" name="segment_id" id="segment_id">
-                                                <option value="">-- Select Segment --</option>
+                                                <option value="">-- {{ $fieldLabel('segment_id', 'Select Segment') }} --</option>
                                             </select>
                                         </div>
                                         <button type="button" class="btn btn-dark-blue px-3" data-bs-toggle="modal" data-bs-target="#modalSegment"><i class="bi bi-plus-lg me-1"></i> Add</button>
                                     </div>
                                     <div class="invalid-feedback d-block text-danger small mt-1" id="segment_err"></div>
                                 </div>
+                                @endif
+
                                 <!-- Company -->
+                                @if($isVisible('company_id', true))
                                 <div class="mb-3 col-lg-6">
-                                    <label class="form-label" for="company_id">Insurance Company <span class="text-muted small">(Optional)</span></label>
+                                    <label class="form-label" for="company_id">{{ $fieldLabel('company_id', 'Insurance Company') }} @if($isRequired('company_id', true))<span class="text-danger">*</span>@else<span class="text-muted small">(Optional)</span>@endif</label>
                                     <div class="d-flex gap-2">
                                         <div style="flex: 1;">
                                             <select class="form-control" name="company_id" id="company_id">
-                                                <option value="">-- Select Company --</option>
+                                                <option value="">-- {{ $fieldLabel('company_id', 'Select Company') }} --</option>
                                                 <?php foreach ($companies as $c): ?>
                                                     <option value="<?= $c['id'] ?>"><?= $c['name'] ?></option>
                                                 <?php endforeach; ?>
@@ -296,19 +326,22 @@
                                     </div>
                                     <div class="invalid-feedback d-block text-danger small mt-1" id="company_err"></div>
                                 </div>
+                                @endif
 
+                                @if($isVisible('branch_id', true))
                                 <div class="mb-3 col-12">
-                                    <label class="form-label" for="branch_id">Branch <span class="text-muted small">(Optional)</span></label>
+                                    <label class="form-label" for="branch_id">{{ $fieldLabel('branch_id', 'Branch') }} @if($isRequired('branch_id', false))<span class="text-danger">*</span>@else<span class="text-muted small">(Optional)</span>@endif</label>
                                     <div class="d-flex gap-2">
                                         <div style="flex: 1;">
                                             <select class="form-control" name="branch_id" id="branch_id">
-                                                <option value="">-- Select Branch --</option>
+                                                <option value="">-- {{ $fieldLabel('branch_id', 'Select Branch') }} --</option>
                                             </select>
                                         </div>
                                         <button type="button" class="btn btn-dark-blue px-3" data-bs-toggle="modal" data-bs-target="#modalBranch"><i class="bi bi-plus-lg me-1"></i> Add</button>
                                     </div>
                                     <div class="invalid-feedback d-block text-danger small mt-1" id="branch_err"></div>
                                 </div>
+                                @endif
                             </div>
                         </div>
 
@@ -331,66 +364,93 @@
                             <!-- Vehicle Insurance Fields -->
                             <div id="vehicle_fields" class="insurance-fields d-none">
                                 <div class="row">
+                                    @if($isVisible('vehicle_reg_no', true))
                                     <div class="mb-3 col-lg-6">
-                                        <label for="vehicle_reg_no" class="form-label">Vehicle Registration Number <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" name="vehicle_reg_no" id="vehicle_reg_no">
+                                        <label for="vehicle_reg_no" class="form-label">{{ $fieldLabel('vehicle_reg_no', 'Vehicle Registration Number') }} @if($isRequired('vehicle_reg_no', false))<span class="text-danger">*</span>@endif</label>
+                                        <input type="text" class="form-control" name="vehicle_reg_no" id="vehicle_reg_no" placeholder="{{ $fieldLabel('vehicle_reg_no', 'Vehicle Registration Number') }}">
                                         <div class="invalid-feedback" id="vehicle_reg_no_err"></div>
                                     </div>
+                                    @endif
+
+                                    @if($isVisible('vehicle_model', true))
                                     <div class="mb-3 col-lg-6">
-                                        <label for="vehicle_model" class="form-label">Vehicle Model <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" name="vehicle_model" id="vehicle_model">
+                                        <label for="vehicle_model" class="form-label">{{ $fieldLabel('vehicle_model', 'Vehicle Model') }} @if($isRequired('vehicle_model', false))<span class="text-danger">*</span>@endif</label>
+                                        <input type="text" class="form-control" name="vehicle_model" id="vehicle_model" placeholder="{{ $fieldLabel('vehicle_model', 'Vehicle Model') }}">
                                         <div class="invalid-feedback" id="vehicle_model_err"></div>
                                     </div>
+                                    @endif
+
+                                    @if($isVisible('engine_no', true))
                                     <div class="mb-3 col-lg-6">
-                                        <label for="engine_no" class="form-label">Engine Number <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" name="engine_no" id="engine_no">
+                                        <label for="engine_no" class="form-label">{{ $fieldLabel('engine_no', 'Engine Number') }} @if($isRequired('engine_no', false))<span class="text-danger">*</span>@endif</label>
+                                        <input type="text" class="form-control" name="engine_no" id="engine_no" placeholder="{{ $fieldLabel('engine_no', 'Engine Number') }}">
                                         <div class="invalid-feedback" id="engine_no_err"></div>
                                     </div>
+                                    @endif
+
+                                    @if($isVisible('chassis_no', true))
                                     <div class="mb-3 col-lg-6">
-                                        <label for="chassis_no" class="form-label">Chassis Number <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" name="chassis_no" id="chassis_no">
+                                        <label for="chassis_no" class="form-label">{{ $fieldLabel('chassis_no', 'Chassis Number') }} @if($isRequired('chassis_no', false))<span class="text-danger">*</span>@endif</label>
+                                        <input type="text" class="form-control" name="chassis_no" id="chassis_no" placeholder="{{ $fieldLabel('chassis_no', 'Chassis Number') }}">
                                         <div class="invalid-feedback" id="chassis_no_err"></div>
                                     </div>
+                                    @endif
+
+                                    @if($isVisible('fuel_type', true))
                                     <div class="mb-3 col-lg-6">
-                                        <label for="fuel_type" class="form-label">Fuel Type <span class="text-danger">*</span></label>
+                                        <label for="fuel_type" class="form-label">{{ $fieldLabel('fuel_type', 'Fuel Type') }} @if($isRequired('fuel_type', false))<span class="text-danger">*</span>@endif</label>
                                         <select class="form-control" name="fuel_type" id="fuel_type">
-                                            <option value="">-- Select Fuel Type --</option>
+                                            <option value="">-- {{ $fieldLabel('fuel_type', 'Select Fuel Type') }} --</option>
                                             <option value="Petrol">Petrol</option>
                                             <option value="Diesel">Diesel</option>
                                             <option value="Electric">Electric</option>
                                         </select>
                                         <div class="invalid-feedback" id="fuel_type_err"></div>
                                     </div>
+                                    @endif
+
+                                    @if($isVisible('cc', true))
                                     <div class="mb-3 col-lg-6">
-                                        <label for="cc" class="form-label">Engine Capacity (CC)</label>
+                                        <label for="cc" class="form-label">{{ $fieldLabel('cc', 'Engine Capacity (CC)') }} @if($isRequired('cc', false))<span class="text-danger">*</span>@endif</label>
                                         <input type="number" class="form-control" name="cc" id="cc">
                                         <div class="invalid-feedback" id="cc_err"></div>
                                     </div>
+                                    @endif
+
+                                    @if($isVisible('gvw', true))
                                     <div class="mb-3 col-lg-6">
-                                        <label for="gvw" class="form-label">Gross Vehicle Weight (GVW)</label>
+                                        <label for="gvw" class="form-label">{{ $fieldLabel('gvw', 'Gross Vehicle Weight (GVW)') }} @if($isRequired('gvw', false))<span class="text-danger">*</span>@endif</label>
                                         <input type="number" class="form-control" name="gvw" id="gvw">
                                         <div class="invalid-feedback" id="gvw_err"></div>
                                     </div>
+                                    @endif
+
+                                    @if($isVisible('ncb', true))
                                     <div class="mb-3 col-lg-6">
-                                        <label for="ncb" class="form-label">No Claim Bonus <span class="text-muted small">(Optional)</span></label>
+                                        <label for="ncb" class="form-label">{{ $fieldLabel('ncb', 'No Claim Bonus') }} @if($isRequired('ncb', false))<span class="text-danger">*</span>@else<span class="text-muted small">(Optional)</span>@endif</label>
                                         <input type="text" class="form-control" name="ncb" id="ncb">
                                         <div class="invalid-feedback" id="ncb_err"></div>
                                     </div>
+                                    @endif
+
+                                    @if($isVisible('year_of_manufacture', true))
                                     <div class="mb-3 col-lg-6">
-                                        <label for="year_of_manufacture" class="form-label">Year of Manufacture <span class="text-muted small">(Optional)</span></label>
+                                        <label for="year_of_manufacture" class="form-label">{{ $fieldLabel('year_of_manufacture', 'Year of Manufacture') }} @if($isRequired('year_of_manufacture', false))<span class="text-danger">*</span>@else<span class="text-muted small">(Optional)</span>@endif</label>
                                         <input type="number" class="form-control" name="year_of_manufacture" id="year_of_manufacture">
                                         <div class="invalid-feedback" id="year_of_manufacture_err"></div>
                                     </div>
+                                    @endif
                                 </div>
                             </div>
 
 
 
                             <div class="row">
+                                @if($isVisible('policy_mode', true))
                                 <div class="mb-3 col-lg-4">
-                                    <label class="form-label" for="policy_mode">Payment Mode <span class="text-muted small">(Optional)</span></label>
+                                    <label class="form-label" for="policy_mode">{{ $fieldLabel('policy_mode', 'Payment Mode') }} @if($isRequired('policy_mode', false))<span class="text-danger">*</span>@else<span class="text-muted small">(Optional)</span>@endif</label>
                                     <select class="form-control" name="policy_mode" id="policy_mode">
-                                        <option value="">-- Select Payment Mode --</option>
+                                        <option value="">-- {{ $fieldLabel('policy_mode', 'Select Payment Mode') }} --</option>
                                         <option value="Monthly">Monthly</option>
                                         <option value="Quarterly">Quarterly</option>
                                         <option value="Half-Yearly">Half-Yearly</option>
@@ -398,31 +458,41 @@
                                     </select>
                                     <div class="invalid-feedback" id="policy_mode_err"></div>
                                 </div>
+                                @endif
+
+                                @if($isVisible('start_date', true))
                                 <div class="mb-3 col-lg-4">
-                                    <label class="form-label" for="start_date">Start Date</label>
+                                    <label class="form-label" for="start_date">{{ $fieldLabel('start_date', 'Start Date') }} @if($isRequired('start_date', true))<span class="text-danger">*</span>@endif</label>
                                     <input type="date" class="form-control" name="start_date" id="start_date" data-allow-past-date="true">
                                     <div class="invalid-feedback" id="start_date_err"></div>
                                 </div>
+                                @endif
 
+                                @if($isVisible('end_date', true))
                                 <div class="mb-3 col-lg-4">
-                                    <label class="form-label" for="end_date">End Date</label>
+                                    <label class="form-label" for="end_date">{{ $fieldLabel('end_date', 'End Date') }} @if($isRequired('end_date', true))<span class="text-danger">*</span>@endif</label>
                                     <input type="date" class="form-control" name="end_date" id="end_date" data-allow-past-date="true">
                                     <div class="invalid-feedback" id="end_date_err"></div>
                                 </div>
+                                @endif
                             </div>
 
                             <div class="row">
+                                @if($isVisible('nominee_name', true))
                                 <div class="mb-3 col-lg-6">
-                                    <label class="form-label" for="nominee_name">Nominee Name</label>
-                                    <input type="text" class="form-control" name="nominee_name" id="nominee_name">
+                                    <label class="form-label" for="nominee_name">{{ $fieldLabel('nominee_name', 'Nominee Name') }} @if($isRequired('nominee_name', false))<span class="text-danger">*</span>@endif</label>
+                                    <input type="text" class="form-control" name="nominee_name" id="nominee_name" placeholder="{{ $fieldLabel('nominee_name', 'Nominee Name') }}">
                                     <div class="invalid-feedback" id="nominee_name_err"></div>
                                 </div>
+                                @endif
 
+                                @if($isVisible('nominee_contact', true))
                                 <div class="mb-3 col-lg-6">
-                                    <label class="form-label" for="nominee_contact">Nominee Contact</label>
-                                    <input type="text" class="form-control" name="nominee_contact" id="nominee_contact">
+                                    <label class="form-label" for="nominee_contact">{{ $fieldLabel('nominee_contact', 'Nominee Contact') }} @if($isRequired('nominee_contact', false))<span class="text-danger">*</span>@endif</label>
+                                    <input type="text" class="form-control" name="nominee_contact" id="nominee_contact" placeholder="{{ $fieldLabel('nominee_contact', 'Nominee Contact') }}">
                                     <div class="invalid-feedback" id="nominee_contact_err"></div>
                                 </div>
+                                @endif
                             </div>
                         </div>
 
@@ -430,34 +500,46 @@
                         <div class="step step-3 d-none">
                             <div class="row">
                                 <!-- Sum Assured (only for NON-Vehicle insurance) -->
+                                @if($isVisible('sum_assured', true))
                                 <div class="mb-3 col-lg-3 non-vehicle-field">
-                                    <label class="form-label" for="sum_assured">Sum Assured <span class="text-danger">*</span></label>
+                                    <label class="form-label" for="sum_assured">{{ $fieldLabel('sum_assured', 'Sum Assured') }} @if($isRequired('sum_assured', false))<span class="text-danger">*</span>@endif</label>
                                     <input type="number" step="0.01" class="form-control" name="sum_assured" id="sum_assured">
                                     <span id="sum_assured_err" class="text-danger"></span>
                                 </div>
+                                @endif
                                 
                                 <!-- Vehicle IDV (only for Vehicle insurance) -->
+                                @if($isVisible('vehicle_idv', true))
                                 <div class="mb-3 col-lg-3 vehicle-only-field d-none">
-                                    <label class="form-label" for="vehicle_idv">Vehicle IDV <span class="text-danger">*</span></label>
+                                    <label class="form-label" for="vehicle_idv">{{ $fieldLabel('vehicle_idv', 'Vehicle IDV') }} @if($isRequired('vehicle_idv', false))<span class="text-danger">*</span>@endif</label>
                                     <input type="number" step="0.01" class="form-control" name="vehicle_idv" id="vehicle_idv">
                                     <span id="vehicle_idv_err" class="text-danger"></span>
                                 </div>
+                                @endif
 
+                                @if($isVisible('premium', true))
                                 <div class="mb-3 col-lg-3">
-                                    <label class="form-label" for="premium">Premium Amount <span class="text-danger">*</span></label>
+                                    <label class="form-label" for="premium">{{ $fieldLabel('premium', 'Premium Amount') }} @if($isRequired('premium', true))<span class="text-danger">*</span>@endif</label>
                                     <input type="number" step="0.01" class="form-control" name="premium" id="premium">
                                     <span id="premium_err" class="text-danger"></span>
                                 </div>
+                                @endif
+
+                                @if($isVisible('tax_amount', true))
                                 <div class="mb-3 col-lg-3">
-                                    <label class="form-label" for="tax_amount">Tax Amount <span class="text-muted small">(Optional)</span></label>
+                                    <label class="form-label" for="tax_amount">{{ $fieldLabel('tax_amount', 'Tax Amount') }} @if($isRequired('tax_amount', false))<span class="text-danger">*</span>@else<span class="text-muted small">(Optional)</span>@endif</label>
                                     <input type="number" step="0.01" min="0" class="form-control" name="tax_amount" id="tax_amount">
                                     <span id="tax_amount_err" class="text-danger"></span>
                                 </div>
+                                @endif
+
+                                @if($isVisible('payment_date', true))
                                 <div class="mb-3 col-lg-3">
-                                    <label class="form-label" for="payment_date">Payment Date <span class="text-muted small">(Optional)</span></label>
+                                    <label class="form-label" for="payment_date">{{ $fieldLabel('payment_date', 'Payment Date') }} @if($isRequired('payment_date', false))<span class="text-danger">*</span>@else<span class="text-muted small">(Optional)</span>@endif</label>
                                     <input type="date" class="form-control" name="payment_date" id="payment_date" data-allow-past-date="true">
                                     <span id="payment_date_err" class="text-danger"></span>
                                 </div>
+                                @endif
                             </div>
 
                             <!-- CNG/LPG Unit (only for Vehicle insurance) -->
@@ -488,12 +570,14 @@
                                 </div>
                             </div>
 
+                            @if($isVisible('remarks', true))
                             <div class="row">
                                 <div class="mb-3 col-lg-12">
-                                    <label class="form-label" for="remarks">Remarks</label>
-                                    <textarea class="form-control" name="remarks" id="remarks" rows="2"></textarea>
+                                    <label class="form-label" for="remarks">{{ $fieldLabel('remarks', 'Remarks') }} @if($isRequired('remarks', false))<span class="text-danger">*</span>@endif</label>
+                                    <textarea class="form-control" name="remarks" id="remarks" rows="2" placeholder="{{ $fieldLabel('remarks', 'Remarks') }}"></textarea>
                                 </div>
                             </div>
+                            @endif
                         </div>
 
 

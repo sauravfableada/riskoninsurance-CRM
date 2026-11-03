@@ -24,44 +24,67 @@
             </div>
 
             <div class="card-body p-3 p-md-4">
+                @php
+                    if (!function_exists('field_label') && file_exists(app_path('Helpers/FieldCustomizationHelper.php'))) {
+                        require_once app_path('Helpers/FieldCustomizationHelper.php');
+                    }
+                    $customService = app(\App\Services\FieldCustomizationService::class);
+                    $fieldLabel = function(string $field, string $default) use ($customService) {
+                        return $customService->getFieldLabel('prospects', $field, $default);
+                    };
+                    $isRequired = function(string $field, bool $default = false) use ($customService) {
+                        return $customService->isFieldRequired('prospects', $field);
+                    };
+                    $isVisible = function(string $field, bool $default = true) use ($customService) {
+                        return $customService->isFieldVisible('prospects', $field);
+                    };
+                @endphp
                 <form id="edit_prospect_form" method="post" novalidate>
                     @csrf
                     <input type="hidden" name="id" value="{{ $prospect->id }}">
                     <input type="hidden" name="base_url" id="base_url" value="{{ url('/') }}/">
 
                     <div class="row g-4 mb-4">
+                        @if($isVisible('name', true))
                         <div class="col-md-6 col-12">
-                            <label class="form-label fw-semibold" for="name">Name <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold" for="name">{{ $fieldLabel('name', 'Name') }} @if($isRequired('name', true))<span class="text-danger">*</span>@endif</label>
                             <input type="text" class="form-control" name="name" id="name"
-                                value="{{ e($prospect->name) }}" placeholder="Enter name">
+                                value="{{ e($prospect->name) }}" placeholder="{{ $fieldLabel('name', 'Enter name') }}" data-required="{{ $isRequired('name', true) ? '1' : '0' }}" {{ $isRequired('name', true) ? 'required' : '' }}>
                         </div>
+                        @endif
 
+                        @if($isVisible('mobile_no', true))
                         <div class="col-md-6 col-12">
-                            <label class="form-label fw-semibold" for="mobile_no">Mobile No <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold" for="mobile_no">{{ $fieldLabel('mobile_no', 'Mobile No') }} @if($isRequired('mobile_no', true))<span class="text-danger">*</span>@endif</label>
                             @php
                                 $prospectCountryCode = $prospect->country_code ?: '+91';
                                 $prospectLocalMobile = str_starts_with((string) $prospect->mobile_no, $prospectCountryCode) ? substr($prospect->mobile_no, strlen($prospectCountryCode)) : $prospect->mobile_no;
                             @endphp
                             <div class="input-group">
                                 <input type="text" class="form-control flex-grow-0" name="country_code" value="{{ $prospectCountryCode }}" list="prospectCountryCodes" maxlength="5" style="width:95px" aria-label="Country code">
-                                <input type="tel" class="form-control" name="mobile_no" id="mobile_no" value="{{ e($prospectLocalMobile) }}" placeholder="Enter mobile number" maxlength="15" inputmode="numeric">
+                                <input type="tel" class="form-control" name="mobile_no" id="mobile_no" value="{{ e($prospectLocalMobile) }}" placeholder="{{ $fieldLabel('mobile_no', 'Enter mobile number') }}" maxlength="15" inputmode="numeric" data-required="{{ $isRequired('mobile_no', true) ? '1' : '0' }}" {{ $isRequired('mobile_no', true) ? 'required' : '' }}>
                             </div>
                             <datalist id="prospectCountryCodes"><option value="+91"><option value="+1"><option value="+44"><option value="+61"><option value="+971"><option value="+966"><option value="+65"><option value="+60"><option value="+974"></datalist>
                         </div>
+                        @endif
 
+                        @if($isVisible('area', true))
                         <div class="col-md-6 col-12">
-                            <label class="form-label fw-semibold" for="area">Area <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold" for="area">{{ $fieldLabel('area', 'Area') }} @if($isRequired('area', false))<span class="text-danger">*</span>@endif</label>
                             <input type="text" class="form-control" name="area" id="area"
-                                value="{{ e($prospect->area) }}" placeholder="Enter area">
+                                value="{{ e($prospect->area) }}" placeholder="{{ $fieldLabel('area', 'Enter area') }}" data-required="{{ $isRequired('area', false) ? '1' : '0' }}" {{ $isRequired('area', false) ? 'required' : '' }}>
                         </div>
+                        @endif
 
+                        @if($isVisible('status', true))
                         <div class="col-md-6 col-12">
-                            <label class="form-label fw-semibold" for="status">Status</label>
-                            <select class="form-select" name="status" id="status">
+                            <label class="form-label fw-semibold" for="status">{{ $fieldLabel('status', 'Status') }} @if($isRequired('status', false))<span class="text-danger">*</span>@endif</label>
+                            <select class="form-select" name="status" id="status" {{ $isRequired('status', false) ? 'required' : '' }}>
                                 <option value="prospect" @selected($prospect->status === 'prospect')>Prospect</option>
                                 <option value="client" @selected($prospect->status === 'client')>Client</option>
                             </select>
                         </div>
+                        @endif
                     </div>
 
                     <div class="mt-4 pt-4 border-top d-flex flex-sm-row justify-content-end gap-2 form-actions">
@@ -87,22 +110,22 @@
                 $('.invalid-feedback').remove();
                 $('.is-invalid').removeClass('is-invalid');
 
-                let name = $('#name').val().trim();
-                let mobile_no = $('#mobile_no').val().trim();
-                let area = $('#area').val().trim();
+                let name = $('#name').val() ? $('#name').val().trim() : '';
+                let mobile_no = $('#mobile_no').val() ? $('#mobile_no').val().trim() : '';
+                let area = $('#area').val() ? $('#area').val().trim() : '';
 
-                if (name === '') {
+                if ($('#name').length && $('#name').data('required') == '1' && name === '') {
                     $('#name').addClass('is-invalid').after('<div class="invalid-feedback">Please enter a name.</div>');
                     hasError = true;
                 }
 
-                if (mobile_no === '') {
+                if ($('#mobile_no').length && $('#mobile_no').data('required') == '1' && mobile_no === '') {
                     $('#mobile_no').addClass('is-invalid').after(
                         '<div class="invalid-feedback">Please enter a mobile number.</div>');
                     hasError = true;
                 }
 
-                if (area === '') {
+                if ($('#area').length && $('#area').data('required') == '1' && area === '') {
                     $('#area').addClass('is-invalid').after('<div class="invalid-feedback">Please enter an area.</div>');
                     hasError = true;
                 }

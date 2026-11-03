@@ -20,6 +20,21 @@
             </div>
 
             <div class="card-body p-3 p-md-4">
+                @php
+                    if (!function_exists('field_label') && file_exists(app_path('Helpers/FieldCustomizationHelper.php'))) {
+                        require_once app_path('Helpers/FieldCustomizationHelper.php');
+                    }
+                    $customService = app(\App\Services\FieldCustomizationService::class);
+                    $fieldLabel = function(string $field, string $default) use ($customService) {
+                        return $customService->getFieldLabel('followups', $field, $default);
+                    };
+                    $isRequired = function(string $field, bool $default = false) use ($customService) {
+                        return $customService->isFieldRequired('followups', $field);
+                    };
+                    $isVisible = function(string $field, bool $default = true) use ($customService) {
+                        return $customService->isFieldVisible('followups', $field);
+                    };
+                @endphp
                 <form method="POST" action="/api/follow-ups"
                     class="needs-validation ajax-followup-form followup-create-form" novalidate>
                     @csrf
@@ -27,11 +42,12 @@
                     <div class="row g-3 g-md-4">
 
                         <!-- Lead Name -->
+                        @if($isVisible('lead_id', true))
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-medium">Lead Name <span class="text-danger">*</span></label>
+                            <label class="form-label fw-medium">{{ $fieldLabel('lead_id', 'Lead Name') }} @if($isRequired('lead_id', false))<span class="text-danger">*</span>@endif</label>
                             <div class="d-flex gap-2">
                                 <div class="flex-grow-1">
-                                    <select name="lead_id" id="lead_id" class="form-select select2" required>
+                                    <select name="lead_id" id="lead_id" class="form-select select2" {{ $isRequired('lead_id', false) ? 'required' : '' }}>
                                         <option value="">Select Lead</option>
                                         @foreach ($leads as $lead)
                                             <option value="{{ $lead->id }}" @selected(old('lead_id') == $lead->id)>
@@ -46,44 +62,59 @@
                                 </div>
                             </div>
                         </div>
+                        @endif
 
                         <!-- Assigned To -->
+                        @if($isVisible('assigned_user_id', true))
                         <div class="col-12 col-md-6">
-                            @include('crm.partials.assigned-user-field', ['users' => $users, 'selected' => auth()->id(), 'searchPlaceholder' => 'Select Staff'])
+                            @include('crm.partials.assigned-user-field', [
+                                'users' => $users, 
+                                'selected' => auth()->id(), 
+                                'label' => $fieldLabel('assigned_user_id', 'Assigned Staff / Agent'),
+                                'required' => $isRequired('assigned_user_id', false),
+                                'searchPlaceholder' => 'Select Staff'
+                            ])
                         </div>
+                        @endif
 
                         <!-- Purpose -->
+                        @if($isVisible('purpose', true))
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-medium">Purpose <span class="text-danger">*</span></label>
+                            <label class="form-label fw-medium">{{ $fieldLabel('purpose', 'Purpose') }} @if($isRequired('purpose', false))<span class="text-danger">*</span>@endif</label>
                             <input name="purpose" id="purpose" value="{{ old('purpose') }}" class="form-control"
-                                placeholder="Enter purpose of follow up" required>
+                                placeholder="{{ $fieldLabel('purpose', 'Enter purpose of follow up') }}" {{ $isRequired('purpose', false) ? 'required' : '' }}>
                             <div class="invalid-feedback d-block" id="purpose-error"></div>
                         </div>
+                        @endif
 
                         <!-- Follow Up Date -->
+                        @if($isVisible('follow_up_at', true))
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-medium">Follow Up Date & Time <span
-                                    class="text-danger">*</span></label>
+                            <label class="form-label fw-medium">{{ $fieldLabel('follow_up_at', 'Follow Up Date & Time') }} @if($isRequired('follow_up_at', true))<span class="text-danger">*</span>@endif</label>
                             <input type="datetime-local" name="follow_up_at" id="follow_up_at"
-                                value="{{ old('follow_up_at') }}" class="form-control" required>
+                                value="{{ old('follow_up_at') }}" class="form-control" {{ $isRequired('follow_up_at', true) ? 'required' : '' }}>
                             <div class="invalid-feedback d-block" id="follow_up_at-error"></div>
                         </div>
+                        @endif
                         
                         <!-- Priority -->
+                        @if($isVisible('priority', true))
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-medium">Priority <span class="text-danger">*</span></label>
-                            <select name="priority" id="priority" class="form-select" required>
+                            <label class="form-label fw-medium">{{ $fieldLabel('priority', 'Priority') }} @if($isRequired('priority', true))<span class="text-danger">*</span>@endif</label>
+                            <select name="priority" id="priority" class="form-select" {{ $isRequired('priority', true) ? 'required' : '' }}>
                                 <option value="low" @selected(old('priority') == 'low')>Low</option>
                                 <option value="medium" @selected(old('priority', 'medium') == 'medium')>Medium</option>
                                 <option value="high" @selected(old('priority') == 'high')>High</option>
                             </select>
                             <div class="invalid-feedback d-block" id="priority-error"></div>
                         </div>
+                        @endif
 
                         <!-- Status -->
+                        @if($isVisible('status', true))
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-medium">Status <span class="text-danger">*</span></label>
-                            <select name="status" id="status" class="form-select" required>
+                            <label class="form-label fw-medium">{{ $fieldLabel('status', 'Status') }} @if($isRequired('status', true))<span class="text-danger">*</span>@endif</label>
+                            <select name="status" id="status" class="form-select" {{ $isRequired('status', true) ? 'required' : '' }}>
                                 <option value="pending" @selected(old('status', 'pending') == 'pending')>Pending</option>
                                 <option value="resheduled" @selected(old('status') == 'resheduled')>Rescheduled</option>
                                 <option value="completed" @selected(old('status') == 'completed')>Completed</option>
@@ -91,12 +122,15 @@
                             </select>
                             <div class="invalid-feedback d-block" id="status-error"></div>
                         </div>
+                        @endif
 
                         <!-- Comment -->
+                        @if($isVisible('comment', true))
                         <div class="col-12">
-                            <label class="form-label fw-medium">Comment</label>
-                            <textarea name="comment" id="comment" rows="3" class="form-control" placeholder="Add any additional notes...">{{ old('comment') }}</textarea>
+                            <label class="form-label fw-medium">{{ $fieldLabel('comment', 'Comment') }} @if($isRequired('comment', false))<span class="text-danger">*</span>@endif</label>
+                            <textarea name="comment" id="comment" rows="3" class="form-control" placeholder="{{ $fieldLabel('comment', 'Add any additional notes...') }}" {{ $isRequired('comment', false) ? 'required' : '' }}>{{ old('comment') }}</textarea>
                         </div>
+                        @endif
                     </div>
 
                     <!-- Action Buttons -->

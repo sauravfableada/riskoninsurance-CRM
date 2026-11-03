@@ -18,6 +18,20 @@
             }
         }
     }
+
+    if (!function_exists('field_label') && file_exists(app_path('Helpers/FieldCustomizationHelper.php'))) {
+        require_once app_path('Helpers/FieldCustomizationHelper.php');
+    }
+    $customService = app(\App\Services\FieldCustomizationService::class);
+    $fieldLabel = function(string $field, string $default) use ($customService) {
+        return $customService->getFieldLabel('investments', $field, $default);
+    };
+    $isRequired = function(string $field, bool $default = false) use ($customService) {
+        return $customService->isFieldRequired('investments', $field);
+    };
+    $isVisible = function(string $field, bool $default = true) use ($customService) {
+        return $customService->isFieldVisible('investments', $field);
+    };
 @endphp
 
 @push('styles')
@@ -290,20 +304,27 @@
                     </div>
 
                     <div class="row g-3">
+                        @if($isVisible('transaction_date', true))
                         <div class="col-md-6 col-lg-3">
-                            <label class="form-label">Transaction Date <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" name="transaction_date" value="{{ old('transaction_date', $formattedDates['transaction_date'] ?? date('Y-m-d')) }}" required>
+                            <label class="form-label">{{ $fieldLabel('transaction_date', 'Transaction Date') }} @if($isRequired('transaction_date', true))<span class="text-danger">*</span>@endif</label>
+                            <input type="date" class="form-control" name="transaction_date" value="{{ old('transaction_date', $formattedDates['transaction_date'] ?? date('Y-m-d')) }}" {{ $isRequired('transaction_date', true) ? 'required' : '' }}>
                         </div>
+                        @endif
+
+                        @if($isVisible('document_number', true))
                         <div class="col-md-6 col-lg-3">
-                            <label class="form-label">Document Number</label>
-                            <input type="text" class="form-control" name="document_number" placeholder="Enter document number" value="{{ old('document_number', $inv['document_number'] ?? '') }}">
+                            <label class="form-label">{{ $fieldLabel('document_number', 'Document Number') }} @if($isRequired('document_number', false))<span class="text-danger">*</span>@endif</label>
+                            <input type="text" class="form-control" name="document_number" placeholder="{{ $fieldLabel('document_number', 'Enter document number') }}" value="{{ old('document_number', $inv['document_number'] ?? '') }}" {{ $isRequired('document_number', false) ? 'required' : '' }}>
                         </div>
+                        @endif
+
+                        @if($isVisible('family_group_id', true))
                         <div class="col-md-6 col-lg-3">
-                            <label class="form-label">Select Family Group <span class="text-danger">*</span></label>
+                            <label class="form-label">{{ $fieldLabel('family_group_id', 'Select Family Group') }} @if($isRequired('family_group_id', true))<span class="text-danger">*</span>@endif</label>
                             <div class="d-flex gap-2 align-items-start">
                                 <div class="flex-grow-1" style="min-width: 0;">
-                                    <select class="form-select select2" name="family_group_id" data-placeholder="Search for family group" required>
-                                    <option value="">Search for family group</option>
+                                    <select class="form-select select2" name="family_group_id" data-placeholder="{{ $fieldLabel('family_group_id', 'Search for family group') }}" {{ $isRequired('family_group_id', true) ? 'required' : '' }}>
+                                    <option value="">{{ $fieldLabel('family_group_id', 'Search for family group') }}</option>
                                     @foreach($familyGroups ?? [] as $group)
                                         <option value="{{ $group['id'] }}" {{ (old('family_group_id', $inv['family_group_id'] ?? '') == $group['id']) ? 'selected' : '' }}>{{ $group['group_name'] }}</option>
                                     @endforeach
@@ -312,18 +333,22 @@
                                 <button class="btn btn-dark-blue" type="button" onclick="showModal('familyGroupModal')" ><i class="fa-solid fa-plus"></i></button>
                             </div>
                         </div>
+                        @endif
+
+                        @if($isVisible('investment_holder_id', true))
                         <div class="col-md-6 col-lg-3">
-                            <label class="form-label">Select Policy Holder Name <span class="text-danger">*</span></label>
+                            <label class="form-label">{{ $fieldLabel('investment_holder_id', 'Select Policy Holder Name') }} @if($isRequired('investment_holder_id', true))<span class="text-danger">*</span>@endif</label>
                             <div class="d-flex gap-2 align-items-start">
                                 <div class="flex-grow-1" style="min-width: 0;">
-                                    <select class="form-select select2" name="investment_holder_id" data-placeholder="Search for policy holder name" data-selected-holder="{{ $inv['investment_holder_id'] ?? '' }}" required>
-                                    <option value="">Search for policy holder name</option>
+                                    <select class="form-select select2" name="investment_holder_id" data-placeholder="{{ $fieldLabel('investment_holder_id', 'Search for policy holder name') }}" data-selected-holder="{{ $inv['investment_holder_id'] ?? '' }}" {{ $isRequired('investment_holder_id', true) ? 'required' : '' }}>
+                                    <option value="">{{ $fieldLabel('investment_holder_id', 'Search for policy holder name') }}</option>
                                     {{-- Holders will be loaded via AJAX --}}
                                 </select>
                                 </div>
                                 <button class="btn btn-dark-blue" type="button" onclick="showModal('holderModal')" ><i class="fa-solid fa-plus"></i></button>
                             </div>
                         </div>
+                        @endif
                     </div>
 
                     <div class="form-section-title mt-4">
@@ -336,63 +361,99 @@
                     </div>
 
                     <div class="row g-3">
+                        @if($isVisible('first_name', true))
                         <div class="col-md-4">
-                            <label class="form-label">First Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="first_name" placeholder="Enter first name" value="{{ old('first_name', $inv['first_name'] ?? '') }}" required>
+                            <label class="form-label">{{ $fieldLabel('first_name', 'First Name') }} @if($isRequired('first_name', true))<span class="text-danger">*</span>@endif</label>
+                            <input type="text" class="form-control" name="first_name" placeholder="{{ $fieldLabel('first_name', 'Enter first name') }}" value="{{ old('first_name', $inv['first_name'] ?? '') }}" {{ $isRequired('first_name', true) ? 'required' : '' }}>
                         </div>
+                        @endif
+
+                        @if($isVisible('middle_name', true))
                         <div class="col-md-4">
-                            <label class="form-label">Middle Name</label>
-                            <input type="text" class="form-control" name="middle_name" placeholder="Enter middle name" value="{{ old('middle_name', $inv['middle_name'] ?? '') }}">
+                            <label class="form-label">{{ $fieldLabel('middle_name', 'Middle Name') }} @if($isRequired('middle_name', false))<span class="text-danger">*</span>@endif</label>
+                            <input type="text" class="form-control" name="middle_name" placeholder="{{ $fieldLabel('middle_name', 'Enter middle name') }}" value="{{ old('middle_name', $inv['middle_name'] ?? '') }}" {{ $isRequired('middle_name', false) ? 'required' : '' }}>
                         </div>
+                        @endif
+
+                        @if($isVisible('last_name', true))
                         <div class="col-md-4">
-                            <label class="form-label">Last Name <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="last_name" placeholder="Enter last name" value="{{ old('last_name', $inv['last_name'] ?? '') }}" required>
+                            <label class="form-label">{{ $fieldLabel('last_name', 'Last Name') }} @if($isRequired('last_name', true))<span class="text-danger">*</span>@endif</label>
+                            <input type="text" class="form-control" name="last_name" placeholder="{{ $fieldLabel('last_name', 'Enter last name') }}" value="{{ old('last_name', $inv['last_name'] ?? '') }}" {{ $isRequired('last_name', true) ? 'required' : '' }}>
                         </div>
+                        @endif
+
+                        @if($isVisible('address_line_1', true))
                         <div class="col-md-6">
-                            <label class="form-label">Address Line 1</label>
-                            <input type="text" class="form-control" name="address_line_1" placeholder="Enter address line 1" value="{{ old('address_line_1', $inv['address_line_1'] ?? '') }}">
+                            <label class="form-label">{{ $fieldLabel('address_line_1', 'Address Line 1') }} @if($isRequired('address_line_1', false))<span class="text-danger">*</span>@endif</label>
+                            <input type="text" class="form-control" name="address_line_1" placeholder="{{ $fieldLabel('address_line_1', 'Enter address line 1') }}" value="{{ old('address_line_1', $inv['address_line_1'] ?? '') }}" {{ $isRequired('address_line_1', false) ? 'required' : '' }}>
                         </div>
+                        @endif
+
                         <div class="col-md-6">
                             <label class="form-label">Address Line 2</label>
                             <input type="text" class="form-control" name="address_line_2" placeholder="Enter address line 2" value="{{ old('address_line_2', $inv['address_line_2'] ?? '') }}">
                         </div>
+
+                        @if($isVisible('city', true))
                         <div class="col-md-4">
-                            <label class="form-label">City</label>
-                            <input type="text" class="form-control" name="city" placeholder="Enter city" value="{{ old('city', $inv['city'] ?? '') }}">
+                            <label class="form-label">{{ $fieldLabel('city', 'City') }} @if($isRequired('city', false))<span class="text-danger">*</span>@endif</label>
+                            <input type="text" class="form-control" name="city" placeholder="{{ $fieldLabel('city', 'Enter city') }}" value="{{ old('city', $inv['city'] ?? '') }}" {{ $isRequired('city', false) ? 'required' : '' }}>
                         </div>
+                        @endif
+
+                        @if($isVisible('area', true))
                         <div class="col-md-4">
-                            <label class="form-label">Area</label>
-                            <input type="text" class="form-control" name="area" placeholder="Enter area" value="{{ old('area', $inv['area'] ?? '') }}">
+                            <label class="form-label">{{ $fieldLabel('area', 'Area') }} @if($isRequired('area', false))<span class="text-danger">*</span>@endif</label>
+                            <input type="text" class="form-control" name="area" placeholder="{{ $fieldLabel('area', 'Enter area') }}" value="{{ old('area', $inv['area'] ?? '') }}" {{ $isRequired('area', false) ? 'required' : '' }}>
                         </div>
+                        @endif
+
+                        @if($isVisible('mobile_number', true))
                         <div class="col-md-4">
-                            <label class="form-label">Mobile Number <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="mobile_number" placeholder="Enter mobile number" value="{{ old('mobile_number', $inv['mobile_number'] ?? '') }}" required>
+                            <label class="form-label">{{ $fieldLabel('mobile_number', 'Mobile Number') }} @if($isRequired('mobile_number', true))<span class="text-danger">*</span>@endif</label>
+                            <input type="text" class="form-control" name="mobile_number" placeholder="{{ $fieldLabel('mobile_number', 'Enter mobile number') }}" value="{{ old('mobile_number', $inv['mobile_number'] ?? '') }}" {{ $isRequired('mobile_number', true) ? 'required' : '' }}>
                         </div>
+                        @endif
+
+                        @if($isVisible('email_address', true))
                         <div class="col-md-6">
-                            <label class="form-label">Email Address</label>
-                            <input type="email" class="form-control" name="email_address" placeholder="Enter email address" value="{{ old('email_address', $inv['email_address'] ?? '') }}">
+                            <label class="form-label">{{ $fieldLabel('email_address', 'Email Address') }} @if($isRequired('email_address', false))<span class="text-danger">*</span>@endif</label>
+                            <input type="email" class="form-control" name="email_address" placeholder="{{ $fieldLabel('email_address', 'Enter email address') }}" value="{{ old('email_address', $inv['email_address'] ?? '') }}" {{ $isRequired('email_address', false) ? 'required' : '' }}>
                         </div>
+                        @endif
+
+                        @if($isVisible('gender', true))
                         <div class="col-md-3">
-                            <label class="form-label">Gender</label>
-                            <select class="form-select" name="gender">
+                            <label class="form-label">{{ $fieldLabel('gender', 'Gender') }} @if($isRequired('gender', false))<span class="text-danger">*</span>@endif</label>
+                            <select class="form-select" name="gender" {{ $isRequired('gender', false) ? 'required' : '' }}>
                                 <option value="">Select gender</option>
                                 <option value="Male" {{ (strtolower(old('gender', $inv['gender'] ?? '')) == 'male') ? 'selected' : '' }}>Male</option>
                                 <option value="Female" {{ (strtolower(old('gender', $inv['gender'] ?? '')) == 'female') ? 'selected' : '' }}>Female</option>
                                 <option value="Other" {{ (strtolower(old('gender', $inv['gender'] ?? '')) == 'other') ? 'selected' : '' }}>Other</option>
                             </select>
                         </div>
+                        @endif
+
+                        @if($isVisible('date_of_birth', true))
                         <div class="col-md-3">
-                            <label class="form-label">Date of Birth</label>
-                            <input type="date" class="form-control" name="date_of_birth" value="{{ old('date_of_birth', $formattedDates['date_of_birth'] ?? '') }}" max="{{ \Carbon\Carbon::yesterday()->format('Y-m-d') }}">
+                            <label class="form-label">{{ $fieldLabel('date_of_birth', 'Date of Birth') }} @if($isRequired('date_of_birth', false))<span class="text-danger">*</span>@endif</label>
+                            <input type="date" class="form-control" name="date_of_birth" value="{{ old('date_of_birth', $formattedDates['date_of_birth'] ?? '') }}" max="{{ \Carbon\Carbon::yesterday()->format('Y-m-d') }}" {{ $isRequired('date_of_birth', false) ? 'required' : '' }}>
                         </div>
+                        @endif
+
+                        @if($isVisible('family_head_name', true))
                         <div class="col-md-6">
-                            <label class="form-label">Family Head Name</label>
-                            <input type="text" class="form-control" name="family_head_name" placeholder="Enter family head name" value="{{ old('family_head_name', $inv['family_head_name'] ?? '') }}">
+                            <label class="form-label">{{ $fieldLabel('family_head_name', 'Family Head Name') }} @if($isRequired('family_head_name', false))<span class="text-danger">*</span>@endif</label>
+                            <input type="text" class="form-control" name="family_head_name" placeholder="{{ $fieldLabel('family_head_name', 'Enter family head name') }}" value="{{ old('family_head_name', $inv['family_head_name'] ?? '') }}" {{ $isRequired('family_head_name', false) ? 'required' : '' }}>
                         </div>
+                        @endif
+
+                        @if($isVisible('relation_with_head', true))
                         <div class="col-md-6">
-                            <label class="form-label">Relation with Head</label>
-                            <input type="text" class="form-control" name="relation_with_head" placeholder="Enter relation" value="{{ old('relation_with_head', $inv['relation_with_head'] ?? '') }}">
+                            <label class="form-label">{{ $fieldLabel('relation_with_head', 'Relation with Head') }} @if($isRequired('relation_with_head', false))<span class="text-danger">*</span>@endif</label>
+                            <input type="text" class="form-control" name="relation_with_head" placeholder="{{ $fieldLabel('relation_with_head', 'Enter relation') }}" value="{{ old('relation_with_head', $inv['relation_with_head'] ?? '') }}" {{ $isRequired('relation_with_head', false) ? 'required' : '' }}>
                         </div>
+                        @endif
                     </div>
                 </div>
 
