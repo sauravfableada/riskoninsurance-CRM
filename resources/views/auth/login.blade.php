@@ -170,9 +170,25 @@
             }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script
         src="{{ (env('PUBLIC_PATH') ? '/' . trim(env('PUBLIC_PATH'), '/') . '/assets/js/login.js' : '/assets/js/login.js') }}?v={{ filemtime(public_path('assets/js/login.js')) }}">
     </script>
+    @if(session('subscription_expired_msg'))
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Plan Expired!',
+                    text: @json(session('subscription_expired_msg')),
+                    confirmButtonText: 'Contact Administrator',
+                    confirmButtonColor: '#17234a'
+                });
+            }
+        });
+    </script>
+    @endif
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const togglePassword = document.getElementById('togglePassword');

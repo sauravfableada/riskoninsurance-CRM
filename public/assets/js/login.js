@@ -87,6 +87,23 @@
                         btn.disabled = false;
                         btn.textContent = 'Sign In';
                     }
+
+                    if (res.code === 'subscription_expired') {
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Plan Expired!',
+                                text: res.message || 'Your subscription plan has expired. Please contact administrator.',
+                                confirmButtonText: 'Contact Administrator',
+                                confirmButtonColor: '#17234a'
+                            });
+                        } else {
+                            alertBox.classList.remove('d-none');
+                            alertBox.textContent = res.message || 'Your subscription plan has expired. Please contact administrator.';
+                        }
+                        return;
+                    }
+
                     alertBox.classList.remove('d-none');
                     alertBox.textContent = res.message || 'Login failed. Please check your credentials.';
                 }

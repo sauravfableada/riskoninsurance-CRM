@@ -8,14 +8,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('subscription_user_plan', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('subscription_id')->constrained('subscription_plan')->cascadeOnDelete();
-            $table->timestamps();
+        if (!Schema::hasTable('subscription_user_plan')) {
+            Schema::create('subscription_user_plan', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+                $table->foreignId('subscription_id')->constrained('subscription_plan')->cascadeOnDelete();
+                $table->timestamps();
 
-            $table->index(['user_id', 'subscription_id']);
-        });
+                $table->index(['user_id', 'subscription_id']);
+            });
+        }
     }
 
     public function down(): void

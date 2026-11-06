@@ -88,5 +88,53 @@ class SubscriptionStaffLimitService
             'message' => 'Sub Agent limit reached for ' . $displayPlanName,
         ];
     }
+
+    /**
+     * Check if the subscription is expired for a given user.
+     * If user is staff/sub_agent, resolves to the admin user.
+     * Returns array with details if expired, null if active.
+     */
+    public function isSubscriptionExpired(?\App\Models\User $user): ?array
+    {
+        if (!$user) {
+            return null;
+        }
+
+        $planUserId = $user->id;
+
+        // If user is not admin, resolve to the primary admin
+        if (!$user->isAdmin()) {
+            $adminUser = \App\Models\User::whereHas('roles', function ($q) {
+                $q->whereIn('name', ['admin', 'super-admin']);
+            })->first();
+            if ($adminUser) {
+                $planUserId = $adminUser->id;
+            }
+        }
+
+        $userPlan = SubscriptionUserPlan::with('plan')
+            ->where('user_id', $planUserId)
+            ->latest('id')
+            ->first();
+
+        // If no user plan found, use fallback end date
+        if (!$userPlan) {
+            $expiresAt = \Illuminate\Support\Carbon::create(2026, 12, 31)->endOfDay();
+        } elseif ($userPlan->end_date) {
+            $expiresAt = \Illuminate\Support\Carbon::parse($userPlan->end_date)->endOfDay();
+        } else {
+            $expiresAt = \Illuminate\Support\Carbon::create(2026, 12, 31)->endOfDay();
+        }
+
+        if (now()->gt($expiresAt)) {
+            $planName = $userPlan?->plan?->name ?? 'Subscription';
+            return [
+                'plan_name' => $planName,
+                'end_date' => $expiresAt->format('d M Y'),
+                'message' => 'Your subscription plan has expired. Please contact administrator.',
+            ];
+        }
+
+        return null;
     }
 }

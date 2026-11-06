@@ -61,6 +61,7 @@ class Kernel extends HttpKernel
         'cache.headers' => \Illuminate\Http\Middleware\SetCacheHeaders::class,
         'can' => \Illuminate\Auth\Middleware\Authorize::class,
         'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
+        'subscription.not_expired' => \App\Http\Middleware\CheckSubscriptionNotExpired::class,
         'main_admin' => \App\Http\Middleware\EnsureMainAdmin::class,
         'matrix_permission' => \App\Http\Middleware\CheckMatrixPermission::class,
         'password.confirm' => \Illuminate\Auth\Middleware\RequirePassword::class,

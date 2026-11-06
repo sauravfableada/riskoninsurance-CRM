@@ -12,14 +12,24 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('subscription_plan', function (Blueprint $table) {
-            $table->decimal('price', 10, 2)->nullable();
-            $table->string('billing_cycle')->nullable(); // e.g., 'month', 'year'
+            if (!Schema::hasColumn('subscription_plan', 'price')) {
+                $table->decimal('price', 10, 2)->nullable();
+            }
+            if (!Schema::hasColumn('subscription_plan', 'billing_cycle')) {
+                $table->string('billing_cycle')->nullable(); // e.g., 'month', 'year'
+            }
         });
 
         Schema::table('subscription_user_plan', function (Blueprint $table) {
-            $table->date('start_date')->nullable();
-            $table->date('end_date')->nullable();
-            $table->boolean('auto_renew')->default(false);
+            if (!Schema::hasColumn('subscription_user_plan', 'start_date')) {
+                $table->date('start_date')->nullable();
+            }
+            if (!Schema::hasColumn('subscription_user_plan', 'end_date')) {
+                $table->date('end_date')->nullable();
+            }
+            if (!Schema::hasColumn('subscription_user_plan', 'auto_renew')) {
+                $table->boolean('auto_renew')->default(false);
+            }
         });
     }
 
@@ -29,11 +39,22 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('subscription_plan', function (Blueprint $table) {
-            $table->dropColumn(['price', 'billing_cycle']);
+            if (Schema::hasColumn('subscription_plan', 'price')) {
+                $table->dropColumn('price');
+            }
+            if (Schema::hasColumn('subscription_plan', 'billing_cycle')) {
+                $table->dropColumn('billing_cycle');
+            }
         });
 
         Schema::table('subscription_user_plan', function (Blueprint $table) {
-            $table->dropColumn(['start_date', 'end_date', 'auto_renew']);
+            $dropCols = [];
+            if (Schema::hasColumn('subscription_user_plan', 'start_date')) $dropCols[] = 'start_date';
+            if (Schema::hasColumn('subscription_user_plan', 'end_date')) $dropCols[] = 'end_date';
+            if (Schema::hasColumn('subscription_user_plan', 'auto_renew')) $dropCols[] = 'auto_renew';
+            if (!empty($dropCols)) {
+                $table->dropColumn($dropCols);
+            }
         });
     }
 };

@@ -98,6 +98,21 @@ class AuthController extends Controller
             return back()->withErrors(['email' => 'Invalid credentials']);
         }
 
+        // Check if subscription has expired
+        $expired = app(\App\Services\SubscriptionStaffLimitService::class)->isSubscriptionExpired($user);
+        if ($expired) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'subscription_expired',
+                    'message' => $expired['message'],
+                    'plan_name' => $expired['plan_name'],
+                    'end_date' => $expired['end_date'],
+                ], 403);
+            }
+            return back()->with('subscription_expired_msg', $expired['message']);
+        }
+
         // Authenticate user (session-based)
         Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();

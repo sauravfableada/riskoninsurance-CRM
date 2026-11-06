@@ -41,6 +41,18 @@ class AuthController extends ApiBaseController
                 return $this->error('Incorrect password', 401);
             }
 
+            // Check if subscription has expired
+            $expired = app(\App\Services\SubscriptionStaffLimitService::class)->isSubscriptionExpired($user);
+            if ($expired) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'subscription_expired',
+                    'message' => $expired['message'],
+                    'plan_name' => $expired['plan_name'],
+                    'end_date' => $expired['end_date'],
+                ], 403);
+            }
+
             // Generate token with device name
             $deviceName = $request->string('device_name')->toString() 
                 ?: SanctumLogin::defaultDeviceName($request, 'web-app');

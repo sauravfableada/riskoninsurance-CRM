@@ -152,7 +152,7 @@ Route::middleware('auth')->group(function () {
 });
 
 // Dashboard and routes that support token-based auth
-Route::middleware('auth.api')->group(function () {
+Route::middleware(['auth.api', 'subscription.not_expired'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/user-logs', [UserLogController::class, 'index'])->middleware('main_admin')->name('user-logs.index');
     Route::delete('/user-logs/{notification}', [UserLogController::class, 'destroy'])->middleware('main_admin')->name('user-logs.destroy');
