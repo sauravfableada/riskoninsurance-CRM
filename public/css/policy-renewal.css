@@ -1,0 +1,46 @@
+.policy-renewal-page .renewal-card { border: 1px solid #dce5ef; border-radius: 19px; overflow: hidden; box-shadow: 0 5px 20px #18345108; }
+.policy-renewal-page .renewal-header { background: linear-gradient(110deg,#122d49,#22496e); color: #fff; border: 0; padding: 23px 26px; }
+.policy-renewal-page .renewal-header .row { align-items: center; row-gap: 14px; }
+.policy-renewal-page .renewal-header h1 { color: #fff !important; font-size: 1.16rem; }
+.policy-renewal-page .renewal-header p { color: #c1d0e1; font-size: .78rem; }
+.renewal-header-icon { display: inline-flex; align-items: center; justify-content: center; width: 43px; height: 43px; border-radius: 13px; background: #ffffff15; font-size: 1.45rem; flex-shrink: 0; }
+.policy-renewal-page .renewal-back { background: #ffffff12; color: #fff; border: 1px solid #ffffff35; font-size: .78rem; border-radius: 9px; padding: 9px 13px; }
+.policy-renewal-page .renewal-back:hover { background: #ffffff25; }
+.renewal-summary { display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 16px; margin: 20px 26px 0; padding: 16px 18px; border: 1px solid #e1e8f2; border-radius: 12px; background: linear-gradient(110deg,#f2f6fb,#fbfcfe); }
+.renewal-summary span { display: block; color: #8392a7; font-size: .68rem; margin-bottom: 6px; }
+.renewal-summary strong { display: block; color: #395773; font-size: .78rem; font-weight: 600; }
+.renewal-progress { display: flex; list-style: none; padding: 20px 26px; margin: 0; gap: 12px; }
+.renewal-progress-step { flex: 1; display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #e5eaf2; border-radius: 11px; color: #8190a2; }
+.renewal-progress-step > span { width: 31px; height: 31px; border-radius: 50%; background: #eef1f5; display: inline-flex; justify-content: center; align-items: center; font-size: .78rem; font-weight: 700; flex-shrink: 0; }
+.renewal-progress-step small { display: block; font-size: .62rem; margin-bottom: 2px; }
+.renewal-progress-step strong { font-size: .77rem; font-weight: 600; }
+.renewal-progress-step.is-active { border-color: #bdd2ea; background: #edf4fc; color: #2b5685; }
+.renewal-progress-step.is-active > span { background: #264e7a; color: #fff; }
+.renewal-progress-step.is-complete { background: #f0f7f3; color: #48816b; border-color: #d9e9df; }
+.renewal-form-wrap { padding: 0 26px 24px; }
+.renewal-section-heading { display: flex; align-items: center; gap: 11px; border-top: 1px solid #e7edf5; padding: 18px 0; }
+.renewal-section-heading > i { display: inline-flex; align-items: center; justify-content: center; height: 35px; width: 35px; border-radius: 10px; background: #eef3fa; color: #5b7da3; flex-shrink: 0; }
+.renewal-section-heading h2 { font-size: .94rem; font-weight: 700; color: #304e6b; margin: 0 0 4px; }
+.renewal-section-heading p { font-size: .73rem; color: #8492a5; margin: 0; }
+.policy-renewal-page .form-label { font-size: .78rem; font-weight: 600; color: #526a85; margin-bottom: 7px; }
+.policy-renewal-page .form-control { border: 1px solid #dce4ef; border-radius: 9px; font-size: .85rem; min-height: 41px; padding: 9px 12px; color: #304b67; }
+.policy-renewal-page .form-control:disabled { background: #f3f6fa; border-color: #e3e9f1; color: #647b92; opacity: 1; }
+.policy-renewal-page .form-control:focus { border-color: #a6c2e3; box-shadow: 0 0 0 3px #467caf12; }
+.policy-renewal-page .form-text { color: #8897a9; font-size: .7rem; }
+.policy-renewal-page #prevBtn,.policy-renewal-page #nextBtn { font-size: .82rem; padding: 10px 19px; border-radius: 9px; min-width: 100px; }
+.policy-renewal-page #prevBtn { color: #61758e; background: #f4f7fa; border: 1px solid #dde5ef; }
+.policy-renewal-page #nextBtn { background: #153858; border: 1px solid #153858; }
+.policy-renewal-page input[type=file] { background: #f4f8fd; border-style: dashed; padding: 12px; }
+.policy-renewal-page .select2-container .select2-selection--single { min-height: 41px; height: auto; border: 1px solid #dce4ef; border-radius: 9px; padding: 6px 30px 6px 12px; background: #fff; }
+.policy-renewal-page .select2-container--default .select2-selection--single .select2-selection__rendered { color: #304b67; font-size: .85rem; padding: 0; line-height: 27px; }
+.policy-renewal-page .select2-container--default .select2-selection--single .select2-selection__arrow { height: 39px; right: 8px; }
+.renewal-company-dropdown { border-color: #c4d6eb; border-radius: 9px; overflow: hidden; box-shadow: 0 8px 24px #16385b15; }
+.renewal-company-dropdown .select2-search__field { border: 1px solid #dce4ef !important; border-radius: 6px; padding: 8px; font-size: .82rem; }
+.renewal-company-dropdown .select2-results__option { padding: 9px 12px; font-size: .82rem; }
+.select2-container--default .renewal-company-dropdown .select2-results__option--highlighted[aria-selected] { background: #1c4269; }
+[data-theme="dark"] .policy-renewal-page .select2-container .select2-selection--single { background: #26364b; border-color: #3b4d64; }
+[data-theme="dark"] .policy-renewal-page .select2-container--default .select2-selection--single .select2-selection__rendered { color: #d4e2f3; }
+[data-theme="dark"] .renewal-summary,[data-theme="dark"] .renewal-progress-step,[data-theme="dark"] .policy-renewal-page .form-control:disabled { background: #26364b; border-color: #3b4d64; color: #bfcede; }
+[data-theme="dark"] .renewal-summary strong,[data-theme="dark"] .renewal-section-heading h2,[data-theme="dark"] .policy-renewal-page .form-label { color: #cbd9eb; }
+[data-theme="dark"] .renewal-progress-step.is-active { background: #2e4765; color: #dfebf9; }
+@media(max-width:767.98px) { .renewal-summary { grid-template-columns: 1fr; gap: 12px; margin: 16px 16px 0; } .renewal-progress { padding: 16px; gap: 6px; } .renewal-progress-step { flex-direction: column; text-align: center; padding: 10px 5px; gap: 6px; } .renewal-progress-step strong { font-size: .67rem; } .renewal-progress-step small { display: none; } .renewal-form-wrap { padding: 0 16px 18px; } .policy-renewal-page .renewal-header { padding: 20px 16px; } }

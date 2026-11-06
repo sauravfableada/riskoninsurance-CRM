@@ -509,10 +509,16 @@ Route::middleware(['auth.api', 'subscription.not_expired'])->group(function () {
 
     // ===== FABLEAD AI POLICY UPLOAD: =====
     Route::get('/upload-policy-ai', [\App\Http\Controllers\FableadAiController::class, 'index'])->name('fablead.ai.index');
+    Route::get('/ai-policy-renewal', [\App\Http\Controllers\FableadAiController::class, 'chooseRenewal'])->name('fablead.ai.renewal.choose');
+    Route::get('/renew-policy-ai/{policy}', [\App\Http\Controllers\FableadAiController::class, 'renewal'])->name('fablead.ai.renewal');
+    Route::post('/fablead-ai/renewal-review/{policy}', [\App\Http\Controllers\FableadAiController::class, 'reviewRenewal'])->name('fablead.ai.renewal.review');
+    Route::post('/fablead-ai/renewal-save/{policy}', [\App\Http\Controllers\FableadAiController::class, 'saveRenewal'])->name('fablead.ai.renewal.save');
     Route::post('/fablead-ai/upload',  [\App\Http\Controllers\FableadAiController::class, 'upload'])->name('fablead.ai.upload');
     Route::post('/fablead-ai/extract', [\App\Http\Controllers\FableadAiController::class, 'extract'])->name('fablead.ai.extract');
     Route::post('/fablead-ai/save',    [\App\Http\Controllers\FableadAiController::class, 'save'])->name('fablead.ai.save');
     Route::get('/fablead-ai/pdf',      [\App\Http\Controllers\FableadAiController::class, 'servePdf'])->name('fablead.ai.pdf');
+    Route::get('/fablead-ai/extraction/{uploadId}', [\App\Http\Controllers\FableadAiController::class, 'extractionJson'])->whereUuid('uploadId')->name('fablead.ai.json');
+    Route::post('/fablead-ai/quick-add/{kind}', [\App\Http\Controllers\FableadAiController::class, 'quickAdd'])->name('fablead.ai.quick-add');
     // ===== FABLEAD AI POLICY UPLOAD: END =====
 
     // Investment web routes

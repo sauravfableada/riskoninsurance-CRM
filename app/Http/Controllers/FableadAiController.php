@@ -31,8 +31,13 @@ class FableadAiController extends Controller
 {
     // ─── Page View ─────────────────────────────────────────────────────────────
 
-    public function index()
+    public function index(Request $request)
     {
+        $renewalPolicy = null;
+        if ($request->filled('renewal_policy_id')) {
+            $renewalPolicy = Policy::with(['holder','company','policyType'])->findOrFail($request->integer('renewal_policy_id'));
+            app(\App\Services\AiPolicyRenewal::class)->authorize($renewalPolicy,$request->user());
+        }
         $this->syncLegacySession();
         $currentUser  = Auth::user();
         $currentUserId = $currentUser->id;
@@ -57,12 +62,84 @@ class FableadAiController extends Controller
         $brokers     = \App\Models\Broker::select('id', 'broker_name')->get();
 
         return view('crm.policy.fablead_ai_upload', compact(
+            'renewalPolicy',
             'staffs', 'familyGroups', 'companies',
             'policyTypes', 'subTypes', 'segments', 'branches', 'customers', 'brokers'
         ));
     }
 
     // ─── Step 1 : Upload PDF ────────────────────────────────────────────────────
+
+    public function renewal(Request $request, Policy $policy)
+    {
+        app(\App\Services\AiPolicyRenewal::class)->authorize($policy,$request->user());
+        $request->merge(['renewal_policy_id'=>$policy->id]);
+        return $this->index($request);
+    }
+
+    public function chooseRenewal(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user->isAdmin() || $user->hasMatrixPermission('edit_policies'),403);
+        $policies = Policy::with(['holder','company','policyType'])->whereNull('deleted_at')
+            ->when(!$user->isAdmin() || $user->type === 'sub_agents',fn ($q) => $q->where(fn ($owned) => $owned->where('user_id',$user->id)->orWhere('created_by',$user->id)))
+            ->when(Schema::hasColumn('policies','renewal_of_policy_id'),fn ($q) => $q->whereDoesntHave('renewals', fn ($children) => $children->whereNull('deleted_at')))
+            ->when($request->filled('search'),fn ($q) => $q->where(fn ($term) => $term->where('policy_number_no','like','%'.$request->string('search').'%')
+                ->orWhereHas('holder',fn ($holder) => $holder->where('name','like','%'.$request->string('search').'%'))))
+            ->latest('id')->paginate(20)->withQueryString();
+        return view('crm.policy.ai-renewal-choose',compact('policies'));
+    }
+
+    private function renewalAudit(Request $request, Policy $policy): array
+    {
+        app(\App\Services\AiPolicyRenewal::class)->authorize($policy,$request->user());
+        $validated = $request->validate(['upload_id'=>['required','uuid']]);
+        $this->assertUploadOwner($validated['upload_id']);
+        $path = 'fablead_ai/extractions/'.$validated['upload_id'].'.json';
+        abort_unless(Storage::disk('local')->exists($path),422,'Extract the renewal PDF before continuing.');
+        $audit = json_decode(Storage::disk('local')->get($path),true,512,JSON_THROW_ON_ERROR);
+        abort_unless((int)($audit['renewal_source_id'] ?? 0) === (int)$policy->id,403);
+        return $audit;
+    }
+
+    public function reviewRenewal(Request $request, Policy $policy): JsonResponse
+    {
+        $audit = $this->renewalAudit($request,$policy);
+        $values = app(\App\Services\AiPolicyRenewal::class)->validate($request->input());
+        $policy->load(['holder','company']);
+        if (($audit['renewal_source_fingerprint'] ?? '') !== app(\App\Services\PolicyRenewalReview::class)->fingerprint($policy)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['renewal'=>'The source policy changed after extraction. Reload and review it again.']);
+        }
+        $review = app(\App\Services\PolicyRenewalReview::class)->compare($policy,$audit['data'],$values);
+        return response()->json(['status'=>true,'review'=>$review]);
+    }
+
+    public function saveRenewal(Request $request, Policy $policy): JsonResponse
+    {
+        $audit = $this->renewalAudit($request,$policy);
+        try {
+            $new = app(\App\Services\AiPolicyRenewal::class)->save($policy,$request->user(),$request->input(),$audit,
+                Storage::disk('local')->path('fablead_ai/pending/'.$audit['upload_id'].'/policy.pdf'));
+        } catch (\Illuminate\Validation\ValidationException $error) {
+            throw $error;
+        } catch (\Illuminate\Database\QueryException $error) {
+            if (in_array((string)$error->getCode(),['23000','23505'],true)) return response()->json(['status'=>false,'message'=>'This renewal may already exist. Check the latest policy before trying again.'],409);
+            report($error);
+            return response()->json(['status'=>false,'message'=>'The renewal could not be saved. No previous policy was changed.'],500);
+        } catch (\Throwable $error) {
+            report($error);
+            return response()->json(['status'=>false,'message'=>'The renewal could not be saved. No previous policy was changed.'],500);
+        }
+        try {
+            $audit['renewed_policy_id']=$new->id;
+            $audit['saved_at']=now()->toIso8601String();
+            $audit['reviewed_values']=\Illuminate\Support\Arr::except($request->input(),['_token','base_url']);
+            Storage::disk('local')->put('fablead_ai/extractions/'.$audit['upload_id'].'.json',json_encode($audit,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR));
+        } catch (\Throwable $error) { Log::warning('Could not append AI renewal audit file',['policy_id'=>$new->id]); }
+        return response()->json(['status'=>true,'policy_id'=>$new->id,'policy_number'=>$new->policy_number_no,
+            'message'=>'Renewal saved as a new linked term. Previous policy details and documents are preserved.',
+            'redirect_url'=>route('policies.legacy.view',$new->id)]);
+    }
 
     public function upload(Request $request): JsonResponse
     {
@@ -71,8 +148,16 @@ class FableadAiController extends Controller
         ]);
 
         $file = $request->file('pdf');
+        $renewalSource = null;
+        if ($request->filled('renewal_policy_id')) {
+            $renewalSource = Policy::findOrFail($request->integer('renewal_policy_id'));
+            app(\App\Services\AiPolicyRenewal::class)->authorize($renewalSource,$request->user());
+        }
         $uuid = (string) Str::uuid();
         $storedPath = $file->storeAs("fablead_ai/pending/{$uuid}", 'policy.pdf', 'local');
+        Storage::disk('local')->put("fablead_ai/pending/{$uuid}/metadata.json", json_encode([
+            'user_id' => auth()->id(), 'filename' => $file->getClientOriginalName(), 'renewal_source_id'=>$renewalSource?->id,
+        ], JSON_THROW_ON_ERROR));
 
         return response()->json([
             'status'    => true,
@@ -89,7 +174,11 @@ class FableadAiController extends Controller
         $request->validate(['upload_id' => ['required', 'string', 'max:64']]);
 
         $uploadId  = preg_replace('/[^a-z0-9\-]/i', '', $request->input('upload_id'));
-        $path      = storage_path("app/fablead_ai/pending/{$uploadId}/policy.pdf");
+        $this->assertUploadOwner($uploadId);
+        $uploadMetadata = json_decode(Storage::disk('local')->get("fablead_ai/pending/{$uploadId}/metadata.json"), true, 512, JSON_THROW_ON_ERROR);
+        $renewalSource = !empty($uploadMetadata['renewal_source_id']) ? Policy::with(['holder','company'])->findOrFail($uploadMetadata['renewal_source_id']) : null;
+        if ($renewalSource) app(\App\Services\AiPolicyRenewal::class)->authorize($renewalSource,$request->user());
+        $path      = Storage::disk('local')->path("fablead_ai/pending/{$uploadId}/policy.pdf");
 
         if (!file_exists($path)) {
             return response()->json(['status' => false, 'message' => 'PDF not found. Please re-upload.'], 404);
@@ -97,15 +186,22 @@ class FableadAiController extends Controller
 
         // ── 1. Extract text from PDF ─────────────────────────────────────────
         $rawText = '';
+        $pageCount = 0;
+        $unreadablePages = [];
         try {
             $parser   = new PdfParser();
             $pdf      = $parser->parseFile($path);
-            $rawText  = $pdf->getText();
+            foreach ($pdf->getPages() as $index => $page) {
+                $pageText = $page->getText();
+                $pageCount++;
+                if (mb_strlen(trim($pageText)) < 30) $unreadablePages[] = $index + 1;
+                $rawText .= "\n--- PAGE ".($index + 1)." ---\n".$pageText;
+            }
         } catch (\Throwable $e) {
             Log::warning('FableadAI: PDF parse failed', ['err' => $e->getMessage()]);
         }
 
-        if (strlen(trim($rawText)) < 50) {
+        if (strlen(trim($rawText)) < 50 || $unreadablePages) {
             $geminiKey = config('services.gemini.key', env('GEMINI_API_KEY'));
             if ($geminiKey && file_exists($path)) {
                 try {
@@ -126,6 +222,7 @@ class FableadAiController extends Controller
                     $extractedText = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
                     if (strlen(trim($extractedText)) > 50) {
                         $rawText = $extractedText;
+                        $unreadablePages = [];
                     }
                 } catch (\Throwable $e) {
                     Log::error('FableadAI Gemini OCR fallback failed: ' . $e->getMessage());
@@ -133,18 +230,19 @@ class FableadAiController extends Controller
             }
         }
 
-        if (strlen(trim($rawText)) < 50) {
+        if (mb_strlen(trim(preg_replace('/--- PAGE \d+ ---/', '', $rawText))) < 50) {
             return response()->json([
                 'status'  => false,
-                'message' => 'Unable to read PDF text. The document may be scanned or image-based. OCR support coming soon.',
+                'message' => 'Unable to read sufficient PDF text. Please upload a clearer PDF or configure the Gemini OCR key for scanned documents.',
                 'code'    => 'UNREADABLE_PDF',
             ]);
         }
 
         // ── 2. Call AI to extract structured data ────────────────────────────
-        $extracted = $this->callAiExtract($rawText);
+        $report = app(\App\Services\PolicyExtractionPipeline::class)->extract($rawText, fn ($chunk) => $this->callAiExtract($chunk));
+        $extracted = app(\App\Services\PolicyTextFieldExtractor::class)->enrich($report['data'], $rawText);
 
-        if (!$extracted) {
+        if (empty($extracted['fields'])) {
             return response()->json([
                 'status'  => false,
                 'message' => 'AI extraction failed. Please check your AI API key in .env (GROQ_API_KEY, MISTRAL_API_KEY, GEMINI_API_KEY or OPENAI_API_KEY).',
@@ -153,7 +251,35 @@ class FableadAiController extends Controller
         }
 
         // ── 3. Match dropdown values to DB IDs ───────────────────────────────
-        $extracted = $this->resolveDropdownIds($extracted);
+        $missingImportant = array_values(array_filter(\App\Services\PolicyFieldSuggestions::IMPORTANT,
+            fn ($key) => ($extracted['fields'][$key]['value'] ?? null) === null || ($extracted['fields'][$key]['value'] ?? '') === ''));
+        $reviewChunks = [];
+        if ($missingImportant) {
+            $focus = 'FOCUSED REVIEW: Recheck '.implode(', ', $missingImportant).'. Read multiline labels and split table cells carefully. Agent code may be labelled Intermediary Code. Sum assured is the selected Sum Insured in the insured-person schedule, not every available product limit from benefit brochures. If two values are plausible, return both with verbatim evidence in field_candidates. Never guess a missing digit or choose a brochure option as the customer sum insured.';
+            $review = app(\App\Services\PolicyExtractionPipeline::class)->extract($rawText, fn ($chunk) => $this->callAiExtract($focus."\n".$chunk));
+            $reviewChunks = $review['chunks'];
+            foreach ($review['data']['fields'] ?? [] as $key => $field) {
+                if (in_array($key, $missingImportant, true) && ($field['value'] ?? null) !== null) $extracted['fields'][$key] = $field;
+            }
+            $extracted = app(\App\Services\PolicyTextFieldExtractor::class)->enrich($extracted, $rawText);
+        }
+        $extracted = $this->resolveDropdownIds($extracted, $rawText, array_merge($report['chunks'], $reviewChunks), !$renewalSource);
+        if ($renewalSource) {
+            $extracted['resolved']['user_id'] = $renewalSource->holder_id;
+            $extracted['resolved']['customer_name'] = $renewalSource->holder?->name;
+        }
+        $extracted['extraction_metadata'] = [
+            'pages' => $pageCount, 'characters' => mb_strlen($rawText), 'chunks' => count($report['chunks']),
+            'failed_chunks' => $report['failed_chunks'], 'unreadable_pages' => $unreadablePages,
+            'complete' => $report['complete'] && !$unreadablePages,
+        ];
+        $audit = [
+            'upload_id' => $uploadId, 'user_id' => auth()->id(), 'extracted_at' => now()->toIso8601String(),
+            'source_text' => $rawText, 'chunks' => $report['chunks'], 'review_chunks' => $reviewChunks, 'data' => $extracted,
+            'renewal_source_id'=>$renewalSource?->id,
+            'renewal_source_fingerprint'=>$renewalSource ? app(\App\Services\PolicyRenewalReview::class)->fingerprint($renewalSource) : null,
+        ];
+        Storage::disk('local')->put("fablead_ai/extractions/{$uploadId}.json", json_encode($audit, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
 
         // ── 4. Return structured result ──────────────────────────────────────
         return response()->json([
@@ -167,9 +293,20 @@ class FableadAiController extends Controller
 
     public function save(Request $request): JsonResponse
     {
+        if (is_string($request->input('covered_members'))) {
+            $rawMembers = $request->input('covered_members');
+            $request->merge(['covered_members' => $rawMembers === '' ? [] : (json_decode($rawMembers, true) ?? $rawMembers)]);
+        }
         $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'upload_id'      => ['required', 'string', 'max:64'],
-            'user_id'        => ['required'],
+            'user_id'        => ['required', 'integer', 'exists:customers,id,deleted_at,NULL'],
+            'family_group_id' => ['nullable', 'integer', 'exists:family_groups,id,deleted_at,NULL'],
+            'covered_members' => ['nullable', 'array', 'max:100'],
+            'covered_members.*' => ['array'],
+            'covered_members.*.name' => ['required', 'string', 'max:255'],
+            'covered_members.*.relation' => ['nullable', 'string', 'max:255'],
+            'covered_members.*.dob' => ['nullable', 'date_format:Y-m-d'],
+            'covered_members.*.gender' => ['nullable', 'string', 'max:50'],
             'policy_type_id' => ['required'],
             'company_id'     => ['required'],
             'policy_number'  => ['required', 'string'],
@@ -196,7 +333,10 @@ class FableadAiController extends Controller
         }
 
         $uploadId = preg_replace('/[^a-z0-9\-]/i', '', $request->input('upload_id'));
-        $pdfPath  = storage_path("app/fablead_ai/pending/{$uploadId}/policy.pdf");
+        $this->assertUploadOwner($uploadId);
+        $sourceMetadata = json_decode(Storage::disk('local')->get("fablead_ai/pending/{$uploadId}/metadata.json"),true);
+        abort_if(!empty($sourceMetadata['renewal_source_id']),422,'This PDF was uploaded for renewal. Use the renewal review/save flow.');
+        $pdfPath  = Storage::disk('local')->path("fablead_ai/pending/{$uploadId}/policy.pdf");
 
         $currentUser   = Auth::user();
         $userId        = $currentUser->id;
@@ -287,20 +427,35 @@ class FableadAiController extends Controller
         try {
             DB::beginTransaction();
 
+            // Serialize imports for this insurer so concurrent uploads cannot both create the same term.
+            CompanyMaster::whereKey($data['company_id'])->lockForUpdate()->firstOrFail();
+            $existing = app(\App\Services\PolicyDuplicateCheck::class)->find($data);
+            if ($existing) {
+                DB::rollBack();
+                return response()->json([
+                    'status' => false, 'duplicate' => true,
+                    'message' => 'This policy already exists for the same insurance company and coverage dates. No duplicate has been created. Upload another policy or return to Manage Policies.',
+                    'redirect_url' => route('policies.legacy.index'),
+                ], 409);
+            }
+
             $policy = Policy::create($data);
+            $familyGroup = app(\App\Services\PolicyFamilySync::class)->sync($policy, $request->input('covered_members') ?? [], $currentUser);
 
             $coveredMembersJson = $request->input('covered_members');
             if ($coveredMembersJson) {
-                $coveredMembers = json_decode($coveredMembersJson, true) ?? [];
-                foreach ($coveredMembers as $member) {
-                    if (!empty($member['name'])) {
-                        \App\Models\PolicyMember::create([
-                            'policy_id' => $policy->id,
-                            'name'      => $member['name'],
-                            'relation'  => !empty($member['relation']) ? $member['relation'] : null,
-                            'dob'       => !empty($member['dob']) ? $member['dob'] : null,
-                            'gender'    => !empty($member['gender']) ? $member['gender'] : null,
-                        ]);
+                $coveredMembers = is_array($coveredMembersJson) ? $coveredMembersJson : (json_decode($coveredMembersJson, true) ?? []);
+                if (\Illuminate\Support\Facades\Schema::hasTable('policy_members')) {
+                    foreach ($coveredMembers as $member) {
+                        if (!empty($member['name'])) {
+                            \App\Models\PolicyMember::create([
+                                'policy_id' => $policy->id,
+                                'name'      => $member['name'],
+                                'relation'  => !empty($member['relation']) ? $member['relation'] : null,
+                                'dob'       => !empty($member['dob']) ? $member['dob'] : null,
+                                'gender'    => !empty($member['gender']) ? $member['gender'] : null,
+                            ]);
+                        }
                     }
                 }
             }
@@ -308,14 +463,16 @@ class FableadAiController extends Controller
             // Policy Addons
             $addonsJson = $request->input('addon_covers');
             if ($addonsJson) {
-                $addons = json_decode($addonsJson, true) ?? [];
-                foreach ($addons as $addon) {
-                    if (!empty($addon['cover_name'])) {
-                        \App\Models\PolicyAddon::create([
-                            'policy_id'      => $policy->id,
-                            'cover_name'     => $addon['cover_name'],
-                            'premium_amount' => $addon['premium_amount'] ?: null,
-                        ]);
+                $addons = is_array($addonsJson) ? $addonsJson : (json_decode($addonsJson, true) ?? []);
+                if (\Illuminate\Support\Facades\Schema::hasTable('policy_addons')) {
+                    foreach ($addons as $addon) {
+                        if (!empty($addon['cover_name'])) {
+                            \App\Models\PolicyAddon::create([
+                                'policy_id'      => $policy->id,
+                                'cover_name'     => $addon['cover_name'],
+                                'premium_amount' => $addon['premium_amount'] ?: null,
+                            ]);
+                        }
                     }
                 }
             }
@@ -427,18 +584,39 @@ class FableadAiController extends Controller
 
                 // Clean up temp file
                 @unlink($pdfPath);
-                @rmdir(storage_path("app/fablead_ai/pending/{$uploadId}"));
+                Storage::disk('local')->delete("fablead_ai/pending/{$uploadId}/metadata.json");
+                @rmdir(Storage::disk('local')->path("fablead_ai/pending/{$uploadId}"));
             }
 
             DB::commit();
+
+            $auditPath = "fablead_ai/extractions/{$uploadId}.json";
+            if (Storage::disk('local')->exists($auditPath)) {
+                try {
+                    $audit = json_decode(Storage::disk('local')->get($auditPath), true, 512, JSON_THROW_ON_ERROR);
+                    if ((int) ($audit['user_id'] ?? 0) === (int) $userId) {
+                        $audit['policy_id'] = $policy->id;
+                        $audit['saved_at'] = now()->toIso8601String();
+                        $audit['reviewed_values'] = \Illuminate\Support\Arr::except($request->input(), ['_token', 'base_url']);
+                        Storage::disk('local')->put($auditPath, json_encode($audit, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+                    }
+                } catch (\Throwable $auditError) {
+                    Log::warning('Could not append reviewed values to extraction audit', ['upload_id' => $uploadId]);
+                }
+            }
 
             return response()->json([
                 'status'        => true,
                 'message'       => 'Policy saved successfully via Fablead AI!',
                 'policy_id'     => $policy->id,
                 'policy_number' => $policyNum,
+                'family_group_id' => $familyGroup?->id,
+                'family_group_name' => $familyGroup?->group_name,
             ]);
 
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            return response()->json(['status' => false, 'message' => $e->validator->errors()->first(), 'errors' => $e->errors()], 422);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('FableadAI save error', ['err' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
@@ -448,10 +626,64 @@ class FableadAiController extends Controller
 
     // ─── Secure PDF Proxy (serve the temp PDF without a public URL) ─────────────
 
+    public function extractionJson(Request $request, string $uploadId)
+    {
+        $path = "fablead_ai/extractions/{$uploadId}.json";
+        abort_unless(Storage::disk('local')->exists($path), 404);
+        $audit = json_decode(Storage::disk('local')->get($path), true, 512, JSON_THROW_ON_ERROR);
+        abort_unless((int) $audit['user_id'] === (int) auth()->id(), 403);
+        return $request->boolean('download')
+            ? Storage::disk('local')->download($path, "policy-extraction-{$uploadId}.json", ['Content-Type' => 'application/json'])
+            : response()->json($audit, 200, ['Cache-Control' => 'private, no-store'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    }
+
+    public function quickAdd(Request $request, string $kind): JsonResponse
+    {
+        $definitions = [
+            'company' => [CompanyMaster::class, 'name', null, null],
+            'policy-type' => [InsurancePolicyType::class, 'name', null, null],
+            'sub-type' => [InsurancePolicySubType::class, 'name', 'insurance_policy_types_id', 'insurance_policy_types'],
+            'segment' => [Segment::class, 'name', 'insurance_type_id', 'insurance_policy_types'],
+            'branch' => [Branch::class, 'name', 'company_id', 'company_master'],
+            'broker' => [\App\Models\Broker::class, 'broker_name', null, null],
+            'customer' => [Customer::class, 'name', null, null],
+            'family' => [FamilyGroup::class, 'group_name', 'holder_id', 'customers'],
+        ];
+        abort_unless(isset($definitions[$kind]), 404);
+        $user = $request->user();
+        abort_unless($user->isAdmin() || $user->hasMatrixPermission('create_policies'), 403);
+        [$model, $nameField, $parentField, $parentTable] = $definitions[$kind];
+        $rules = ['name' => ['required', 'string', 'max:255'], 'description' => ['nullable', 'string', 'max:2000']];
+        if ($parentField) $rules['parent_id'] = ['required', 'integer', 'exists:'.$parentTable.',id'];
+        if ($kind === 'customer') {
+            $rules['email'] = ['nullable', 'email', 'max:255', 'unique:customers,email'];
+            $rules['phone'] = ['nullable', 'string', 'max:20'];
+        }
+        $values = $request->validate($rules);
+        if ($kind === 'family') {
+            $holder = Customer::findOrFail($values['parent_id']);
+            $this->authorize('view', $holder);
+        }
+        $match = [$nameField => trim($values['name'])];
+        if ($parentField) $match[$parentField] = $values['parent_id'];
+        $attributes = ['created_by' => $user->id, 'modified_by' => $user->id];
+        if (in_array($kind, ['company', 'policy-type', 'broker'], true)) $attributes['status'] = 1;
+        if (in_array($kind, ['company', 'policy-type', 'sub-type', 'segment'], true)) $attributes['description'] = $values['description'] ?? null;
+        if ($kind === 'family') $attributes['remarks'] = $values['description'] ?? null;
+        if ($kind === 'customer') {
+            $record = Customer::create($match + ['email' => $values['email'] ?? null, 'phone' => $values['phone'] ?? null,
+                'type' => 'Individual', 'user_id' => $user->id, 'created_by' => $user->id, 'is_active' => true]);
+        } else {
+            $record = $model::firstOrCreate($match, $attributes);
+        }
+        return response()->json(['status' => true, 'id' => $record->id, 'name' => $record->$nameField, 'parent_id' => $values['parent_id'] ?? null]);
+    }
+
     public function servePdf(Request $request)
     {
         $uploadId = preg_replace('/[^a-z0-9\-]/i', '', $request->query('upload_id', ''));
-        $path     = storage_path("app/fablead_ai/pending/{$uploadId}/policy.pdf");
+        $this->assertUploadOwner($uploadId);
+        $path     = Storage::disk('local')->path("fablead_ai/pending/{$uploadId}/policy.pdf");
 
         if (!file_exists($path)) {
             abort(404);
@@ -465,10 +697,21 @@ class FableadAiController extends Controller
 
     // ─── AI Extraction Logic ────────────────────────────────────────────────────
 
+    private function assertUploadOwner(string $uploadId): void
+    {
+        $disk = Storage::disk('local');
+        $metadataPath = "fablead_ai/pending/{$uploadId}/metadata.json";
+        $auditPath = "fablead_ai/extractions/{$uploadId}.json";
+        $path = $disk->exists($metadataPath) ? $metadataPath : $auditPath;
+        abort_unless($disk->exists($path), 404, 'Please re-upload this PDF to continue.');
+        $metadata = json_decode($disk->get($path), true, 512, JSON_THROW_ON_ERROR);
+        abort_unless((int) ($metadata['user_id'] ?? 0) === (int) auth()->id(), 403);
+    }
+
     private function callAiExtract(string $pdfText): ?array
     {
-        // Limit context to avoid token overflow
-        $truncated = mb_substr($pdfText, 0, 14000);
+        // The pipeline supplies overlapping chunks covering the entire document.
+        $truncated = $pdfText;
 
         // Try Groq first, then Mistral, then Gemini, then OpenAI
         $groqKey    = config('services.groq.key', env('GROQ_API_KEY'));
@@ -688,13 +931,22 @@ STRICT RULES:
 3. If a field is not found, set its value to null and confidence to 0.
 4. Never calculate or derive values not present in the text.
 5. Return ONLY valid JSON matching the schema below.
+6. Read every line of the supplied text, including schedules, insured-person tables, endorsements and appendices. Extract every covered person and add-on, not just the first row.
+7. Distinguish the insurer from the broker/intermediary and the policyholder from the agent. Prefer the current policy schedule over previous-policy references. Flag contradictory values in conflicts with source evidence.
+8. Preserve any factual information not represented by a schema field in additional_fields as objects with label, value and source_text. Never replace masked contact details with invented digits.
+9. policy_type is the main category (Health, Life, Motor, etc.). Family Floater, Individual and plan variants belong in policy_sub_type, not policy_type. agent_code includes Intermediary Code or Advisor Code when explicitly labelled.
+10. For important fields with multiple plausible values, put EVERY candidate with verbatim evidence in field_candidates. Do not silently discard uncertain alternatives. Sum assured must come from selected policy coverage; ignore generic lists of available sums insured in brochures.
+11. Workmen Compensation, Workers Compensation, Employees Compensation Insurance (including Digit Employees Compensation Insurance Policy) and WC Policy are the main category "Workmen Compensation (WC)". Medical expense benefits do not make a WC policy Health insurance. A mere exclusion referencing the Workmen Compensation Act does not make another policy WC.
+12. sum_assured is the CURRENT policy's main Sum Insured / Sum Assured. Read Base Sum Insured tables even when headings and values appear on separate lines. For motor policies use the scheduled total IDV, not add-on limits. Never substitute portability/previous-policy sums, keys/locks, baggage, accidental medical expenses, premiums, waiting-period days or marketing benefit amounts. Never add historical or member amounts together. Keep add-on limits in addon_covers. If current main cover cannot be established, leave sum_assured null and flag it for review.
 
 EXTRACTION SCHEMA (return exactly this JSON structure):
 {
-  "policy_type_detected": "Motor|Health|Fire|Burglary|Marine|Life|Property|Travel|Personal Accident|Other|Unknown",
+  "policy_type_detected": "Motor|Health|Fire|Burglary|Marine|Life|Property|Travel|Personal Accident|Workmen Compensation (WC)|Other|Unknown",
   "confidence_overall": 0-100,
   "fields": {
     "policy_number":        {"value": null, "confidence": 0, "source_text": ""},
+    "previous_policy_number": {"value": null, "confidence": 0, "source_text": ""},
+    "holder_dob":           {"value": null, "confidence": 0, "source_text": ""},
     "insurance_company":    {"value": null, "confidence": 0, "source_text": ""},
     "policy_type":          {"value": null, "confidence": 0, "source_text": ""},
     "policy_sub_type":      {"value": null, "confidence": 0, "source_text": ""},
@@ -767,6 +1019,8 @@ EXTRACTION SCHEMA (return exactly this JSON structure):
       "premium_amount": ""
     }
   ],
+  "additional_fields": [],
+  "field_candidates": {"insurance_company": [], "policy_type": [], "agent_code": [], "sum_assured": [], "policy_number": [], "start_date": [], "end_date": [], "premium_amount": []},
   "conflicts": [],
   "missing_important": []
 }
@@ -781,29 +1035,11 @@ PROMPT;
 
     // ─── Match AI text values to DB IDs ────────────────────────────────────────
 
-    private function resolveDropdownIds(array $data): array
+    private function resolveDropdownIds(array $data, string $source = '', array $chunks = [], bool $resolveCustomer = true): array
     {
+        $data = app(\App\Services\PolicyFieldSuggestions::class)->enrich($data, $source, $chunks,
+            CompanyMaster::get(['id', 'name'])->toArray(), InsurancePolicyType::get(['id', 'name'])->toArray());
         $fields = $data['fields'] ?? [];
-
-        // Insurance Company
-        $companyName = $fields['insurance_company']['value'] ?? null;
-        if ($companyName) {
-            $company = CompanyMaster::whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($companyName) . '%'])
-                                    ->orWhereRaw('? LIKE CONCAT(\'%\', LOWER(name), \'%\')', [strtolower($companyName)])
-                                    ->first();
-            $data['resolved']['company_id']   = $company?->id;
-            $data['resolved']['company_name'] = $company?->name ?? $companyName;
-        }
-
-        // Policy Type
-        $typeName = $fields['policy_type']['value'] ?? $data['policy_type_detected'] ?? null;
-        if ($typeName) {
-            $type = InsurancePolicyType::whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($typeName) . '%'])
-                                       ->orWhereRaw('? LIKE CONCAT(\'%\', LOWER(name), \'%\')', [strtolower($typeName)])
-                                       ->first();
-            $data['resolved']['policy_type_id']   = $type?->id;
-            $data['resolved']['policy_type_name'] = $type?->name ?? $typeName;
-        }
 
         // Sub Type
         $subTypeName = $fields['policy_sub_type']['value'] ?? null;
@@ -832,7 +1068,7 @@ PROMPT;
         $customerPhone = trim((string) ($fields['customer_phone']['value'] ?? ''));
         $customerAddress = trim((string) ($fields['customer_address']['value'] ?? ''));
 
-        if ($holderName !== '') {
+        if ($resolveCustomer && $holderName !== '') {
             $customer = null;
 
             if ($customerEmail !== '' && filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {

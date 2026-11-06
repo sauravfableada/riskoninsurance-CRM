@@ -2,6 +2,18 @@
 @extends('layouts.masters')
 @section('page_title', 'Fablead AI — Upload Policy')
 @section('masters_content')
+@if($renewalPolicy)
+@php
+    $renewalSourceValues = [
+        'renewal_holder_name'=>$renewalPolicy->holder?->name,
+        'policy_number'=>$renewalPolicy->policy_number_no ?: $renewalPolicy->policy_number,
+        'company_id'=>$renewalPolicy->company_id, 'policy_type_id'=>$renewalPolicy->policy_type_id,
+        'start_date'=>substr((string)$renewalPolicy->start_date,0,10), 'end_date'=>substr((string)$renewalPolicy->end_date,0,10),
+        'premium'=>$renewalPolicy->premium_amount, 'sum_assured'=>$renewalPolicy->sum_assured,
+    ];
+@endphp
+<div class="alert alert-light border m-3 d-flex justify-content-between align-items-center gap-2 flex-wrap"><div><strong>AI renewal · {{ $renewalPolicy->policy_number_no ?: $renewalPolicy->policy_number }}</strong><div class="small text-muted">Upload the renewed PDF for {{ $renewalPolicy->holder?->name }}. Review the old and new terms before saving.</div></div><a class="btn btn-sm btn-outline-secondary" href="{{ route('policies.legacy.view',$renewalPolicy->id) }}">Back to policy</a></div>
+@endif
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
@@ -36,6 +48,13 @@
 /* Page chrome */
 .ai-page-wrap        { background: var(--ai-bg); min-height: 100vh; padding: 0; }
 .ai-page-header      { background: #fff; border-bottom: 1px solid var(--ai-border); padding: 22px 32px; }
+.ai-header-top      { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 14px; }
+.ai-header-actions  { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.btn-ai-renew       { display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 10px 18px; border: 1px solid #245388; border-radius: 10px; background: linear-gradient(135deg, #15385e, #245388); color: #fff; font-size: .88rem; font-weight: 600; box-shadow: 0 3px 9px rgba(21, 56, 94, .16); transition: background .15s ease, box-shadow .15s ease; }
+.btn-ai-renew:hover { background: #15385e; border-color: #15385e; color: #fff; box-shadow: 0 4px 12px rgba(21, 56, 94, .24); }
+.btn-ai-renew:focus-visible { outline: 3px solid #93c5fd; outline-offset: 3px; }
+html[data-theme="dark"] .btn-ai-renew { background: linear-gradient(135deg, #1e4776, #2c6197); border-color: #4776a6; color: #fff; }
+@media (max-width: 575.98px) { .ai-header-actions { width: 100%; } .ai-header-actions > a { flex: 1 1 auto; justify-content: center; } }
 .ai-badge-label      { display: inline-flex; align-items: center; gap: 6px; background: var(--ai-brown-lt); color: var(--ai-brown); font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; border-radius: 20px; padding: 3px 12px; border: 1px solid #f0d5c4; }
 .ai-page-title       { font-size: 1.55rem; font-weight: 700; color: var(--ai-navy); line-height: 1.2; }
 .ai-page-sub         { color: #64748b; font-size: .9rem; }
@@ -197,16 +216,23 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
 
     {{-- ── PAGE HEADER ──────────────────────────────────────────────────── --}}
     <div class="ai-page-header">
-        <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+        <div class="ai-header-top">
+            <div class="ai-badge-label"><i class="fas fa-magic"></i> Fablead AI</div>
+            <div class="ai-header-actions">
+                @if(!$renewalPolicy && (auth()->user()->isAdmin() || auth()->user()->hasMatrixPermission('edit_policies')))
+                    <a class="btn btn-ai-renew" href="{{ route('fablead.ai.renewal.choose') }}">
+                        <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Renew an existing policy with AI
+                    </a>
+                @endif
+                <a href="{{ route('policies.legacy.index') }}" class="btn-ai-outline btn d-flex align-items-center gap-2">
+                    <i class="fas fa-arrow-left" aria-hidden="true"></i> Back to Policies
+                </a>
+            </div>
+        </div>
             <div>
-                <div class="ai-badge-label mb-2"><i class="fas fa-magic"></i> Fablead AI</div>
                 <h1 class="ai-page-title mb-1">Upload policy documents. Fablead AI does the rest.</h1>
                 <p class="ai-page-sub mb-0">Extract policy information automatically, review the results, and save verified data to your insurance CRM.</p>
             </div>
-            <a href="{{ route('policies.legacy.index') }}" class="btn-ai-outline btn d-flex align-items-center gap-2">
-                <i class="fas fa-arrow-left"></i> Back to Policies
-            </a>
-        </div>
     </div>
 
     {{-- ── STEP TRACKER ─────────────────────────────────────────────────── --}}
@@ -233,7 +259,8 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
         {{-- ═══ STATE 1: UPLOAD ═══════════════════════════════════════════════ --}}
         <div id="view_upload">
             <div class="ai-upload-card">
-                <div class="p-5 pb-0 text-center">
+                <div class="ai-upload-heading text-center">
+                    <span class="ai-upload-kicker"><i class="bi bi-stars me-1" aria-hidden="true"></i>SMART POLICY IMPORT</span>
                     <h5 class="fw-bold" style="color:var(--ai-navy)">Upload a policy document</h5>
                     <p class="ai-review-notice mb-2" role="note">
                         <i class="fas fa-exclamation-triangle me-1"></i>
@@ -243,7 +270,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 </div>
 
                 <div class="ai-drop-zone" id="drop_zone">
-                    <div class="ai-drop-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                    <div class="ai-drop-icon"><i class="bi bi-cloud-arrow-up" aria-hidden="true"></i></div>
                     <div class="ai-drop-title">Drag &amp; drop your PDF here</div>
                     <div class="ai-drop-sub mb-3">or click to browse</div>
                     <label for="pdf_file_input" class="btn-ai-outline btn" style="cursor:pointer;">
@@ -317,9 +344,19 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                 <div class="ai-form-panel">
                     <div class="ai-form-header">
                         <div class="ai-form-header-title"><i class="fas fa-clipboard-list me-2" style="color:var(--ai-brown)"></i> AI Extracted Data</div>
+                        <div class="d-flex gap-2"><a id="aiViewJson" class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener" hidden>View JSON</a><a id="aiDownloadJson" class="btn btn-sm btn-outline-secondary" hidden>Download JSON</a></div>
                     </div>
 
-                    <form id="policy_ai_form">
+                    <form id="policy_ai_form" data-quick-add-url="{{ url('fablead-ai/quick-add') }}">
+                        @if($renewalPolicy)
+                        <div class="ai-renewal-review p-3 m-3 border rounded-3 bg-light">
+                            <h3 class="h6 fw-bold">Renewal of {{ $renewalPolicy->policy_number_no ?: $renewalPolicy->policy_number }}</h3>
+                            <p class="small text-muted">Existing holder: <strong>{{ $renewalPolicy->holder?->name }}</strong>. A new linked term will be created; previous details remain unchanged.</p>
+                            <label class="small form-label" for="renewalHolderName">Policyholder name on renewed PDF</label><input class="form-control" id="renewalHolderName" name="renewal_holder_name" required>
+                            <div id="aiRenewalComparison" class="mt-3 small" aria-live="polite"></div>
+                        </div>
+                        @endif
+                        <div id="aiExtractionNotice" class="alert alert-warning small mx-3 mt-3" hidden role="status"></div>
                         @csrf
                         <input type="hidden" name="base_url" id="base_url" value="<?= base_url(); ?>">
                         <input type="hidden" name="upload_id" id="upload_id_input">
@@ -746,6 +783,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                                 <div id="covered_members_container" class="mb-3">
                                     <!-- Dynamic members added here -->
                                 </div>
+                                <p class="small text-muted"><i class="bi bi-people me-1" aria-hidden="true"></i>When family members are covered, saving creates or reuses this customer's family group and adds these reviewed members. Existing family details are preserved. For multiple groups, select the correct family group above.</p>
                                 <input type="hidden" name="covered_members" id="covered_members_input">
                             </div>
 
@@ -897,6 +935,11 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                     <div class="fw-bold" id="success_type">—</div>
                 </div>
                 <div class="d-flex gap-3 justify-content-center flex-wrap">
+                    <a id="aiSuccessJson" class="btn-ai-outline btn" target="_blank" rel="noopener" hidden><i class="bi bi-braces me-1" aria-hidden="true"></i>View extraction JSON</a>
+                    <div id="success_family_group" class="w-100 small text-success mb-2" hidden role="status"></div>
+                    @if(auth()->user()->isAdmin() || auth()->user()->hasMatrixPermission('view_family_groups'))
+                        <a id="btn_view_family_group" href="{{ route('masters.family_groups.index') }}" class="btn-ai-outline btn" style="display:none"><i class="bi bi-people me-2"></i>Family Groups</a>
+                    @endif
                     <a id="btn_view_policy" href="#" class="btn-ai-primary btn">
                         <i class="fas fa-eye me-2"></i> View Policy
                     </a>
@@ -1115,6 +1158,7 @@ function processNextFile() {
     var fd = new FormData();
     fd.append('pdf', file);
     fd.append('_token', CSRF_TOKEN);
+    @if($renewalPolicy) fd.append('renewal_policy_id', @json($renewalPolicy->id)); @endif
 
     fetch(AI_UPLOAD_URL, { method: 'POST', body: fd })
         .then(r => r.json())
@@ -1149,8 +1193,23 @@ function processNextFile() {
 
 // ── Fill form from AI response ─────────────────────────────────────────────
 function fillForm(data) {
+    const jsonUrl = @json(url('fablead-ai/extraction')) + '/' + currentUploadId;
+    $('#aiViewJson').attr('href', jsonUrl).prop('hidden', false);
+    $('#aiDownloadJson').attr('href', jsonUrl + '?download=1').prop('hidden', false);
+    $('#aiSuccessJson').attr('href', jsonUrl).prop('hidden', false);
+    const meta = data.extraction_metadata || {};
+    const warning = document.getElementById('aiExtractionNotice');
+    warning.hidden = meta.complete !== false && !(data.conflicts || []).length && !(data.needs_review_fields || []).length;
+    warning.textContent = (meta.complete === false ? 'Some pages or text sections could not be extracted completely. ' : '')
+        + ((data.conflicts || []).length ? 'Conflicting values were found. ' : '')
+        + ((data.needs_review_fields || []).length ? 'Important fields need review; check suggestions below those fields. ' : '')
+        + 'Review the original PDF and JSON before saving.';
     var f = data.fields || {};
     var r = data.resolved || {};
+    $('#company_id').val(r.company_id || '').trigger('change.select2');
+    $('#policy_type_id').val(r.policy_type_id || '').trigger('change.select2');
+    showConfBadge('company_id', f.insurance_company?.confidence || 0, f.insurance_company?.source_text || '');
+    showConfBadge('policy_type_id', f.policy_type?.confidence || 0, f.policy_type?.source_text || '');
 
     // Simple text fields
     var textMap = {
@@ -1206,6 +1265,8 @@ function fillForm(data) {
 
     Object.keys(textMap).forEach(function(id) {
         var field = textMap[id];
+        var input = document.getElementById(id);
+        if (input) { input.value = ''; input.classList.remove('ai-filled'); showConfBadge(id, 0, ''); }
         if (field && field.value !== null && field.value !== '') {
             var el = document.getElementById(id);
             if (el) {
@@ -1310,10 +1371,12 @@ function fillForm(data) {
 
     // Run FableadAI Validations
     runValidations(data);
+    if (window.renderPolicySuggestions) window.renderPolicySuggestions(data);
+    if (window.fillAiRenewal) window.fillAiRenewal(data);
 }
 
 function showConfBadge(fieldId, confidence, sourceText) {
-    var badgeEl = document.getElementById('conf_' + fieldId);
+    var badgeEl = document.getElementById('conf_' + fieldId) || document.getElementById(({ company_id: 'conf_company', policy_type_id: 'conf_policy_type' })[fieldId] || '');
     if (!badgeEl) return;
     var cls, label;
     if (confidence >= 95) { cls = 'ai-conf-high'; label = '✓ ' + confidence + '%'; }
@@ -1539,6 +1602,7 @@ function resetToUpload() {
 
 // ── SAVE ──────────────────────────────────────────────────────────────────
 document.getElementById('btn_save_policy').addEventListener('click', function() {
+    if (window.prepareAiRenewal) { window.prepareAiRenewal(); return; }
     var modal = new bootstrap.Modal(document.getElementById('confirmSaveModal'));
     modal.show();
 });
@@ -1564,7 +1628,28 @@ document.getElementById('btn_confirm_save').addEventListener('click', function()
         document.getElementById('btn_confirm_save').disabled = false;
         document.getElementById('btn_confirm_save').innerHTML = '<i class="fas fa-database me-2"></i> Save Policy';
 
+        if (res.duplicate) {
+            Swal.fire({
+                title: 'Policy already exists',
+                html: '<div class="ai-duplicate-icon"><i class="bi bi-file-earmark-check" aria-hidden="true"></i></div>'
+                    + '<div class="ai-duplicate-eyebrow">DUPLICATE DETECTED</div>'
+                    + '<p class="ai-duplicate-description">This policy is already saved with the same insurer and coverage dates.</p>'
+                    + '<div class="ai-duplicate-note"><i class="bi bi-shield-check" aria-hidden="true"></i><span>Your existing policy is safe. No duplicate was created.</span></div>',
+                showCancelButton: true, confirmButtonText: 'Go to policies', cancelButtonText: 'Upload another policy',
+                buttonsStyling: false, width: 450, allowOutsideClick: false,
+                customClass: { popup: 'ai-duplicate-dialog', title: 'ai-duplicate-title', htmlContainer: 'ai-duplicate-content', actions: 'ai-duplicate-actions', confirmButton: 'ai-duplicate-primary', cancelButton: 'ai-duplicate-secondary' }
+            }).then(function (choice) {
+                if (choice.isConfirmed) window.location.href = res.redirect_url;
+                else resetToUpload();
+            });
+            return;
+        }
         if (res.status) {
+            var familySummary = document.getElementById('success_family_group');
+            familySummary.hidden = !res.family_group_id;
+            familySummary.textContent = res.family_group_id ? 'Covered members saved to ' + res.family_group_name + '.' : '';
+            var familyButton = document.getElementById('btn_view_family_group');
+            if (familyButton) familyButton.style.display = res.family_group_id ? '' : 'none';
             document.getElementById('success_policy_number').textContent = res.policy_number || '—';
             document.getElementById('success_company').textContent = $('#company_id option:selected').text() || '—';
             document.getElementById('success_type').textContent = $('#policy_type_id option:selected').text() || '—';
@@ -1699,4 +1784,76 @@ function updateAddonsInput() {
 </script>
 
 @endsection
+@push('styles')
+<style>
+.ai-quick-add { float: right; display: inline-flex; align-items: center; justify-content: center; width: 23px; height: 23px; padding: 0; border: 1px solid #c9d9eb; border-radius: 6px; background: #edf3fa; color: #426b96; font-size: 11px; cursor: pointer; }
+.ai-quick-add:hover { background: #dde9f8; border-color: #9fb9d9; }
+.ai-quick-add:focus-visible { outline: 2px solid #82acd9; outline-offset: 2px; }
+#ai_steps.ai-steps { padding: 17px 26px; background: #f8fafd; }
+#ai_steps .ai-step { font-size: .77rem; gap: 9px; }
+#ai_steps .ai-step-dot { width: 30px; height: 30px; border: 1px solid #dce4ef; border-radius: 10px; background: #eef2f7; color: #94a4b8; }
+#ai_steps .ai-step.active .ai-step-dot { background: #214669; border-color: #214669; color: #fff; box-shadow: 0 3px 8px #21466920; }
+#ai_steps .ai-step.done .ai-step-dot { background: #e7f3ed; border-color: #cce4d6; color: #44866b; }
+#ai_steps .ai-step-line { height: 1px; margin: 0 16px; background: #dfe7f1; }
+#view_upload { padding: 28px 18px; background: linear-gradient(145deg,#f3f6fa,#eaf0f6); }
+#view_upload .ai-upload-card { max-width: 720px; margin: 0 auto; background: #fff; border: 1px solid #e0e7f1; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 30px #233e5e08; }
+.ai-upload-heading { padding: 26px 24px 0; }
+.ai-upload-kicker { display: inline-flex; align-items: center; font-size: .61rem; font-weight: 700; letter-spacing: .1em; color: #6784a6; background: #eef4fb; padding: 6px 10px; border-radius: 6px; margin-bottom: 13px; }
+#view_upload .ai-upload-heading h5 { font-size: 1.16rem; margin-bottom: 10px; }
+#view_upload .ai-page-sub { font-size: .79rem; color: #8697ac; }
+#view_upload .ai-review-notice { display: inline-flex; align-items: center; font-size: .7rem; font-weight: 500; color: #94784c; }
+#view_upload .ai-drop-zone { margin: 20px 24px 24px; padding: 28px 20px; border: 1.5px dashed #b8cce4; border-radius: 15px; background: linear-gradient(130deg,#f6f9fe,#edf4fc); }
+#view_upload .ai-drop-zone:hover,#view_upload .ai-drop-zone.drag-over { background: #eaf2fd; border-color: #779ec9; }
+#view_upload .ai-drop-icon { display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; margin: 0 auto 17px; border: 1px solid #d4e2f4; border-radius: 19px; background: #e5effc; color: #547fae; font-size: 1.9rem; }
+#view_upload .ai-drop-title { font-size: 1rem; color: #294a6b; margin-bottom: 5px; }
+#view_upload .ai-drop-sub { font-size: .75rem; color: #8499b1; }
+#view_upload label.btn-ai-outline { padding: 10px 18px; border: 1px solid #234c76; border-radius: 9px; color: #fff; background: #234c76; box-shadow: 0 3px 8px #234c7615; font-size: .8rem; }
+#view_upload label.btn-ai-outline:hover { background: #315f8e; }
+[data-theme="dark"] #view_upload { background: #182638; }
+[data-theme="dark"] #view_upload .ai-upload-card { background: #213146; border-color: #3c4e67; }
+[data-theme="dark"] #view_upload .ai-drop-zone { background: #263b54; border-color: #506d90; }
+[data-theme="dark"] #view_upload .ai-drop-title { color: #d7e5f7; }
+@media(max-width:575.98px) { #ai_steps.ai-steps { padding: 14px 12px; } #ai_steps .ai-step { font-size: .65rem; gap: 5px; } #ai_steps .ai-step-line { margin: 0 5px; min-width: 6px; } #view_upload { padding: 18px 10px; } .ai-upload-heading { padding: 20px 14px 0; } #view_upload .ai-drop-zone { margin: 16px 14px; padding: 24px 12px; } }
+.swal2-popup.ai-duplicate-dialog { border-radius: 20px; padding: 28px 26px 24px; border: 1px solid #e0e7f1; box-shadow: 0 20px 65px #0b213b30; font-family: inherit; }
+.ai-duplicate-dialog .ai-duplicate-title { padding: 0; margin: 100px 0 0; font-size: 1.3rem; font-weight: 700; color: #203e5d; }
+.ai-duplicate-dialog .ai-duplicate-content { margin: 14px 0 0; overflow: visible; font-size: .86rem; }
+.ai-duplicate-icon { position: absolute; top: 27px; left: calc(50% - 29px); width: 58px; height: 58px; display: flex; align-items: center; justify-content: center; background: #eaf1fb; border: 1px solid #dbe7f6; border-radius: 17px; color: #4d78a8; font-size: 1.65rem; }
+.ai-duplicate-eyebrow { position: absolute; top: 102px; left: 0; right: 0; font-size: .6rem; letter-spacing: .12em; color: #8c9cb0; font-weight: 700; }
+.ai-duplicate-description { color: #75869b; font-size: .84rem; line-height: 1.65; margin: 0 0 16px; }
+.ai-duplicate-note { display: flex; align-items: center; gap: 9px; padding: 11px 12px; background: #f0f7f3; border: 1px solid #dfece4; border-radius: 10px; color: #54816c; text-align: left; font-size: .72rem; line-height: 1.5; }
+.ai-duplicate-note i { flex-shrink: 0; font-size: 1rem; }
+.ai-duplicate-dialog .ai-duplicate-actions { display: flex; flex-wrap: wrap; width: 100%; gap: 8px; margin: 22px 0 0; }
+.ai-duplicate-primary,.ai-duplicate-secondary { flex: 1 1 auto; border-radius: 9px; padding: 10px 13px; font-family: inherit; font-size: .77rem; font-weight: 600; line-height: 1.4; cursor: pointer; }
+.ai-duplicate-primary { background: #1c4166; border: 1px solid #1c4166; color: #fff; }
+.ai-duplicate-primary:hover { background: #2a527c; }
+.ai-duplicate-secondary { background: #f5f8fc; border: 1px solid #dce5f0; color: #546e8c; }
+.ai-duplicate-secondary:hover { background: #eaf1fa; }
+.ai-duplicate-primary:focus-visible,.ai-duplicate-secondary:focus-visible { outline: 3px solid #8eb8ec; outline-offset: 3px; }
+[data-theme="dark"] .swal2-popup.ai-duplicate-dialog { background: #1e2d41; border-color: #3a4c65; }
+[data-theme="dark"] .ai-duplicate-dialog .ai-duplicate-title { color: #dce8f7; }
+[data-theme="dark"] .ai-duplicate-description { color: #aebfd4; }
+[data-theme="dark"] .ai-duplicate-note { background: #243c34; border-color: #3b5748; color: #a1c9b5; }
+.ai-field-suggestions { margin-top: 9px; padding: 9px; border: 1px solid #e5dcc7; border-radius: 8px; background: #fffbf1; }
+.ai-suggestion-label { color: #8b733e; font-size: .68rem; margin-bottom: 6px; }
+.ai-suggestion-choice { display: inline-block; max-width: 100%; text-align: left; margin: 3px 4px 3px 0; border: 1px solid #cfdae9; border-radius: 6px; padding: 5px 8px; background: #fff; color: #385f89; font-size: .73rem; cursor: pointer; overflow-wrap: anywhere; }
+.ai-suggestion-choice:hover, .ai-suggestion-choice.is-selected { background: #e7f0fc; border-color: #8eafd4; }
+.ai-suggestion-evidence { display: block; color: #8c8271; font-size: .64rem; line-height: 1.5; margin: 2px 0 6px; overflow-wrap: anywhere; }
+[data-theme="dark"] .ai-field-suggestions { background: #302f2a; border-color: #615742; }
+[data-theme="dark"] .ai-suggestion-choice { background: #293e56; color: #d1e2f7; border-color: #476281; }
+</style>
+@endpush
+@push('scripts')
+@if($renewalPolicy)
+<script>
+window.aiRenewalConfig = {
+    sourceId: @json($renewalPolicy->id), reviewUrl: @json(route('fablead.ai.renewal.review',$renewalPolicy)), saveUrl: @json(route('fablead.ai.renewal.save',$renewalPolicy)),
+    source: @json($renewalSourceValues),
+    companyName: @json($renewalPolicy->company?->name), typeName: @json($renewalPolicy->policyType?->name)
+};
+</script>
+<script src="{{ (env('PUBLIC_PATH') ? '/'.trim(env('PUBLIC_PATH'), '/') : '').'/js/ai-policy-renewal.js' }}?v={{ filemtime(public_path('js/ai-policy-renewal.js')) }}"></script>
+@endif
+<script src="{{ (env('PUBLIC_PATH') ? '/'.trim(env('PUBLIC_PATH'), '/') : '').'/js/ai-policy-quick-add.js' }}?v={{ filemtime(public_path('js/ai-policy-quick-add.js')) }}"></script>
+<script src="{{ (env('PUBLIC_PATH') ? '/'.trim(env('PUBLIC_PATH'), '/') : '').'/js/ai-policy-suggestions.js' }}?v={{ filemtime(public_path('js/ai-policy-suggestions.js')) }}"></script>
+@endpush
 {{-- ===== FABLEAD AI POLICY UPLOAD: END ===== --}}
