@@ -207,22 +207,26 @@ class FableadAiController extends Controller
                 try {
                     $base64Pdf = base64_encode(file_get_contents($path));
                     $client = new GuzzleClient(['timeout' => 90, 'http_errors' => false]);
-                    $resp = $client->post('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' . $geminiKey, [
-                        'headers' => ['Content-Type' => 'application/json'],
-                        'json' => [
-                            'contents' => [
-                                ['role' => 'user', 'parts' => [
-                                    ['text' => 'Extract and return all the raw text from this document. Do not summarize or format, just return the text exactly as it appears.'],
-                                    ['inline_data' => ['mime_type' => 'application/pdf', 'data' => $base64Pdf]]
-                                ]]
+                    $ocrModels = ['gemini-2.5-flash', 'gemini-flash-latest'];
+                    foreach ($ocrModels as $m) {
+                        $resp = $client->post('https://generativelanguage.googleapis.com/v1beta/models/' . $m . ':generateContent?key=' . $geminiKey, [
+                            'headers' => ['Content-Type' => 'application/json'],
+                            'json' => [
+                                'contents' => [
+                                    ['role' => 'user', 'parts' => [
+                                        ['text' => 'Extract and return all the raw text from this document. Do not summarize or format, just return the text exactly as it appears.'],
+                                        ['inline_data' => ['mime_type' => 'application/pdf', 'data' => $base64Pdf]]
+                                    ]]
+                                ]
                             ]
-                        ]
-                    ]);
-                    $body = json_decode($resp->getBody()->getContents(), true);
-                    $extractedText = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
-                    if (strlen(trim($extractedText)) > 50) {
-                        $rawText = $extractedText;
-                        $unreadablePages = [];
+                        ]);
+                        $body = json_decode($resp->getBody()->getContents(), true);
+                        $extractedText = $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
+                        if (strlen(trim($extractedText)) > 50) {
+                            $rawText = $extractedText;
+                            $unreadablePages = [];
+                            break;
+                        }
                     }
                 } catch (\Throwable $e) {
                     Log::error('FableadAI Gemini OCR fallback failed: ' . $e->getMessage());
@@ -747,88 +751,80 @@ class FableadAiController extends Controller
     {
         $prompt = $this->buildExtractionPrompt($text);
 
-        try {
-            $client = new GuzzleClient(['timeout' => 90]);
-            $resp   = $client->post('https://api.groq.com/openai/v1/chat/completions', [
-                'headers' => ['Authorization' => "Bearer {$apiKey}"],
-                'json'    => [
-                    'model'           => 'openai/gpt-oss-120b',
-                    'temperature'     => 0,
-                    'response_format' => ['type' => 'json_object'],
-                    'messages'        => [
-                        ['role' => 'system', 'content' => 'You are an insurance policy data extractor. Return only valid JSON.'],
-                        ['role' => 'user',   'content' => $prompt],
+        foreach (['openai/gpt-oss-120b', 'openai/gpt-oss-20b'] as $modelName) {
+            try {
+                $client = new GuzzleClient(['timeout' => 90]);
+                $resp   = $client->post('https://api.groq.com/openai/v1/chat/completions', [
+                    'headers' => ['Authorization' => "Bearer {$apiKey}"],
+                    'json'    => [
+                        'model'           => $modelName,
+                        'temperature'     => 0,
+                        'response_format' => ['type' => 'json_object'],
+                        'messages'        => [
+                            ['role' => 'system', 'content' => 'You are an insurance policy data extractor. Return only valid JSON.'],
+                            ['role' => 'user',   'content' => $prompt],
+                        ],
                     ],
-                ],
-            ]);
+                ]);
 
-            $body = json_decode($resp->getBody()->getContents(), true);
-            $raw  = $body['choices'][0]['message']['content'] ?? null;
-            return $raw ? json_decode($raw, true) : null;
+                $body = json_decode($resp->getBody()->getContents(), true);
+                $raw  = $body['choices'][0]['message']['content'] ?? null;
+                $decoded = $raw ? json_decode($raw, true) : null;
+                if ($decoded) return $decoded;
 
-        } catch (\Throwable $e) {
-            Log::error('FableadAI Groq error', ['err' => $e->getMessage()]);
-            return null;
+            } catch (\Throwable $e) {
+                Log::error("FableadAI Groq error for {$modelName}", ['err' => $e->getMessage()]);
+            }
         }
+        return null;
     }
 
     private function callGemini(string $text, string $apiKey): ?array
     {
         $prompt = $this->buildExtractionPrompt($text);
 
-        $endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
-        
-        $url     = $endpoint . '?key=' . $apiKey;
-        $headers = ['Content-Type' => 'application/json'];
+        foreach (['gemini-2.5-flash', 'gemini-flash-latest'] as $geminiModel) {
+            $endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' . $geminiModel . ':generateContent';
+            $url     = $endpoint . '?key=' . $apiKey;
+            $headers = ['Content-Type' => 'application/json'];
 
-        try {
-            $client = new GuzzleClient(['timeout' => 90, 'http_errors' => false]);
-            $resp   = $client->post($url, [
-                'headers' => $headers,
-                'json'    => [
-                    'contents' => [
-                        ['role' => 'user', 'parts' => [['text' => $prompt]]]
+            try {
+                $client = new GuzzleClient(['timeout' => 90, 'http_errors' => false]);
+                $resp   = $client->post($url, [
+                    'headers' => $headers,
+                    'json'    => [
+                        'contents' => [
+                            ['role' => 'user', 'parts' => [['text' => $prompt]]]
+                        ],
+                        'generationConfig' => [
+                            'response_mime_type' => 'application/json',
+                            'temperature'        => 0,
+                        ],
                     ],
-                    'generationConfig' => [
-                        'response_mime_type' => 'application/json',
-                        'temperature'        => 0,
-                    ],
-                ],
-            ]);
-
-            $statusCode = $resp->getStatusCode();
-            $bodyRaw    = $resp->getBody()->getContents();
-
-            if ($statusCode !== 200) {
-                Log::error('FableadAI Gemini HTTP error', [
-                    'status' => $statusCode,
-                    'body'   => substr($bodyRaw, 0, 500),
                 ]);
-                return null;
+
+                $statusCode = $resp->getStatusCode();
+                $bodyRaw    = $resp->getBody()->getContents();
+
+                if ($statusCode !== 200) {
+                    Log::error("FableadAI Gemini HTTP error for {$geminiModel}", ['status' => $statusCode, 'body' => $bodyRaw]);
+                    continue;
+                }
+
+                $body = json_decode($bodyRaw, true);
+                $raw  = $body['candidates'][0]['content']['parts'][0]['text'] ?? null;
+                if ($raw) {
+                    $clean = preg_replace('/^```json\s*/i', '', trim($raw));
+                    $clean = preg_replace('/```$/i', '', $clean);
+                    $decoded = json_decode(trim($clean), true);
+                    if ($decoded) return $decoded;
+                }
+
+            } catch (\Throwable $e) {
+                Log::error("FableadAI Gemini error for {$geminiModel}", ['err' => $e->getMessage()]);
             }
-
-            $body = json_decode($bodyRaw, true);
-            $raw  = $body['candidates'][0]['content']['parts'][0]['text'] ?? null;
-            if (!$raw) {
-                Log::error('FableadAI Gemini empty response', ['body' => $body]);
-                return null;
-            }
-
-            $clean = preg_replace('/^```json\s*/i', '', trim($raw));
-            $clean = preg_replace('/```$/i', '', $clean);
-            $parsed = json_decode(trim($clean), true);
-
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                Log::error('FableadAI Gemini JSON decode failed', ['raw' => substr($raw, 0, 500)]);
-                return null;
-            }
-
-            return $parsed;
-
-        } catch (\Throwable $e) {
-            Log::error('FableadAI Gemini error', ['err' => $e->getMessage()]);
-            return null;
         }
+        return null;
     }
 
 
