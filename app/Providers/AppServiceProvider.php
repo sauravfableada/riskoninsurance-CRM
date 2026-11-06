@@ -98,6 +98,8 @@ class AppServiceProvider extends ServiceProvider
                 $currentPlanName = $currentUserPlan?->plan?->name ?? 'Basic Plan';
                 $currentPlanStaffLimit = (int) ($currentUserPlan?->plan?->staff_limit ?? 15);
                 $currentPlanStaffCount = \App\Models\User::query()->where('type', 'staff')->count();
+                $currentPlanSubAgentLimit = (int) ($currentUserPlan?->plan?->sub_agent_limit ?? 5);
+                $currentPlanSubAgentCount = \App\Models\User::query()->where('type', 'sub_agents')->count();
 
                 if ($currentUserPlan?->start_date) {
                     $currentPlanPurchasedAt = \Illuminate\Support\Carbon::parse($currentUserPlan->start_date)->startOfDay();
@@ -175,6 +177,8 @@ class AppServiceProvider extends ServiceProvider
                 'currentPlanDisplayName' => $currentPlanDisplayName,
                 'currentPlanStaffLimit' => $currentPlanStaffLimit,
                 'currentPlanStaffCount' => $currentPlanStaffCount,
+                'currentPlanSubAgentLimit' => $currentPlanSubAgentLimit,
+                'currentPlanSubAgentCount' => $currentPlanSubAgentCount,
                 'currentPlanPurchasedAt' => $currentPlanPurchasedAt,
                 'currentPlanExpiresAt' => $currentPlanExpiresAt,
                 'currentPlanRenewsAt' => $currentPlanRenewsAt,

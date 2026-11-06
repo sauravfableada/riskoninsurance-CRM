@@ -49,4 +49,44 @@ class SubscriptionStaffLimitService
             'message' => 'Staff limit reached for ' . $displayPlanName,
         ];
     }
+
+    public function subAgentReachedForUser(?int $userId): ?array
+    {
+        if (!$userId) {
+            return null;
+        }
+
+        $userPlan = SubscriptionUserPlan::with('plan')
+            ->where('user_id', $userId)
+            ->latest('id')
+            ->first();
+
+        $plan = $userPlan?->plan;
+        $subAgentLimit = (int) ($plan?->sub_agent_limit ?? 0);
+
+        if (!$plan || $subAgentLimit <= 0) {
+            return null;
+        }
+
+        $subAgentCount = DB::table('users')
+            ->where('type', 'sub_agents')
+            ->count();
+
+        if ($subAgentCount < $subAgentLimit) {
+            return null;
+        }
+
+        $planName = trim((string) $plan->name);
+        $displayPlanName = str_ends_with(strtolower($planName), 'plan')
+            ? $planName
+            : $planName . ' Plan';
+
+        return [
+            'plan_name' => $plan->name,
+            'sub_agent_limit' => $subAgentLimit,
+            'sub_agent_count' => $subAgentCount,
+            'message' => 'Sub Agent limit reached for ' . $displayPlanName,
+        ];
+    }
+    }
 }

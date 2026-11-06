@@ -12,6 +12,7 @@ class SubscriptionPlan extends Model
     protected $fillable = [
         'name',
         'staff_limit',
+        'sub_agent_limit'
     ];
 
     public function userPlans(): HasMany

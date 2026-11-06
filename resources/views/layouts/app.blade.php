@@ -1339,7 +1339,7 @@
                     <!-- Notice box -->
                     <div class="p-3 mb-4 rounded-3 d-flex align-items-center gap-2" style="background: #e9eef5; color: #475569; font-size: 0.85rem; line-height: 1.4;">
                         <i class="fa-solid fa-circle-info fs-5 flex-shrink-0" style="color: #64748b;"></i>
-                        <div>Staff accounts are counted under your admin ID. When the plan limit is reached, new staff creation will be blocked automatically.</div>
+                        <div>Staff and Sub Agent accounts are counted under your admin ID. When the plan limit is reached, new creation will be blocked automatically.</div>
                     </div>
 
                     <!-- Details Card with Green Left Stripe -->
@@ -1354,6 +1354,10 @@
                                 <div class="d-flex align-items-center justify-content-between py-1">
                                     <span class="text-secondary fw-medium" style="font-size: 0.95rem;">Staff Limit:</span>
                                     <span class="fw-bold" style="color: #e11d48; font-size: 0.95rem;">{{ $currentPlanStaffCount }} / {{ $currentPlanStaffLimit ?: '15' }} users</span>
+                                </div>
+                                <div class="d-flex align-items-center justify-content-between py-1">
+                                    <span class="text-secondary fw-medium" style="font-size: 0.95rem;">Sub Agent Limit:</span>
+                                    <span class="fw-bold" style="color: #e11d48; font-size: 0.95rem;">{{ $currentPlanSubAgentCount ?? 0 }} / {{ $currentPlanSubAgentLimit ?: '5' }} users</span>
                                 </div>
                                 <div class="d-flex align-items-center justify-content-between py-1">
                                     <span class="text-secondary fw-medium" style="font-size: 0.95rem;">Status:</span>

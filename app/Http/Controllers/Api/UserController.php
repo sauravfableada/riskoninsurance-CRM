@@ -148,6 +148,18 @@ class UserController extends ApiBaseController
             'role.exists' => 'The selected role is invalid.',
         ]);
 
+        $limit = app(\App\Services\SubscriptionStaffLimitService::class)->subAgentReachedForUser(auth()->id());
+        if ($limit) {
+            return response()->json([
+                'success' => false,
+                'code' => 'subscription_sub_agent_limit_reached',
+                'message' => $limit['message'],
+                'plan_name' => $limit['plan_name'],
+                'sub_agent_limit' => $limit['sub_agent_limit'],
+                'sub_agent_count' => $limit['sub_agent_count'],
+            ], 422);
+        }
+
         $avatarPath = null;
         if ($request->hasFile('image')) {
             $avatarPath = $request->file('image')->store('users', 'public');

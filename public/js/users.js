@@ -664,14 +664,14 @@
         if (perPageSelect) {
             perPageSelect.addEventListener('change', () => fetchUsers(1));
         }
-        
+
         ['filterFromDate', 'filterToDate', 'filterDateRange', 'filterStatus'].forEach((filterId) => {
             const filterInput = document.getElementById(filterId);
             if (filterInput) {
                 filterInput.addEventListener('change', () => setTimeout(() => fetchUsers(1), 0));
             }
         });
-        
+
         const clearFiltersBtn = document.getElementById('clearFiltersBtn');
         if (clearFiltersBtn) {
             clearFiltersBtn.addEventListener('click', () => {
@@ -683,14 +683,14 @@
                 fetchUsers(1);
             });
         }
-        
+
         const filterDateRange = document.getElementById('filterDateRange');
         if (filterDateRange) {
-            filterDateRange.addEventListener('change', function() {
+            filterDateRange.addEventListener('change', function () {
                 const today = new Date();
                 let from = "";
                 let to = "";
-                
+
                 if (this.value === "today") {
                     from = to = today.toISOString().split("T")[0];
                 } else if (this.value === "this_week") {
@@ -705,7 +705,7 @@
                     from = new Date(today.getFullYear(), 0, 1).toISOString().split("T")[0];
                     to = new Date(today.getFullYear(), 11, 31).toISOString().split("T")[0];
                 }
-                
+
                 document.getElementById('filterFromDate').value = from;
                 document.getElementById('filterToDate').value = to;
             });
@@ -759,7 +759,7 @@
                         }, 300);
                     },
                     error: function (xhr) {
-                        if (xhr.status === 422 && xhr.responseJSON?.code === "subscription_staff_limit_reached") {
+                        if (xhr.status === 422 && (xhr.responseJSON?.code === "subscription_staff_limit_reached" || xhr.responseJSON?.code === "subscription_sub_agent_limit_reached")) {
                             const message = xhr.responseJSON?.message || "Sub-agent limit reached for your current plan.";
 
                             if (typeof Swal !== "undefined") {
