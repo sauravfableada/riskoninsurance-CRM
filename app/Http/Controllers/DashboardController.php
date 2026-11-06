@@ -9,9 +9,6 @@ use App\Models\Deal;
 use App\Models\Stage;
 use App\Models\Policy;
 use App\Models\InsurancePolicyType;
-use App\Models\CommissionEntry;
-use App\Models\User;
-use App\Models\Agent;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\JsonResponse;
@@ -27,6 +24,7 @@ class DashboardController extends Controller
         $showRenewalPoliciesModal = (bool) session()->pull('show_renewal_policies_modal', false);
 
         $query = Policy::with(['holder', 'policyType', 'company'])
+            ->currentTerms()
             ->orderBy('id', 'DESC');
 
         if (!auth()->user()->isAdmin() || auth()->user()->type === 'sub_agents') {
@@ -56,7 +54,122 @@ class DashboardController extends Controller
         $insuranceTypes = InsurancePolicyType::where('status', true)
             ->get(['id', 'name']);
 
-        return view('dashboard.index', compact('allPolicies', 'insuranceTypes', 'showRenewalPoliciesModal'));
+        $todaysOverview = $this->buildTodaysOverview();
+
+        return view('dashboard.index', compact('allPolicies', 'insuranceTypes', 'showRenewalPoliciesModal', 'todaysOverview'));
+    }
+
+    private function buildTodaysOverview(): array
+    {
+        $today = today();
+        $user = auth()->user();
+        $sections = [
+            'meetings' => ['title' => "Today's meetings", 'icon' => 'calendar-event', 'items' => collect(), 'empty' => 'No meetings scheduled today.'],
+            'followups' => ['title' => "Today's follow-ups", 'icon' => 'telephone', 'items' => collect(), 'empty' => 'No follow-ups scheduled today.'],
+            'attention' => ['title' => 'Work needing attention', 'icon' => 'exclamation-circle', 'items' => collect(), 'empty' => 'You are all caught up.'],
+            'birthdays' => ['title' => "Today's birthdays", 'icon' => 'gift', 'items' => collect(), 'empty' => 'No birthdays today.'],
+            'anniversaries' => ['title' => "Today's anniversaries", 'icon' => 'heart', 'items' => collect(), 'empty' => 'No anniversaries today.'],
+        ];
+
+        foreach ([
+            ['meetings', \App\Models\Meeting::class, 'scheduled_at', 'view_meetings', 'meetings.show'],
+            ['followups', FollowUp::class, 'follow_up_at', 'view_followups', 'followups.show'],
+            ['tasks', \App\Models\Task::class, 'due_date', 'view_tasks', 'tasks.show'],
+        ] as [$key, $model, $dateColumn, $permission, $route]) {
+            if (!$user->hasMatrixPermission($permission)) {
+                continue;
+            }
+
+            $query = $this->scopeOwnedRecords($model::query())
+                ->whereNotIn('status', ['completed', 'cancelled'])
+                ->whereDate($dateColumn, '<=', $today)->orderBy($dateColumn);
+            if ($key === 'meetings') {
+                $query->with('customer');
+            } elseif ($key === 'followups') {
+                $query->with('lead');
+            }
+
+            foreach ($query->get() as $record) {
+                $date = $record->{$dateColumn};
+                $overdue = $date->copy()->startOfDay()->lt($today);
+                $section = $key === 'tasks' || $overdue ? 'attention' : $key;
+                $sections[$section]['items']->push([
+                    'title' => $key === 'followups' ? ($record->purpose ?: 'Follow-up') : $record->title,
+                    'detail' => match ($key) {
+                        'meetings' => $record->customer?->name,
+                        'followups' => $record->lead?->name,
+                        default => null,
+                    },
+                    'date' => $date->format($key === 'tasks' ? 'd M Y' : 'd M Y, g:i A'),
+                    'sort' => $date->timestamp,
+                    'badge' => match ($key) { 'meetings' => 'Meeting', 'followups' => 'Follow-up', default => 'Task' } . ($overdue ? ' · Overdue' : ' · Today'),
+                    'overdue' => $overdue,
+                    'url' => route($route, $record->id),
+                ]);
+            }
+        }
+
+        if ($user->hasMatrixPermission('view_customers')) {
+            foreach (['birthdays' => 'dob', 'anniversaries' => 'anniversary_date'] as $key => $column) {
+                $customers = $this->scopeOwnedRecords(Customer::query())
+                    ->whereMonth($column, $today->month)->whereDay($column, $today->day)
+                    ->orderBy('name')->get();
+                foreach ($customers as $customer) {
+                    $sections[$key]['items']->push([
+                        'customer_id' => $customer->id,
+                        'whatsapp' => app(\App\Services\CelebrationWhatsappWish::class)->draft($key, $customer),
+                        'title' => $customer->name,
+                        'detail' => $customer->phone,
+                        'date' => $today->format('d M Y'),
+                        'badge' => $key === 'birthdays' ? 'Birthday today' : 'Anniversary today',
+                        'overdue' => false,
+                        'url' => route('masters.customers.show', $customer->id),
+                    ]);
+                }
+            }
+        }
+
+        if ($user->hasMatrixPermission('view_family_groups')) {
+            foreach (['birthdays' => 'dob', 'anniversaries' => 'anniversary'] as $key => $column) {
+                $members = \App\Models\FamilyGroupMember::query()
+                    ->with('group.holder')
+                    ->whereHas('group', function (Builder $query) use ($user) {
+                        if (!$user->isAdmin()) {
+                            $query->where(function (Builder $visible) use ($user) {
+                                $visible->where('created_by', $user->id)
+                                    ->orWhereHas('holder', fn (Builder $holders) => $holders->visibleToUser($user));
+                            });
+                        }
+                    })
+                    ->whereMonth($column, $today->month)->whereDay($column, $today->day)
+                    ->orderBy('member_name')->get();
+                foreach ($members as $member) {
+                    $holder = $member->group->holder;
+                    $normalize = fn ($name) => mb_strtolower(preg_replace('/\s+/u', ' ', trim((string) $name)));
+                    // A proposer can also be listed as a member of their own family.
+                    if ($holder && $normalize($member->member_name) === $normalize($holder->name)
+                        && $sections[$key]['items']->contains('customer_id', $holder->id)) {
+                        continue;
+                    }
+                    $sections[$key]['items']->push([
+                        'title' => $member->member_name,
+                        'whatsapp' => app(\App\Services\CelebrationWhatsappWish::class)->draft($key, $member, $holder),
+                        'detail' => implode(' · ', array_filter([
+                            $member->group->group_name, $member->relation, $member->contactForHolder($holder),
+                        ])),
+                        'date' => $today->format('d M Y'),
+                        'badge' => $key === 'birthdays' ? 'Birthday today' : 'Anniversary today',
+                        'overdue' => false,
+                        'url' => route('masters.family_groups.index'),
+                    ]);
+                }
+                $sections[$key]['items'] = $sections[$key]['items']->sortBy('title', SORT_NATURAL | SORT_FLAG_CASE)->values();
+            }
+        }
+
+        $sections['attention']['items'] = $sections['attention']['items']->sortBy('sort')->values();
+
+        return ['date' => $today->format('d M Y'), 'sections' => $sections];
     }
 
     public function apiStats(): JsonResponse
@@ -124,15 +237,20 @@ class DashboardController extends Controller
         }
     }
 
-    public function apiRenewalPoliciesWidget(): JsonResponse
+    public function apiRenewalPoliciesWidget(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'days' => ['sometimes', 'integer', 'in:15,30,45,60,90,120,180,365'],
+        ]);
+        $days = (int) ($validated['days'] ?? 30);
+
         try {
-            $query = Policy::query()
-                ->with(['holder:id,name', 'policyType:id,name', 'company:id,name'])
+            $query = Policy::query()->currentTerms()
+                ->with(['holder:id,name,phone', 'policyType:id,name', 'company:id,name'])
                 ->whereNull('deleted_at')
                 ->whereNotNull('end_date')
                 ->whereDate('end_date', '>=', today())
-                ->whereDate('end_date', '<=', today()->addDays(30));
+                ->whereDate('end_date', '<=', today()->addDays($days));
 
             if (!auth()->user()->isAdmin() || auth()->user()->type === 'sub_agents') {
                 $currentUid = auth()->id();
@@ -157,6 +275,7 @@ class DashboardController extends Controller
                         'policy_number' => $policy->policy_number,
                         'policy_number_no' => $policyNumberColumn === 'policy_number_no' ? $policy->policy_number_no : null,
                         'proposer' => $policy->holder?->name,
+                        'phone' => $policy->holder?->phone,
                         'policy_type' => $policy->policyType?->name,
                         'company' => $policy->company?->name,
                         'end_date' => $endDate->format('d M Y'),
@@ -337,7 +456,7 @@ class DashboardController extends Controller
                 return response()->json(['success' => true, 'data' => $this->emptyInsuranceInsights()]);
             }
 
-            $query = Policy::query()
+            $query = Policy::query()->currentTerms()
                 ->with(['policyType:id,name', 'company:id,name'])
                 ->whereNull('deleted_at');
 
@@ -403,8 +522,6 @@ class DashboardController extends Controller
                     'premium' => round((float) $items->sum('premium_amount'), 2),
                 ])->sortByDesc('premium')->values();
 
-            $commissionsData = $this->buildCommissionsData();
-
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -412,8 +529,6 @@ class DashboardController extends Controller
                     'portfolio_summary' => $portfolioSummary,
                     'expiry_buckets' => $expiryBuckets->toArray(),
                     'insurers' => $insurers->toArray(),
-                    'commissions' => $commissionsData['commissions'],
-                    'commission_summary' => $commissionsData['summary'],
                 ],
             ]);
         } catch (\Exception $e) {
@@ -422,32 +537,6 @@ class DashboardController extends Controller
                 'success' => false,
                 'message' => 'Failed to load insurance insights.',
                 'data' => $this->emptyInsuranceInsights(),
-            ], 500);
-        }
-    }
-
-    public function apiCommissionsWidget(): JsonResponse
-    {
-        try {
-            $data = $this->buildCommissionsData();
-            return response()->json([
-                'success' => true,
-                'data' => $data,
-            ]);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Dashboard commissions widget error', ['error' => $e->getMessage()]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to load commissions widget.',
-                'data' => [
-                    'commissions' => [],
-                    'summary' => [
-                        'total_commission' => 0,
-                        'top_group' => '--',
-                        'top_group_share' => 0,
-                        'distribution' => [],
-                    ],
-                ],
             ], 500);
         }
     }
@@ -464,265 +553,6 @@ class DashboardController extends Controller
             ],
             'expiry_buckets' => [],
             'insurers' => [],
-            'commissions' => [],
-            'commission_summary' => [
-                'total_commission' => 0,
-                'top_group' => '--',
-                'top_group_share' => 0,
-                'distribution' => [],
-            ],
-        ];
-    }
-
-    private function buildCommissionsData(): array
-    {
-        $user = auth()->user();
-        $isSubAgentOrStaff = $user && (!$user->isAdmin() || in_array($user->type, ['sub_agents', 'staff'], true));
-        $currentUid = $user ? $user->id : 0;
-
-        $commissionList = [];
-        $existingPolicyIds = [];
-
-        // 1. Fetch from CommissionEntry if table exists
-        if (Schema::hasTable('commission_entries')) {
-            $entriesQuery = CommissionEntry::with([
-                'user:id,name,email,type',
-                'agent:id,name,email,type',
-                'policy:id,policy_number,policy_number_no,premium_amount,company_id,user_id,created_by,staff_name,start_date,created_at,pay_in_amount,pay_out_amount',
-                'policy.company:id,name',
-                'policy.user:id,name,type',
-                'policy.creator:id,name,type',
-                'commissionRule.company:id,name'
-            ])->latest('id');
-
-            if ($isSubAgentOrStaff && $currentUid > 0) {
-                $entriesQuery->where(function ($q) use ($currentUid) {
-                    if (Schema::hasColumn('commission_entries', 'user_id')) {
-                        $q->where('user_id', $currentUid);
-                    }
-                    if (Schema::hasColumn('commission_entries', 'agent_id')) {
-                        $q->orWhere('agent_id', $currentUid);
-                    }
-                    $q->orWhereHas('policy', function ($pq) use ($currentUid) {
-                        $pq->where('user_id', $currentUid)->orWhere('created_by', $currentUid);
-                    });
-                });
-            }
-
-            $entries = $entriesQuery->get();
-
-            foreach ($entries as $entry) {
-                if ($entry->policy_id) {
-                    $existingPolicyIds[] = (int) $entry->policy_id;
-                }
-
-                $personName = $entry->user?->name
-                    ?: ($entry->agent?->name
-                    ?: ($entry->policy?->staff_name
-                    ?: ($entry->policy?->user?->name
-                    ?: ($entry->policy?->creator?->name ?: 'Staff'))));
-
-                $rawType = strtolower($entry->user?->type
-                    ?: ($entry->policy?->user?->type
-                    ?: ($entry->agent?->type ?: '')));
-
-                if ($rawType === 'staff' || (!empty($entry->policy?->staff_name) && empty($entry->agent_id))) {
-                    $roleLabel = 'Staff';
-                    $roleType = 'staff';
-                } else {
-                    $roleLabel = 'Sub-Agent';
-                    $roleType = 'sub_agent';
-                }
-
-                $policyNumber = $entry->policy?->policy_number
-                    ?: ($entry->policy?->policy_number_no ?: ('POL-' . str_pad($entry->policy_id ?: $entry->id, 4, '0', STR_PAD_LEFT)));
-
-                $companyName = $entry->policy?->company?->name
-                    ?: ($entry->commissionRule?->company?->name ?: 'Insurance');
-
-                $premium = (float) ($entry->premium_amount > 0 ? $entry->premium_amount : ($entry->policy?->premium_amount ?? 0));
-
-                $adminComm = (float) ($entry->pay_in_amount > 0 ? $entry->pay_in_amount : ($entry->policy?->pay_in_amount > 0 ? $entry->policy?->pay_in_amount : $entry->commission_amount));
-                $staffComm = (float) ($entry->pay_out_amount > 0 ? $entry->pay_out_amount : ($entry->policy?->pay_out_amount > 0 ? $entry->policy?->pay_out_amount : $entry->commission_amount));
-                $adminProfit = (float) ($entry->net_admin_profit > 0 ? $entry->net_admin_profit : max(0, round($adminComm - $staffComm, 2)));
-
-                $commissionPct = (float) ($entry->commission_percentage ?? $entry->pay_out_percentage ?? 0);
-                if ($commissionPct <= 0 && $premium > 0 && $staffComm > 0) {
-                    $commissionPct = round(($staffComm / $premium) * 100, 1);
-                }
-
-                $status = strtolower($entry->payment_status ?: 'pending');
-                $dateObj = $entry->entry_date ?: $entry->created_at;
-                $date = $dateObj ? Carbon::parse($dateObj)->format('d M, Y') : now()->format('d M, Y');
-
-                $commissionList[] = [
-                    'id' => $entry->id,
-                    'name' => $personName,
-                    'role' => $roleLabel,
-                    'role_type' => $roleType,
-                    'policy_id' => $entry->policy_id,
-                    'policy_number' => $policyNumber,
-                    'company' => $companyName,
-                    'premium' => $premium,
-                    'commission_amount' => $staffComm,
-                    'commission_percentage' => $commissionPct,
-                    'admin_commission' => $adminComm,
-                    'admin_profit' => $adminProfit,
-                    'status' => ucfirst($status),
-                    'date' => $date,
-                ];
-            }
-        }
-
-        // 2. Fallback: Check Policies table for policies without commission entries
-        if (Schema::hasTable('policies')) {
-            $policyQuery = Policy::with(['latestCommissionEntry', 'company:id,name', 'user:id,name,type', 'creator:id,name,type'])
-                ->whereNull('deleted_at');
-
-            if (!empty($existingPolicyIds)) {
-                $policyQuery->whereNotIn('id', array_unique(array_filter($existingPolicyIds)));
-            }
-
-            if ($isSubAgentOrStaff && $currentUid > 0) {
-                $policyQuery->where(function ($q) use ($currentUid) {
-                    $q->where('user_id', $currentUid)->orWhere('created_by', $currentUid);
-                });
-            }
-
-            $additionalPolicies = $policyQuery->latest('id')->get();
-
-            foreach ($additionalPolicies as $pol) {
-                $personName = !empty($pol->staff_name)
-                    ? $pol->staff_name
-                    : ($pol->user?->name ?: ($pol->creator?->name ?: 'Sub-Agent'));
-
-                $rawType = strtolower($pol->user?->type ?: ($pol->creator?->type ?: ''));
-                if ($rawType === 'staff' || !empty($pol->staff_name)) {
-                    $roleLabel = 'Staff';
-                    $roleType = 'staff';
-                } else {
-                    $roleLabel = 'Sub-Agent';
-                    $roleType = 'sub_agent';
-                }
-
-                $premium = (float) ($pol->premium_amount ?? 0);
-                $commEntry = $pol->latestCommissionEntry;
-                if ($commEntry) {
-                    $adminComm = (float) ($commEntry->pay_in_amount > 0 ? $commEntry->pay_in_amount : $commEntry->commission_amount);
-                    $staffComm = (float) ($commEntry->pay_out_amount > 0 ? $commEntry->pay_out_amount : $commEntry->commission_amount);
-                    $adminProfit = (float) ($commEntry->net_admin_profit > 0 ? $commEntry->net_admin_profit : max(0, round($adminComm - $staffComm, 2)));
-                    $status = ucfirst($commEntry->payment_status ?: 'Pending');
-                } else {
-                    $adminComm = (float) ($pol->pay_in_amount ?? 0);
-                    $staffComm = (float) ($pol->pay_out_amount ?? 0);
-                    $adminProfit = max(0, round($adminComm - $staffComm, 2));
-                    $status = 'Pending';
-                }
-
-                $commissionPct = (float) ($pol->pay_out_percentage ?: ($premium > 0 && $staffComm > 0 ? round(($staffComm / $premium) * 100, 1) : 0));
-                $dateObj = $pol->start_date ?: $pol->created_at;
-                $date = $dateObj ? Carbon::parse($dateObj)->format('d M, Y') : now()->format('d M, Y');
-
-                $commissionList[] = [
-                    'id' => 'pol-' . $pol->id,
-                    'name' => $personName,
-                    'role' => $roleLabel,
-                    'role_type' => $roleType,
-                    'policy_id' => $pol->id,
-                    'policy_number' => $pol->policy_number ?: ($pol->policy_number_no ?: ('POL-' . str_pad($pol->id, 4, '0', STR_PAD_LEFT))),
-                    'company' => $pol->company?->name ?: 'General Insurance',
-                    'premium' => $premium,
-                    'commission_amount' => $staffComm,
-                    'commission_percentage' => $commissionPct,
-                    'admin_commission' => $adminComm,
-                    'admin_profit' => $adminProfit,
-                    'status' => $status,
-                    'date' => $date,
-                ];
-            }
-        }
-
-        // 3. Compute Totals across all policies (matching ReportController)
-        $totalPoliciesQuery = Policy::with(['latestCommissionEntry'])->whereNull('deleted_at');
-        if ($isSubAgentOrStaff && $currentUid > 0) {
-            $totalPoliciesQuery->where(function ($q) use ($currentUid) {
-                $q->where('user_id', $currentUid)->orWhere('created_by', $currentUid);
-            });
-        }
-        $allPolList = $totalPoliciesQuery->get();
-
-        $totalPoliciesCount = $allPolList->count();
-        $totalGrossPremium = 0.0;
-        $totalAdminCommission = 0.0;
-        $totalStaffCommission = 0.0;
-        $totalAdminProfit = 0.0;
-
-        foreach ($allPolList as $p) {
-            $prem = (float) ($p->premium_amount ?? 0);
-            $totalGrossPremium += $prem;
-
-            $cEntry = $p->latestCommissionEntry;
-            if ($cEntry) {
-                $aComm = (float) ($cEntry->pay_in_amount > 0 ? $cEntry->pay_in_amount : $cEntry->commission_amount);
-                $sComm = (float) ($cEntry->pay_out_amount > 0 ? $cEntry->pay_out_amount : $cEntry->commission_amount);
-                $aProf = (float) ($cEntry->net_admin_profit > 0 ? $cEntry->net_admin_profit : max(0, round($aComm - $sComm, 2)));
-            } else {
-                $aComm = (float) ($p->pay_in_amount ?? 0);
-                $sComm = (float) ($p->pay_out_amount ?? 0);
-                $aProf = max(0, round($aComm - $sComm, 2));
-            }
-
-            $totalAdminCommission += $aComm;
-            $totalStaffCommission += $sComm;
-            $totalAdminProfit += $aProf;
-        }
-
-        // Fallback to commissionList if allPolList is empty
-        if ($totalPoliciesCount === 0 && !empty($commissionList)) {
-            $totalPoliciesCount = count($commissionList);
-            $totalGrossPremium = array_sum(array_column($commissionList, 'premium'));
-            $totalAdminCommission = array_sum(array_column($commissionList, 'admin_commission'));
-            $totalStaffCommission = array_sum(array_column($commissionList, 'commission_amount'));
-            $totalAdminProfit = array_sum(array_column($commissionList, 'admin_profit'));
-        }
-
-        // Donut Chart Distribution: Admin Net Profit vs Staff/Agent Commission
-        $totalCommissionsAndProfit = $totalAdminCommission > 0 ? $totalAdminCommission : ($totalAdminProfit + $totalStaffCommission);
-        $profitShare = $totalCommissionsAndProfit > 0 ? round(($totalAdminProfit / $totalCommissionsAndProfit) * 100) : 85;
-        $staffShare = $totalCommissionsAndProfit > 0 ? (100 - $profitShare) : 15;
-
-        $distribution = [
-            [
-                'name' => 'Admin Net Profit',
-                'role_type' => 'admin_profit',
-                'amount' => round($totalAdminProfit, 2),
-                'share' => $profitShare,
-                'color' => '#10B981', // Emerald green
-            ],
-            [
-                'name' => 'Staff / Agent Comm.',
-                'role_type' => 'staff_comm',
-                'amount' => round($totalStaffCommission, 2),
-                'share' => $staffShare,
-                'color' => '#2563EB', // Royal blue
-            ],
-        ];
-
-        $last5 = array_slice($commissionList, 0, 5);
-
-        return [
-            'commissions' => $last5,
-            'summary' => [
-                'total_policies' => $totalPoliciesCount,
-                'total_gross_premium' => round($totalGrossPremium, 2),
-                'total_admin_commission' => round($totalAdminCommission, 2),
-                'total_staff_commission' => round($totalStaffCommission, 2),
-                'total_admin_profit' => round($totalAdminProfit, 2),
-                'total_commission' => round($totalAdminProfit, 2),
-                'top_group' => 'Admin Net Profit',
-                'top_group_share' => $profitShare,
-                'distribution' => $distribution,
-            ],
         ];
     }
 
@@ -738,7 +568,7 @@ class DashboardController extends Controller
 
             $customers = $canCustomers ? (clone $customersQuery)->count() : 0;
 
-            $policiesQuery = Policy::query()->whereNull('deleted_at');
+            $policiesQuery = Policy::query()->currentTerms();
             if (!$user?->isAdmin() || $user?->type === 'sub_agents') {
                 $currentUid = $user?->id;
                 $policiesQuery->where(function ($q) use ($currentUid) {

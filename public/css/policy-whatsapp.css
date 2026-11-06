@@ -1,0 +1,8 @@
+.policy-number-reminder{white-space:normal;min-width:165px;margin-top:4px}
+.policy-number-reminder small{font-size:11px;overflow-wrap:anywhere}
+.policy-renewal-pulse{display:inline-flex;align-items:center;gap:6px;border:1px solid #e8cf9e;background:#fbf4e5;color:#8c5e18;border-radius:20px;padding:3px 8px;font-size:10px;font-weight:600;white-space:nowrap}
+.policy-renewal-pulse>span{width:6px;height:6px;border-radius:50%;background:#c88a25;animation:policyRenewalPulse 1.8s infinite;flex:none}
+.policy-whatsapp-reminder{display:inline-flex;align-items:center;justify-content:center;width:27px;height:27px;border:1px solid #b7ddc7;border-radius:8px;color:#17854b;background:#eaf6ef;font-size:14px;cursor:pointer}
+.policy-whatsapp-reminder:hover{background:#d2eddd;color:#096534}
+@keyframes policyRenewalPulse{0%,100%{box-shadow:0 0 0 0 #c88a2540}65%{box-shadow:0 0 0 5px #c88a2500}}
+@media(prefers-reduced-motion:reduce){.policy-renewal-pulse>span{animation:none}}

@@ -3,6 +3,60 @@
    ============================================================ */
 
 /* ── KPI Metric Cards ──────────────────────────────────────── */
+.dashboard-overview-title { color: #263c53; font-size: 1.55rem; font-weight: 750; }
+.dashboard-overview-subtitle { color: #526780; font-size: .95rem; }
+.dashboard-renewal-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 13px;
+    border: 1px solid #bdd0e8;
+    border-radius: 9px;
+    background: #edf3fb;
+    color: #174b84;
+    font-weight: 700;
+    font-size: .9rem;
+    box-shadow: 0 2px 5px rgba(34, 75, 120, .06);
+    transition: background .2s, box-shadow .2s;
+}
+.dashboard-renewal-button-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 27px;
+    height: 27px;
+    border-radius: 5px;
+    background: #dfeaf8;
+}
+.dashboard-renewal-button:hover { background: #dfeaf8; color: #123f72; border-color: #9bb9dd; }
+.dashboard-renewal-button:focus-visible { outline: 3px solid #8eb8ec; outline-offset: 3px; }
+.dashboard-overview-header { margin-bottom: 12px !important; }
+#dashboardStats { margin-bottom: 0 !important; --bs-gutter-y: 10px; }
+.dashboard-page .policy-tabs { margin-top: 20px !important; }
+#dashboardStats > div > a { display: block; height: 100%; }
+#dashboardStats .metric-card { border: 1px solid #d9e1eb; border-left: 4px solid var(--metric-accent); border-radius: 18px; background: linear-gradient(120deg, #f9fafb 0%, var(--metric-background) 100%); }
+#dashboardStats .metric-card-customers { --metric-accent: #3c6b99; --metric-background: #e8edf3; }
+#dashboardStats .metric-card-policies { --metric-accent: #8063a8; --metric-background: #eee9f2; }
+#dashboardStats .metric-card-active { --metric-accent: #ae7b30; --metric-background: #f1ece3; }
+#dashboardStats .metric-card-renewals { --metric-accent: #ae7b30; --metric-background: #f1ece3; }
+#dashboardStats .card-body { padding: 16px 22px; min-height: 132px; display: flex; flex-direction: column; justify-content: center; }
+#dashboardStats .metric-label { text-transform: none; letter-spacing: 0; font-size: .92rem; font-weight: 650; color: #5d7189; margin-bottom: 6px !important; }
+#dashboardStats .metric-value { color: #0b213b; font-size: 2.2rem; }
+#dashboardStats .metric-icon { color: var(--metric-accent); background: color-mix(in srgb, var(--metric-accent) 9%, transparent); font-size: 1.25rem; }
+#dashboardStats .metric-description { color: #5d7189; font-size: .8rem; margin-top: 5px; }
+[data-theme="dark"] .dashboard-overview-title { color: #e2e8f0; }
+[data-theme="dark"] .dashboard-overview-subtitle { color: #a5b4c7; }
+[data-theme="dark"] #dashboardStats .metric-card { background: #1e293b; border-color: #334155; border-left-color: var(--metric-accent); }
+[data-theme="dark"] #dashboardStats .metric-value { color: #f1f5f9; }
+[data-theme="dark"] #dashboardStats .metric-label,
+[data-theme="dark"] #dashboardStats .metric-description { color: #b5c3d6; }
+@media (max-width: 575.98px) {
+    #dashboardStats .card-body { padding: 13px; min-height: 126px; }
+    #dashboardStats .metric-value { font-size: 1.85rem; }
+    #dashboardStats .metric-icon { width: 36px; height: 36px; }
+    #dashboardStats .metric-description { font-size: .74rem; }
+}
+
 .metric-card {
     border-radius: var(--crm-radius-lg, 16px);
     border: 1px solid var(--crm-border, #E2E8F0);
@@ -1045,6 +1099,17 @@ a.dropdown-item.rounded-3.my-1.active{
     padding: 11px 12px;
     white-space: nowrap;
     font-size: .7rem;
+}
+
+#dashboardRenewalPoliciesTable .renewal-policy-main-row > td:nth-child(-n+3),
+#dashboardRenewalPoliciesTable .policy-number-badge {
+    font-size: .78rem;
+    line-height: 1.5;
+}
+
+#dashboardRenewalPoliciesTable .policy-number-badge {
+    overflow-wrap: anywhere;
+    min-width: 0;
 }
 
 #insurerPerformanceTable td {

@@ -10,6 +10,17 @@ class Policy extends Model
 
     protected $guarded = [];
 
+    public function renewals() { return $this->hasMany(self::class, 'renewal_of_policy_id'); }
+    public function previousTerm() { return $this->belongsTo(self::class, 'renewal_of_policy_id'); }
+    public function scopeCurrentTerms(\Illuminate\Database\Eloquent\Builder $query): \Illuminate\Database\Eloquent\Builder
+    {
+        $query->whereNull('policies.deleted_at');
+        if (\Illuminate\Support\Facades\Schema::hasColumn('policies','renewal_of_policy_id')) {
+            $query->whereDoesntHave('renewals',fn($children)=>$children->whereNull('deleted_at'));
+        }
+        return $query;
+    }
+
     public function getExpiringPolicies()
     {
         $today = now()->toDateString();

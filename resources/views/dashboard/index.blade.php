@@ -6,55 +6,74 @@
 <div class="container-fluid p-0 dashboard-page" id="dashboardPage" data-user-id="{{ auth()->id() }}"
     data-show-renewal-modal="{{ $showRenewalPoliciesModal ? '1' : '0' }}">
 
+    <div class="dashboard-overview-header d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+            <h2 class="dashboard-overview-title mb-1">Overview</h2>
+            <p class="dashboard-overview-subtitle mb-0">Your customers, policies and upcoming renewals at a glance.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+        <button type="button" class="btn dashboard-renewal-button" id="openRenewalReminders" data-bs-toggle="modal" data-bs-target="#renewalPoliciesModal">
+            <span class="dashboard-renewal-button-icon"><i class="bi bi-calendar2-check" aria-hidden="true"></i></span>Renewal Reminders
+        </button>
+        <button type="button" class="btn dashboard-renewal-button" data-bs-toggle="modal" data-bs-target="#todaysOverviewModal">
+            <span class="dashboard-renewal-button-icon"><i class="bi bi-calendar-day" aria-hidden="true"></i></span>Today's Overview
+        </button>
+        </div>
+    </div>
+
     <div class="row g-3 mb-2" id="dashboardStats">
         <div class="col-6 col-sm-6 col-md-3 col-lg-3" data-perm="view_customers">
             <a href="{{ route('masters.customers.index') }}" class="text-decoration-none">
-                <div class="metric-card card border-0 shadow-sm h-100">
+                <div class="metric-card metric-card-customers card shadow-sm h-100">
                     <div class="card-body">
                         <p class="metric-label mb-1">Customers</p>
                         <div class="d-flex justify-content-between align-items-center">
                             <h3 class="metric-value mb-0" id="metricCustomers">0</h3>
                             <span class="metric-icon icon-customers"><i class="bi bi-people-fill"></i></span>
                         </div>
+                        <p class="metric-description mb-0">Your customer base</p>
                     </div>
                 </div>
             </a>
         </div>
         <div class="col-6 col-sm-6 col-md-3 col-lg-3" data-perm="view_policies">
             <a href="{{ route('policies.legacy.index') }}" class="text-decoration-none">
-                <div class="metric-card card border-0 shadow-sm h-100">
+                <div class="metric-card metric-card-policies card shadow-sm h-100">
                     <div class="card-body">
                         <p class="metric-label mb-1">Total Policies</p>
                         <div class="d-flex justify-content-between align-items-center">
                             <h3 class="metric-value mb-0" id="metricTotalPolicies">0</h3>
                             <span class="metric-icon icon-followups"><i class="bi bi-shield-check"></i></span>
                         </div>
+                        <p class="metric-description mb-0">All insurance policies</p>
                     </div>
                 </div>
             </a>
         </div>
         <div class="col-6 col-sm-6 col-md-3 col-lg-3" data-perm="view_policies">
             <a href="{{ route('policies.legacy.index') }}" class="text-decoration-none">
-                <div class="metric-card card border-0 shadow-sm h-100">
+                <div class="metric-card metric-card-active card shadow-sm h-100">
                     <div class="card-body">
                         <p class="metric-label mb-1">Active Policies</p>
                         <div class="d-flex justify-content-between align-items-center">
                             <h3 class="metric-value mb-0" id="metricActivePolicies">0</h3>
                             <span class="metric-icon icon-leads"><i class="bi bi-file-earmark-check-fill"></i></span>
                         </div>
+                        <p class="metric-description mb-0">Currently active coverage</p>
                     </div>
                 </div>
             </a>
         </div>
         <div class="col-6 col-sm-6 col-md-3 col-lg-3" data-perm="view_policies">
             <a href="{{ route('policies.legacy.index') }}" class="text-decoration-none">
-                <div class="metric-card card border-0 shadow-sm h-100">
+                <div class="metric-card metric-card-renewals card shadow-sm h-100">
                     <div class="card-body">
                         <p class="metric-label mb-1">Renewal Due</p>
                         <div class="d-flex justify-content-between align-items-center">
                             <h3 class="metric-value mb-0" id="metricRenewalDue">0</h3>
                             <span class="metric-icon icon-deals"><i class="bi bi-calendar2-week-fill"></i></span>
                         </div>
+                        <p class="metric-description mb-0">Expiring within 30 days</p>
                     </div>
                 </div>
             </a>
@@ -86,7 +105,15 @@
             overflow-x: auto;
             white-space: nowrap;
             flex-wrap: nowrap;
+            scrollbar-width: thin;
+            scrollbar-color: #a8b4c3 transparent;
         }
+
+        .policy-tabs .nav-tabs::-webkit-scrollbar { height: 5px; }
+        .policy-tabs .nav-tabs::-webkit-scrollbar-track { background: transparent; }
+        .policy-tabs .nav-tabs::-webkit-scrollbar-thumb { background: #a8b4c3; border-radius: 999px; }
+        .policy-tabs .nav-tabs::-webkit-scrollbar-thumb:hover { background: #8292a6; }
+        .policy-tabs .nav-tabs::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
 
         .policy-tabs .nav-link {
             color: #495057;
@@ -1028,101 +1055,6 @@
             </div>
         </div>
     </div>
-
-    <div class="row g-3 mt-1">
-        <div class="col-12 col-xl-7">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header dashboard-widget-head py-3 d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="mb-0 fw-bold text-white">Staff &amp; Sub-Agent Commissions</h5>
-                        <small class="dashboard-widget-subtitle">Recent policy commission payouts (Last 5 records)</small>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <a href="{{ Route::has('commission-rules.entries.index') ? route('commission-rules.entries.index') : url('/commission-entries') }}" class="text-dark badge bg-light px-3 py-2 fw-semibold small" style="color: #0c0c0c !important;">View All</a>
-                    </div>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive insurer-performance-wrap">
-                        <table class="table table-hover align-middle mb-0" id="staffSubAgentCommissionTable">
-                            <thead>
-                                <tr>
-                                    <th style="width: 22%;">Agent / Staff</th>
-                                    <th style="width: 22%;">Policy</th>
-                                    <th style="width: 14%;" class="text-end">Premium</th>
-                                    <th style="width: 14%;" class="text-end">Staff Comm.</th>
-                                    <th style="width: 16%;" class="text-end">Admin Profit</th>
-                                    <th style="width: 12%;" class="text-center">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr><td colspan="6" class="text-center text-muted py-4">Loading commission records...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-12 col-xl-5">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header dashboard-widget-head py-3">
-                    <h5 class="mb-0 fw-bold text-white">Commission &amp; Admin Profit</h5>
-                    <small class="dashboard-widget-subtitle">Pay-in, staff payouts &amp; admin net profit</small>
-                </div>
-                <div class="card-body portfolio-mix-body">
-                    <div class="portfolio-mix-layout">
-                        <div class="portfolio-chart-box">
-                            <canvas id="commissionDistributionChart"></canvas>
-                        </div>
-                        <div class="portfolio-category-list" id="commissionDistributionLegend">
-                            <div class="text-muted small">Loading commission mix...</div>
-                        </div>
-                    </div>
-                    <div class="row g-2 mt-2 pt-2 border-top">
-                        <div class="col-6">
-                            <div class="card border-0 shadow-sm bg-light-subtle rounded-3">
-                                <div class="card-body p-2 text-center">
-                                    <h6 class="small text-muted mb-1 text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 0.04em;">Total Policies</h6>
-                                    <h4 class="fw-bold mb-0 text-dark" id="commWidgetTotalPolicies">0</h4>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="card border-0 shadow-sm bg-light-subtle rounded-3">
-                                <div class="card-body p-2 text-center">
-                                    <h6 class="small text-muted mb-1 text-uppercase fw-bold" style="font-size: 0.65rem; letter-spacing: 0.04em;">Gross Premium</h6>
-                                    <h4 class="fw-bold text-dark mb-0" id="commWidgetGrossPremium">₹0.00</h4>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="card border-0 shadow-sm border-start border-primary border-3 rounded-3">
-                                <div class="card-body p-2 text-center">
-                                    <h6 class="small text-primary mb-1 text-uppercase fw-bold" style="font-size: 0.62rem; letter-spacing: 0.03em;">Admin Comm.</h6>
-                                    <h6 class="fw-bold text-primary mb-0" id="commWidgetAdminCommission">₹0.00</h6>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="card border-0 shadow-sm border-start border-warning border-3 rounded-3">
-                                <div class="card-body p-2 text-center">
-                                    <h6 class="small text-dark mb-1 text-uppercase fw-bold" style="font-size: 0.62rem; letter-spacing: 0.03em;">Staff Comm.</h6>
-                                    <h6 class="fw-bold text-dark mb-0" id="commWidgetStaffCommission">₹0.00</h6>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="card border-0 shadow-sm border-start border-success border-3 rounded-3">
-                                <div class="card-body p-2 text-center">
-                                    <h6 class="small text-success mb-1 text-uppercase fw-bold" style="font-size: 0.62rem; letter-spacing: 0.03em;">Admin Net Profit</h6>
-                                    <h6 class="fw-bold text-success mb-0" id="commWidgetAdminProfit">₹0.00</h6>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
     <footer class="dashboard-footer text-center py-2 mt-4">
         © {{ date('Y') }} Copyright - <a href="https://www.fableadtechnolabs.com/" target="_blank"
             rel="noopener noreferrer" style="color: inherit; text-decoration: none;">Fablead Developers Technolab</a>
@@ -1137,12 +1069,21 @@
                     <span class="renewal-reminder-icon"><i class="fa-solid fa-calendar-check"></i></span>
                     <div>
                         <h5 class="modal-title fw-bold mb-1 text-white" id="renewalPoliciesModalLabel">Policies Due for Renewal</h5>
-                        <div class="small opacity-75">Policies expiring today or during the next 30 days</div>
+                        <div class="small opacity-75" id="renewalReminderSummary">Policies expiring today or during the next 30 days</div>
                     </div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4" id="renewalPoliciesModalBody">
+            <div class="px-4 pt-3">
+                <label for="renewalReminderDays" class="form-label fw-semibold">Show policies expiring within</label>
+                <select id="renewalReminderDays" class="form-select">
+                    @foreach ([15, 30, 45, 60, 90, 120, 180, 365] as $days)
+                        <option value="{{ $days }}" @selected($days === 30)>Next {{ $days }} days</option>
+                    @endforeach
+                </select>
+                <div class="form-text">Your selection is remembered in this browser. Open a policy to review it before contacting the customer.</div>
+            </div>
+            <div class="modal-body p-4" id="renewalPoliciesModalBody" aria-live="polite">
                 <div class="text-center text-muted py-4">
                     <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading renewal policies...
                 </div>
@@ -1154,6 +1095,7 @@
         </div>
     </div>
 </div>
+@include('dashboard.partials.todays-overview')
 @endsection
 
 @push('styles')
@@ -1171,7 +1113,7 @@
         .renewal-reminder-item-name { font-weight: 700; color: #334155; }
         .renewal-reminder-item-meta { color: #64748b; font-size: .9rem; }
         .renewal-reminder-date { font-weight: 700; white-space: nowrap; }
-        .renewal-reminder-due { color: #0f2747; font-size: .86rem; font-weight: 700; }
+        .renewal-reminder-due { width: auto; min-width: 110px; margin-top: 8px; padding: 6px 14px; font-size: .8rem; white-space: nowrap; }
         @media (max-width: 575.98px) {
             .renewal-reminder-item { align-items: flex-start !important; }
             .renewal-reminder-date-wrap { text-align: left !important; margin-top: 8px; }
