@@ -291,31 +291,16 @@ class FableadAiController extends Controller
 
             $coveredMembersJson = $request->input('covered_members');
             if ($coveredMembersJson) {
-                $coveredMembers = is_array($coveredMembersJson) ? $coveredMembersJson : (json_decode($coveredMembersJson, true) ?? []);
-                if (!Schema::hasTable('policy_members')) {
-                    try {
-                        Schema::create('policy_members', function (\Illuminate\Database\Schema\Blueprint $table) {
-                            $table->id();
-                            $table->unsignedBigInteger('policy_id')->index();
-                            $table->string('name');
-                            $table->string('relation')->nullable();
-                            $table->date('dob')->nullable();
-                            $table->string('gender', 30)->nullable();
-                            $table->timestamps();
-                        });
-                    } catch (\Throwable $e) {}
-                }
-                if (Schema::hasTable('policy_members')) {
-                    foreach ($coveredMembers as $member) {
-                        if (!empty($member['name'])) {
-                            \App\Models\PolicyMember::create([
-                                'policy_id' => $policy->id,
-                                'name'      => $member['name'],
-                                'relation'  => !empty($member['relation']) ? $member['relation'] : null,
-                                'dob'       => !empty($member['dob']) ? $member['dob'] : null,
-                                'gender'    => !empty($member['gender']) ? $member['gender'] : null,
-                            ]);
-                        }
+                $coveredMembers = json_decode($coveredMembersJson, true) ?? [];
+                foreach ($coveredMembers as $member) {
+                    if (!empty($member['name'])) {
+                        \App\Models\PolicyMember::create([
+                            'policy_id' => $policy->id,
+                            'name'      => $member['name'],
+                            'relation'  => !empty($member['relation']) ? $member['relation'] : null,
+                            'dob'       => !empty($member['dob']) ? $member['dob'] : null,
+                            'gender'    => !empty($member['gender']) ? $member['gender'] : null,
+                        ]);
                     }
                 }
             }
@@ -323,27 +308,14 @@ class FableadAiController extends Controller
             // Policy Addons
             $addonsJson = $request->input('addon_covers');
             if ($addonsJson) {
-                $addons = is_array($addonsJson) ? $addonsJson : (json_decode($addonsJson, true) ?? []);
-                if (!Schema::hasTable('policy_addons')) {
-                    try {
-                        Schema::create('policy_addons', function (\Illuminate\Database\Schema\Blueprint $table) {
-                            $table->id();
-                            $table->unsignedBigInteger('policy_id')->index();
-                            $table->string('cover_name');
-                            $table->decimal('premium_amount', 15, 2)->nullable();
-                            $table->timestamps();
-                        });
-                    } catch (\Throwable $e) {}
-                }
-                if (Schema::hasTable('policy_addons')) {
-                    foreach ($addons as $addon) {
-                        if (!empty($addon['cover_name'])) {
-                            \App\Models\PolicyAddon::create([
-                                'policy_id'      => $policy->id,
-                                'cover_name'     => $addon['cover_name'],
-                                'premium_amount' => $addon['premium_amount'] ?: null,
-                            ]);
-                        }
+                $addons = json_decode($addonsJson, true) ?? [];
+                foreach ($addons as $addon) {
+                    if (!empty($addon['cover_name'])) {
+                        \App\Models\PolicyAddon::create([
+                            'policy_id'      => $policy->id,
+                            'cover_name'     => $addon['cover_name'],
+                            'premium_amount' => $addon['premium_amount'] ?: null,
+                        ]);
                     }
                 }
             }
@@ -439,48 +411,19 @@ class FableadAiController extends Controller
             if (file_exists($pdfPath)) {
                 $destDir  = "policy_pdfs/{$policy->id}";
                 $destName = 'ai_extracted_' . date('Ymd_His') . '.pdf';
-                $pdfContent = file_get_contents($pdfPath);
-
-                // 1. Store in public disk under policies/ (Standard accessible location)
-                Storage::disk('public')->makeDirectory('policies');
-                Storage::disk('public')->put("policies/{$destName}", $pdfContent);
-
-                // 2. Also store in local disk for backup
                 Storage::disk('local')->makeDirectory($destDir);
-                Storage::disk('local')->put("{$destDir}/{$destName}", $pdfContent);
+                Storage::disk('local')->put("{$destDir}/{$destName}", file_get_contents($pdfPath));
 
-                $policy->update(['policy_pdf' => "policies/{$destName}"]);
+                $policy->update(['policy_pdf' => "{$destDir}/{$destName}"]);
 
-                $pdfHist = PolicyPdfHistory::create([
+                PolicyPdfHistory::create([
                     'policy_id'          => $policy->id,
-                    'file_name'          => $destName,
+                    'file_name'          => "{$destDir}/{$destName}",
                     'original_file_name' => 'ai_extracted_policy.pdf',
                     'document_type'      => 'policy',
                     'label'              => 'Original Policy PDF (Fablead AI)',
                     'uploaded_by'        => $userId,
                 ]);
-
-                // Sync into Customer Documents Repository
-                try {
-                    \App\Models\Document::create([
-                        'customer_id'       => $policy->holder_id ?: null,
-                        'title'             => 'Original Policy PDF (Fablead AI) - Policy ' . $policyNum . ' (ai_extracted_policy.pdf)',
-                        'file_path'         => 'policies/' . $destName,
-                        'file_type'         => 'pdf',
-                        'is_kyc'            => false,
-                        'meta'              => json_encode([
-                            'source'        => 'fablead_ai_upload',
-                            'history_id'    => $pdfHist->id,
-                            'policy_id'     => $policy->id,
-                            'policy_number' => $policyNum,
-                        ]),
-                        'documentable_id'   => $policy->id,
-                        'documentable_type' => Policy::class,
-                        'user_id'           => $userId,
-                    ]);
-                } catch (\Throwable $e) {
-                    Log::warning('Document record creation failed in FableadAiController: ' . $e->getMessage());
-                }
 
                 // Clean up temp file
                 @unlink($pdfPath);
