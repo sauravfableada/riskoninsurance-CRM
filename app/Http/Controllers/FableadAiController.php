@@ -206,8 +206,8 @@ class FableadAiController extends Controller
             if ($geminiKey && file_exists($path)) {
                 try {
                     $base64Pdf = base64_encode(file_get_contents($path));
-                    $client = new GuzzleClient(['timeout' => 90, 'http_errors' => false]);
-                    $ocrModels = ['gemini-2.5-flash', 'gemini-flash-latest'];
+                    $client = new GuzzleClient(['timeout' => 20, 'http_errors' => false]);
+                    $ocrModels = ['gemini-flash-latest'];
                     foreach ($ocrModels as $m) {
                         $resp = $client->post('https://generativelanguage.googleapis.com/v1beta/models/' . $m . ':generateContent?key=' . $geminiKey, [
                             'headers' => ['Content-Type' => 'application/json'],
@@ -749,11 +749,15 @@ class FableadAiController extends Controller
 
     private function callGroq(string $text, string $apiKey): ?array
     {
+        // Truncate text chunk if larger than 8,000 chars so it does not exceed Groq TPM rate limits or payload size
+        if (mb_strlen($text) > 8000) {
+            $text = mb_substr($text, 0, 8000);
+        }
         $prompt = $this->buildExtractionPrompt($text);
 
-        foreach (['openai/gpt-oss-120b', 'openai/gpt-oss-20b'] as $modelName) {
+        foreach (['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'] as $modelName) {
             try {
-                $client = new GuzzleClient(['timeout' => 90]);
+                $client = new GuzzleClient(['timeout' => 30]);
                 $resp   = $client->post('https://api.groq.com/openai/v1/chat/completions', [
                     'headers' => ['Authorization' => "Bearer {$apiKey}"],
                     'json'    => [
@@ -781,15 +785,18 @@ class FableadAiController extends Controller
 
     private function callGemini(string $text, string $apiKey): ?array
     {
+        if (mb_strlen($text) > 8000) {
+            $text = mb_substr($text, 0, 8000);
+        }
         $prompt = $this->buildExtractionPrompt($text);
 
-        foreach (['gemini-2.5-flash', 'gemini-flash-latest'] as $geminiModel) {
+        foreach (['gemini-flash-latest'] as $geminiModel) {
             $endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' . $geminiModel . ':generateContent';
             $url     = $endpoint . '?key=' . $apiKey;
             $headers = ['Content-Type' => 'application/json'];
 
             try {
-                $client = new GuzzleClient(['timeout' => 90, 'http_errors' => false]);
+                $client = new GuzzleClient(['timeout' => 25, 'http_errors' => false]);
                 $resp   = $client->post($url, [
                     'headers' => $headers,
                     'json'    => [
