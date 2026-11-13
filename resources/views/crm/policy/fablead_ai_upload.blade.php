@@ -1512,17 +1512,26 @@ function runValidations(data) {
 
         // Net Premium Check
         var calculatedNet = od + tp + addons;
-        if (Math.abs(calculatedNet - net) > 2 && net > 0) {
-            // Check if maybe Addons are already inside OD
-            if (Math.abs((od + tp) - net) <= 2) {
-                $('#note_net_premium').text('OD + Liability = ₹' + net).addClass('text-muted');
-                $('#note_addons_premium').text('already in OD — not added again').addClass('text-muted');
-            } else {
-                errors.push(`OD (₹${od}) + TP (₹${tp}) + Add-ons (₹${addons}) = ₹${calculatedNet}, but net premium extracted as ₹${net} — please verify the premium schedule.`);
-                $('#net_premium').addClass('is-invalid border-danger');
-            }
-        } else if (net > 0) {
+        var diffNet = Math.abs(calculatedNet - net);
+
+        // Check if there are other small components (e.g. RSA, Others / C, or rounded digits)
+        if (diffNet <= 2 && net > 0) {
             $('#note_net_premium').text('✓ looks right').addClass('text-success');
+            $('#net_premium').removeClass('is-invalid border-danger');
+        } else if (Math.abs((od + tp) - net) <= 2) {
+            // Addons might be already included inside OD
+            $('#note_net_premium').text('OD + Liability = ₹' + net).addClass('text-muted');
+            $('#note_addons_premium').text('already in OD — not added again').addClass('text-muted');
+            $('#net_premium').removeClass('is-invalid border-danger');
+        } else if (diffNet <= 200 && net > 0) {
+            // Minor variance (e.g. Total Others / Road Side Assistance C: ₹116)
+            var otherAmt = Math.round((net - calculatedNet) * 100) / 100;
+            var otherNote = otherAmt > 0 ? ` + Others: ₹${otherAmt}` : '';
+            $('#note_net_premium').text('✓ matches schedule' + otherNote).addClass('text-success');
+            $('#net_premium').removeClass('is-invalid border-danger');
+        } else if (net > 0) {
+            errors.push(`OD (₹${od}) + TP (₹${tp}) + Add-ons (₹${addons}) = ₹${calculatedNet}, but net premium extracted as ₹${net} — please verify the premium schedule.`);
+            $('#net_premium').addClass('is-invalid border-danger');
         }
 
         // Total Premium Check
