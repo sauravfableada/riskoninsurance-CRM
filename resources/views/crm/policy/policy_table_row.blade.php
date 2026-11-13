@@ -23,7 +23,22 @@
     @endif
     <td class="font_size mobile-hide">{{ $polStart }}</td>
     <td class="font_size mobile-hide">{{ $polEnd }}</td>
-    <td class="font_size mobile-hide">{{ esc($policy['premium'] ?? '') }}</td>
+    <td class="font_size mobile-hide">
+        <div>{{ esc($policy['premium'] ?? '') }}</div>
+        @php
+            $isMotor = str_contains(strtolower($policy['policy_type_name'] ?? ''), 'motor') || str_contains(strtolower($policy['policy_type_name'] ?? ''), 'vehicle');
+            $addonsVal = (float) ($policy['addons_premium'] ?? 0);
+            $odVal = (float) ($policy['premium_own_damage'] ?? 0);
+            $netVal = (float) ($policy['net_premium'] ?? 0);
+        @endphp
+        @if($isMotor && ($odVal > 0 || $addonsVal > 0 || $netVal > 0))
+            <div class="small text-muted" style="font-size: 10px; line-height: 1.2;">
+                @if($odVal > 0)OD: ₹{{ number_format($odVal, 2) }} @endif
+                @if($addonsVal > 0)| Addons: ₹{{ number_format($addonsVal, 2) }} @endif
+                @if($netVal > 0)<br>Net: ₹{{ number_format($netVal, 2) }} @endif
+            </div>
+        @endif
+    </td>
     @if(!empty($showCreatedByCol))
         <td class="font_size mobile-hide">{{ esc($policy['created_by_name'] ?? '--') }}</td>
     @endif
@@ -110,7 +125,14 @@
                 </div>
                 <div class="col-12 d-flex justify-content-between align-items-center">
                     <div class="expand-label"><i class="fa-solid fa-indian-rupee-sign"></i> Premium :</div>
-                    <div class="expand-value">{{ esc($policy['premium'] ?? '--') }}</div>
+                    <div class="expand-value">
+                        {{ esc($policy['premium'] ?? '--') }}
+                        @if($isMotor && ($odVal > 0 || $addonsVal > 0 || $netVal > 0))
+                            <div class="small text-muted" style="font-size: 11px;">
+                                (OD: ₹{{ number_format($odVal, 2) }}, Addons: ₹{{ number_format($addonsVal, 2) }}, Net: ₹{{ number_format($netVal, 2) }})
+                            </div>
+                        @endif
+                    </div>
                 </div>
                 @if(!empty($showCreatedByCol))
                 <div class="col-12 d-flex justify-content-between align-items-center">

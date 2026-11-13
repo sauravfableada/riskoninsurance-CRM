@@ -492,9 +492,18 @@ class PolicyController extends Controller
                 }
 
                 // Calculate Pay-Out (Sub-agent commission payout)
+                // For Motor/Vehicle insurance: Payout is calculated based on OD (Own Damage) amount and Sum Assured
+                $policyTypeName = strtolower((string) ($policy->policyType?->name ?? ''));
+                $isMotorPolicy = (str_contains($policyTypeName, 'motor') || str_contains($policyTypeName, 'vehicle'));
+                $odAmount = (float) ($policy->premium_own_damage ?? 0);
+
                 if ($payOutType === 'percentage') {
-                    $base = ($payOutBasedOn === 'premium') ? $premiumAmount : $payInAmount;
-                    $payOutAmount = round(($base * $payOutVal) / 100, 2);
+                    if ($payOutBasedOn === 'premium') {
+                        $payoutBase = ($isMotorPolicy && $odAmount > 0) ? $odAmount : $premiumAmount;
+                    } else {
+                        $payoutBase = $payInAmount;
+                    }
+                    $payOutAmount = round(($payoutBase * $payOutVal) / 100, 2);
                 } else {
                     $payOutAmount = (float) $payOutVal;
                 }
@@ -772,6 +781,9 @@ class PolicyController extends Controller
         ];
         if (Schema::hasTable('policy_members')) {
             $relations[] = 'members';
+        }
+        if (Schema::hasTable('policy_addons')) {
+            $relations[] = 'addons';
         }
 
         $policy = Policy::with($relations)->findOrFail($id);

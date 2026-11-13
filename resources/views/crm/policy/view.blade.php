@@ -272,6 +272,30 @@
                                 if ($isVehicle) {
                                     $policyFields["Vehicle IDV"] = ['icon' => 'fa-solid fa-car-side', 'value' => $readValue($policy, ['vehicle_idv', 'vehicle_IDV'])];
                                     $policyFields["CNG/LPG Unit"] = ['icon' => 'fa-solid fa-gas-pump', 'value' => $readValue($policy, ['cng_lpg_unit', 'CNG_LPG'])];
+                                    
+                                    // Motor specific premium breakdown fields
+                                    $odAmt = (float) $readValue($policy, 'premium_own_damage', 0);
+                                    $addonsAmt = (float) $readValue($policy, 'addons_premium', 0);
+                                    if ($addonsAmt <= 0 && $policy->relationLoaded('addons') && $policy->addons->isNotEmpty()) {
+                                        $addonsAmt = (float) $policy->addons->sum('premium_amount');
+                                    }
+                                    $netAmt = (float) $readValue($policy, 'net_premium', 0);
+                                    $grossAmt = (float) $readValue($policy, ['premium_amount', 'premium'], 0);
+                                    $taxAmt = (float) $readValue($policy, 'tax_amount', 0);
+                                    if ($netAmt <= 0 && $grossAmt > 0) {
+                                        $netAmt = max(0, $grossAmt - $taxAmt);
+                                    }
+                                    $addonsPlusOd = $odAmt + $addonsAmt;
+
+                                    if ($odAmt > 0) {
+                                        $policyFields["Own Damage (OD) Amount"] = ['icon' => 'fa-solid fa-car-burst', 'value' => '₹ ' . number_format($odAmt, 2)];
+                                    }
+                                    $policyFields["Total Add-on Covers Amount"] = ['icon' => 'fa-solid fa-shield-plus', 'value' => '₹ ' . number_format($addonsAmt, 2)];
+                                    if ($odAmt > 0 || $addonsAmt > 0) {
+                                        $policyFields["Add-ons + OD Amount"] = ['icon' => 'fa-solid fa-calculator', 'value' => '₹ ' . number_format($addonsPlusOd, 2)];
+                                    }
+                                    $policyFields["W/O GST (Net Amount)"] = ['icon' => 'fa-solid fa-file-invoice-dollar', 'value' => '₹ ' . number_format($netAmt, 2)];
+                                    $policyFields["Final Premium (Including Taxes)"] = ['icon' => 'fa-solid fa-receipt', 'value' => '₹ ' . number_format($grossAmt, 2)];
                                 } else {
                                     $policyFields["Sum Assured"] = ['icon' => 'fa-solid fa-sack-dollar', 'value' => $readValue($policy, 'sum_assured')];
                                 }
@@ -541,6 +565,56 @@
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
+                            </div>
+
+                            {{-- Detailed Add-on Covers Breakdown for Vehicle / Motor Policies --}}
+                            @php
+                                $policyAddons = $policy->relationLoaded('addons') ? $policy->addons : \App\Models\PolicyAddon::where('policy_id', $policy->id)->get();
+                                $totalAddonsSum = $policyAddons->sum('premium_amount');
+                            @endphp
+                            <div class="bg-light p-3 rounded mb-3 shadow-sm">
+                                <div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+                                    <h5 class="text-dark mb-0">
+                                        <i class="fa-solid fa-shield-halved me-2 text-primary"></i>Add-on Covers Breakdown
+                                    </h5>
+                                    @if($policyAddons->isNotEmpty())
+                                        <span class="badge bg-primary fs-6 px-3 py-1">Total Add-ons: ₹ {{ number_format($totalAddonsSum, 2) }}</span>
+                                    @endif
+                                </div>
+                                @if($policyAddons->isNotEmpty())
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-sm bg-white mb-0 align-middle">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th class="ps-3" style="width: 60px;">#</th>
+                                                    <th>Add-on Cover Name</th>
+                                                    <th class="text-end pe-3" style="width: 200px;">Amount (₹)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach($policyAddons as $aIdx => $addon)
+                                                    <tr>
+                                                        <td class="ps-3">{{ $aIdx + 1 }}</td>
+                                                        <td><strong>{{ $addon->cover_name }}</strong></td>
+                                                        <td class="text-end pe-3 font-monospace">
+                                                            {{ $addon->premium_amount !== null ? '₹ ' . number_format($addon->premium_amount, 2) : 'Included / Free' }}
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                            <tfoot class="table-light">
+                                                <tr>
+                                                    <th colspan="2" class="text-end ps-3">Total Add-on Amount:</th>
+                                                    <th class="text-end pe-3 text-primary font-monospace">₹ {{ number_format($totalAddonsSum, 2) }}</th>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                @else
+                                    <p class="text-muted mb-0 small">
+                                        <i class="fa-solid fa-circle-info me-1"></i>No individual add-on covers recorded for this policy. Total Add-on Amount: <strong>₹ {{ number_format((float) ($policy->addons_premium ?? 0), 2) }}</strong>
+                                    </p>
+                                @endif
                             </div>
                         <?php endif; ?>
                     </div>

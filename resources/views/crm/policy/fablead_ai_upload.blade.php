@@ -788,7 +788,10 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                             </div>
 
                             {{-- PREMIUM BREAKDOWN --}}
-                            <div class="ai-section-title">Premium Breakdown</div>
+                            <div class="ai-section-title d-flex justify-content-between align-items-center">
+                                <span>Premium Breakdown</span>
+                                <span class="badge bg-light text-muted border fw-normal" style="font-size: 11px;">Motor: OD, Add-ons, W/O GST & Total</span>
+                            </div>
                             <div class="row g-3 mb-4">
                                 <div class="col-md-6">
                                     <div class="ai-field-wrap" id="wrap_premium_own_damage">
@@ -805,13 +808,19 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                                 </div>
                                 <div class="col-md-6">
                                     <div class="ai-field-wrap" id="wrap_addons_premium">
-                                        <div class="ai-field-label">ADD-ONS (WITHIN OD) <span class="ai-conf-badge ai-conf-none" id="conf_addons_premium"></span> <span id="note_addons_premium" style="font-size: 11px; float: right; font-weight: normal;"></span></div>
+                                        <div class="ai-field-label">TOTAL ADD-ON COVERS AMOUNT <span class="ai-conf-badge ai-conf-none" id="conf_addons_premium"></span> <span id="note_addons_premium" style="font-size: 11px; float: right; font-weight: normal;"></span></div>
                                         <input type="number" step="0.01" class="form-control" name="addons_premium" id="addons_premium">
                                     </div>
                                 </div>
                                 <div class="col-md-6">
+                                    <div class="ai-field-wrap" id="wrap_addons_plus_od">
+                                        <div class="ai-field-label">ADD-ONS + OD AMOUNT <span id="note_addons_plus_od" style="font-size: 11px; float: right; font-weight: normal;"></span></div>
+                                        <input type="number" step="0.01" class="form-control bg-light" name="addons_plus_od" id="addons_plus_od" readonly>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
                                     <div class="ai-field-wrap" id="wrap_net_premium">
-                                        <div class="ai-field-label">NET PREMIUM (A + B) <span class="ai-conf-badge ai-conf-none" id="conf_net_premium"></span> <span id="note_net_premium" style="font-size: 11px; float: right; font-weight: normal;"></span></div>
+                                        <div class="ai-field-label">W/O GST (NET AMOUNT) <span class="ai-conf-badge ai-conf-none" id="conf_net_premium"></span> <span id="note_net_premium" style="font-size: 11px; float: right; font-weight: normal;"></span></div>
                                         <input type="number" step="0.01" class="form-control" name="net_premium" id="net_premium">
                                     </div>
                                 </div>
@@ -823,7 +832,7 @@ html[data-theme="dark"] .ai-stats-bar { border-color: #334155; }
                                 </div>
                                 <div class="col-md-6">
                                     <div class="ai-field-wrap" id="wrap_premium">
-                                        <div class="ai-field-label">TOTAL (INCL. GST) <span class="text-danger">*</span> <span class="ai-conf-badge ai-conf-none" id="conf_premium"></span> <span id="note_premium" style="font-size: 11px; float: right; font-weight: normal;"></span></div>
+                                        <div class="ai-field-label">FINAL PREMIUM (INCLUDING TAXES) <span class="text-danger">*</span> <span class="ai-conf-badge ai-conf-none" id="conf_premium"></span> <span id="note_premium" style="font-size: 11px; float: right; font-weight: normal;"></span></div>
                                         <input type="number" step="0.01" class="form-control" name="premium" id="premium" required>
                                     </div>
                                     <input type="hidden" name="amount" id="amount"> <!-- Kept for backward compatibility if needed by js -->
@@ -1428,7 +1437,7 @@ function runValidations(data) {
     var isMotor = ((data.policy_type_detected || '').toLowerCase() === 'motor');
     
     // Clear inline notes first
-    $('#note_premium_own_damage, #note_premium_liability, #note_addons_premium, #note_net_premium, #note_tax_amount, #note_premium').text('').removeClass('text-danger text-warning text-success text-secondary text-muted');
+    $('#note_premium_own_damage, #note_premium_liability, #note_addons_premium, #note_addons_plus_od, #note_net_premium, #note_tax_amount, #note_premium').text('').removeClass('text-danger text-warning text-success text-secondary text-muted');
 
     if (isMotor) {
         var od = parseFloat($('#premium_own_damage').val()) || 0;
@@ -1437,6 +1446,10 @@ function runValidations(data) {
         var net = parseFloat($('#net_premium').val()) || 0;
         var gst = parseFloat($('#tax_amount').val()) || 0;
         var total = parseFloat($('#premium').val()) || 0;
+
+        // Auto calculate & show Add-ons + OD Amount
+        var addonsPlusOd = Math.round((od + addons) * 100) / 100;
+        $('#addons_plus_od').val(addonsPlusOd > 0 ? addonsPlusOd : '');
 
         // Note: Od missing check
         if (!od) {
@@ -1769,17 +1782,32 @@ function addCoveredAddon(addon = null) {
 
 function updateAddonsInput() {
     var addons = [];
+    var sumAddons = 0;
     $('#addon_covers_container .card').each(function() {
         var $row = $(this);
         var name = $row.find('.addon-name').val();
+        var pVal = parseFloat($row.find('.addon-premium').val()) || 0;
         if (name) {
             addons.push({
                 cover_name: name,
                 premium_amount: $row.find('.addon-premium').val()
             });
+            sumAddons += pVal;
         }
     });
     $('#addon_covers_input').val(JSON.stringify(addons));
+
+    // Update total addons amount field if empty or matches previous sum
+    if (sumAddons > 0) {
+        var currentAddonsVal = parseFloat($('#addons_premium').val()) || 0;
+        if (currentAddonsVal === 0 || Math.abs(currentAddonsVal - sumAddons) > 0.01) {
+            $('#addons_premium').val(Math.round(sumAddons * 100) / 100);
+        }
+        var odVal = parseFloat($('#premium_own_damage').val()) || 0;
+        var addonsVal = parseFloat($('#addons_premium').val()) || 0;
+        var totalOdAddon = Math.round((odVal + addonsVal) * 100) / 100;
+        $('#addons_plus_od').val(totalOdAddon > 0 ? totalOdAddon : '');
+    }
 }
 </script>
 

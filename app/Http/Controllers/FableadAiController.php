@@ -540,9 +540,15 @@ class FableadAiController extends Controller
                     ->latest('id')
                     ->first();
 
+                // Determine base for motor policy vs standard
+                $policyTypeName = strtolower((string) ($policy->policyType?->name ?? ''));
+                $isMotorPolicy = (str_contains($policyTypeName, 'motor') || str_contains($policyTypeName, 'vehicle'));
+                $odAmount = (float) ($policy->premium_own_damage ?? 0);
+                $payoutCalculationBase = ($isMotorPolicy && $odAmount > 0) ? $odAmount : $premiumAmount;
+
                 if ($commissionRule) {
                     $commissionAmount = $commissionRule->commission_type === 'percentage'
-                        ? round($premiumAmount * (float) $commissionRule->commission_value / 100, 2)
+                        ? round($payoutCalculationBase * (float) $commissionRule->commission_value / 100, 2)
                         : (float) $commissionRule->commission_value;
 
                     $commissionEntryData = [
@@ -554,7 +560,9 @@ class FableadAiController extends Controller
                             ? $commissionRule->commission_value
                             : null,
                         'payment_status' => 'pending',
-                        'remarks' => 'Automatically earned from policy sale (Fablead AI).',
+                        'remarks' => ($isMotorPolicy && $odAmount > 0)
+                            ? 'Payout based on OD Amount ₹' . number_format($odAmount, 2) . ' (Fablead AI).'
+                            : 'Automatically earned from policy sale (Fablead AI).',
                         'entry_date' => $commissionDate,
                     ];
 
