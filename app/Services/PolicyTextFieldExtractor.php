@@ -123,6 +123,29 @@ class PolicyTextFieldExtractor
                 'source_text' => $phones[$phone], 'extraction_method' => 'unique_phone_fallback'];
         }
 
+        // Extract table add-ons from motor schedule (e.g. "(Add) Depreciation Reimbursement ... ₹ 3237.99")
+        if (preg_match_all('/(?:\(Add\)|Add-?on)\s*([A-Za-z0-9\s,\/&\-\.]{3,70}?)(?:\s*\([A-Z0-9]+\))?\s*(?:Sum\s+Insured[^\n\r]*?)?[\s:\-]*[₹Rs\.INR]*\s*([\d,]+(?:\.\d{1,2})?)/iu', $text, $addonMatches, PREG_SET_ORDER)) {
+            $existingAddons = $data['addon_covers'] ?? [];
+            $existingNames = array_map(fn($a) => mb_strtolower(trim(preg_replace('/[^a-z0-9]/i', '', $a['cover_name'] ?? ''))), $existingAddons);
+
+            foreach ($addonMatches as $aMatch) {
+                $rawName = trim(preg_replace('/\s+/', ' ', $aMatch[1]));
+                // Skip totals or headers
+                if (preg_match('/^(?:total|sum\s+insured|net\s+premium|premium)/i', $rawName)) continue;
+                $pAmt = str_replace(',', '', trim($aMatch[2]));
+                $normName = mb_strtolower(trim(preg_replace('/[^a-z0-9]/i', '', $rawName)));
+                if (!in_array($normName, $existingNames, true)) {
+                    $existingAddons[] = [
+                        'cover_name' => $rawName,
+                        'premium_amount' => $pAmt,
+                        'confidence' => 95,
+                    ];
+                    $existingNames[] = $normName;
+                }
+            }
+            $data['addon_covers'] = $existingAddons;
+        }
+
         return (new PolicySumInsuredExtractor)->enrich($data, $text);
     }
 
