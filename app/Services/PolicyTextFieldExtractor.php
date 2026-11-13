@@ -63,6 +63,24 @@ class PolicyTextFieldExtractor
             'nominee_contact' => [
                 '/\bnominee\s*(?:contact|mobile|phone)(?:\s*(?:number|no\.?))?\s*[:\-]?\s*(?:\+?91[\s\-]?)?([6-9]\d{9})\b/iu',
             ],
+            'premium_own_damage' => [
+                '/\b(?:total\s+own\s+damage\s+premium(?:\s*\([A-Z]\))?|basic\s+own\s+damage|own\s+damage\s+premium)\s*[:\-]?\s*(?:INR|Rs\.?|₹)?\s*([\d,]+(?:\.\d{1,2})?)/iu',
+            ],
+            'premium_liability' => [
+                '/\b(?:total\s+liability\s+premium(?:\s*\([A-Z]\))?|liability\s+premium|basic\s+third\s+party(?:\s+liability)?)\s*[:\-]?\s*(?:INR|Rs\.?|₹)?\s*([\d,]+(?:\.\d{1,2})?)/iu',
+            ],
+            'addons_premium' => [
+                '/\b(?:total\s+add[\s\-]*on\s+premium(?:\s*\([A-Z]\))?|add[\s\-]*on\s+covers\s+premium|total\s+addons?\s+premium)\s*[:\-]?\s*(?:INR|Rs\.?|₹)?\s*([\d,]+(?:\.\d{1,2})?)/iu',
+            ],
+            'net_premium' => [
+                '/\b(?:net\s+premium(?:\s*\([A-Za-z0-9+\s]+\))?)\s*[:\-]?\s*(?:INR|Rs\.?|₹)?\s*([\d,]+(?:\.\d{1,2})?)/iu',
+            ],
+            'tax_amount' => [
+                '/\b(?:total\s+(?:tax|gst)|cgst\s*\+\s*sgst|gst\s*amount)\s*[:\-]?\s*(?:INR|Rs\.?|₹)?\s*([\d,]+(?:\.\d{1,2})?)/iu',
+            ],
+            'total_premium' => [
+                '/\b(?:total\s+policy\s+premium|gross\s+premium|total\s+premium\s+payable|final\s+premium)\s*(?:\([^\r\n]{0,30}\))?\s*[:\-]?\s*(?:INR|Rs\.?|₹)?\s*([\d,]+(?:\.\d{1,2})?)/iu',
+            ],
         ];
 
         foreach ($patterns as $key => $rules) {
@@ -133,7 +151,7 @@ class PolicyTextFieldExtractor
     private function clean(string $key, string $value): string
     {
         $value = trim($value, " \t\n\r\0\x0B'\".,;:");
-        if (in_array($key, ['premium_amount', 'sum_assured'], true)) {
+        if (in_array($key, ['premium_amount', 'sum_assured', 'premium_own_damage', 'premium_liability', 'addons_premium', 'net_premium', 'tax_amount', 'total_premium'], true)) {
             $amount = str_replace(',', '', $value);
             if (preg_match('/^(\d+(?:\.\d+)?)\s*(crores?|cr\.?|lakhs?|lacs?)$/i', $amount, $match)) {
                 return (string) ((float) $match[1] * (preg_match('/^(?:crore|cr)/i', $match[2]) ? 10000000 : 100000));

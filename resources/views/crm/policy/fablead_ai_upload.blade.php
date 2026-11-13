@@ -1213,6 +1213,7 @@ function fillForm(data) {
         + ((data.conflicts || []).length ? 'Conflicting values were found. ' : '')
         + ((data.needs_review_fields || []).length ? 'Important fields need review; check suggestions below those fields. ' : '')
         + 'Review the original PDF and JSON before saving.';
+    window.lastExtractedData = data;
     var f = data.fields || {};
     var r = data.resolved || {};
     $('#company_id').val(r.company_id || '').trigger('change.select2');
@@ -1300,6 +1301,58 @@ function fillForm(data) {
         data.addon_covers.forEach(function(a) {
             if (a.cover_name) addCoveredAddon(a);
         });
+    }
+
+    // Auto-calculate motor premium relationships if not fully provided by AI
+    var isMotor = (type === 'motor');
+    if (isMotor) {
+        var odInput = $('#premium_own_damage');
+        var tpInput = $('#premium_liability');
+        var addonsInput = $('#addons_premium');
+        var netInput = $('#net_premium');
+        var taxInput = $('#tax_amount');
+        var totalInput = $('#premium');
+
+        var odVal = parseFloat(odInput.val()) || 0;
+        var tpVal = parseFloat(tpInput.val()) || 0;
+        var addonsVal = parseFloat(addonsInput.val()) || 0;
+        var netVal = parseFloat(netInput.val()) || 0;
+        var taxVal = parseFloat(taxInput.val()) || 0;
+        var totalVal = parseFloat(totalInput.val()) || 0;
+
+        // If addons_premium empty but individual addon_covers exist, sum them
+        if (addonsVal === 0 && data.addon_covers && data.addon_covers.length > 0) {
+            var sumAddons = 0;
+            data.addon_covers.forEach(function(a) {
+                var p = parseFloat(a.premium_amount) || 0;
+                sumAddons += p;
+            });
+            if (sumAddons > 0) {
+                addonsVal = Math.round(sumAddons * 100) / 100;
+                addonsInput.val(addonsVal);
+            }
+        }
+
+        // Auto-compute Net Premium if empty but OD, TP, Addons or Total are present
+        if (netVal === 0) {
+            if (odVal > 0 || tpVal > 0 || addonsVal > 0) {
+                netVal = Math.round((odVal + tpVal + addonsVal) * 100) / 100;
+                netInput.val(netVal);
+            } else if (totalVal > 0 && taxVal > 0) {
+                netVal = Math.round((totalVal - taxVal) * 100) / 100;
+                netInput.val(netVal);
+            }
+        }
+
+        // Auto-compute Tax/GST if empty but Total & Net exist
+        if (taxVal === 0 && totalVal > 0 && netVal > 0 && totalVal > netVal) {
+            taxVal = Math.round((totalVal - netVal) * 100) / 100;
+            taxInput.val(taxVal);
+        }
+
+        // Calculate Add-ons + OD Amount
+        var addPlusOd = Math.round((odVal + addonsVal) * 100) / 100;
+        $('#addons_plus_od').val(addPlusOd > 0 ? addPlusOd : '');
     }
 
     // Fuel type select
@@ -1400,6 +1453,7 @@ function showConfBadge(fieldId, confidence, sourceText) {
 }
 
 function updateStats(data) {
+    window.lastExtractedData = data;
     var f = data.fields || {};
     var r = data.resolved || {};
     var extracted = 0, high = 0, mid = 0, missing = 0;
@@ -1797,18 +1851,44 @@ function updateAddonsInput() {
     });
     $('#addon_covers_input').val(JSON.stringify(addons));
 
-    // Update total addons amount field if empty or matches previous sum
+    // Update total addons amount field if individual addons are listed
     if (sumAddons > 0) {
         var currentAddonsVal = parseFloat($('#addons_premium').val()) || 0;
         if (currentAddonsVal === 0 || Math.abs(currentAddonsVal - sumAddons) > 0.01) {
             $('#addons_premium').val(Math.round(sumAddons * 100) / 100);
         }
-        var odVal = parseFloat($('#premium_own_damage').val()) || 0;
-        var addonsVal = parseFloat($('#addons_premium').val()) || 0;
-        var totalOdAddon = Math.round((odVal + addonsVal) * 100) / 100;
-        $('#addons_plus_od').val(totalOdAddon > 0 ? totalOdAddon : '');
     }
+    var odVal = parseFloat($('#premium_own_damage').val()) || 0;
+    var addonsVal = parseFloat($('#addons_premium').val()) || 0;
+    var totalOdAddon = Math.round((odVal + addonsVal) * 100) / 100;
+    $('#addons_plus_od').val(totalOdAddon > 0 ? totalOdAddon : '');
 }
+
+// Bind live changes on OD, TP, Addons, Net, Tax to update calculations
+$(document).on('input change', '#premium_own_damage, #addons_premium, #premium_liability, #tax_amount', function() {
+    var od = parseFloat($('#premium_own_damage').val()) || 0;
+    var addons = parseFloat($('#addons_premium').val()) || 0;
+    var tp = parseFloat($('#premium_liability').val()) || 0;
+    var tax = parseFloat($('#tax_amount').val()) || 0;
+
+    // Addons + OD
+    var addOd = Math.round((od + addons) * 100) / 100;
+    $('#addons_plus_od').val(addOd > 0 ? addOd : '');
+
+    // If Net premium is empty or user is adjusting components, suggest net
+    var netField = $('#net_premium');
+    if (!netField.val() || netField.hasClass('ai-auto-calc')) {
+        if (od > 0 || addons > 0 || tp > 0) {
+            var calcNet = Math.round((od + addons + tp) * 100) / 100;
+            netField.val(calcNet).addClass('ai-auto-calc');
+        }
+    }
+
+    // Run validations to update note indicators
+    if (window.lastExtractedData) {
+        runValidations(window.lastExtractedData);
+    }
+});
 </script>
 
 @endsection

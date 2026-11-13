@@ -949,6 +949,14 @@ STRICT RULES:
 10. For important fields with multiple plausible values, put EVERY candidate with verbatim evidence in field_candidates. Do not silently discard uncertain alternatives. Sum assured must come from selected policy coverage; ignore generic lists of available sums insured in brochures.
 11. Workmen Compensation, Workers Compensation, Employees Compensation Insurance (including Digit Employees Compensation Insurance Policy) and WC Policy are the main category "Workmen Compensation (WC)". Medical expense benefits do not make a WC policy Health insurance. A mere exclusion referencing the Workmen Compensation Act does not make another policy WC.
 12. sum_assured is the CURRENT policy's main Sum Insured / Sum Assured. Read Base Sum Insured tables even when headings and values appear on separate lines. For motor policies use the scheduled total IDV, not add-on limits. Never substitute portability/previous-policy sums, keys/locks, baggage, accidental medical expenses, premiums, waiting-period days or marketing benefit amounts. Never add historical or member amounts together. Keep add-on limits in addon_covers. If current main cover cannot be established, leave sum_assured null and flag it for review.
+13. FOR MOTOR/VEHICLE POLICIES - EXTRACT DETAILED SCHEDULE OF PREMIUM:
+   - premium_own_damage: Total Own Damage Premium / Basic Own Damage (Section I / (A)). E.g. "Total Own Damage Premium (A)", "Own Damage Premium".
+   - premium_liability: Total Liability Premium / Third Party Premium (Section II / (B)). Set to "0" if Standalone Own Damage or not applicable.
+   - addons_premium: Total Add on Premium (Section I Add-On Covers / (B)). E.g. "Total Add on Premium (B)", "Total Add-On Premium".
+   - net_premium: Net Premium (A + B + C / before GST). E.g. "Net Premium (A+B+C)", "Net Premium".
+   - tax_amount: Combined SGST + CGST / IGST amount.
+   - total_premium: Total Policy Premium / Gross Premium Payable (including GST).
+   - addon_covers: Extract every single add-on line item listed in Section I Add-On Covers or Section II (e.g. Depreciation Reimbursement, Return to Invoice, Loss of personal belongings, Emergency transport and hotel expenses, Key Replacement, Engine Secure, Tyre Secure, Consumable expenses, Repair of Glass/Rubber, Road Side Assistance, etc.) with exact "cover_name" and "premium_amount".
 
 EXTRACTION SCHEMA (return exactly this JSON structure):
 {
