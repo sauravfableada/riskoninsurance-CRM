@@ -14,6 +14,19 @@ class ClaimTracker extends Model
         'claim_file_submit_date' => 'date',
     ];
 
+    public function getClaimFilesAttribute(): array
+    {
+        if (!$this->claim_file) {
+            return [];
+        }
+        $decoded = json_decode($this->claim_file, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            return array_values(array_filter($decoded, fn($f) => !empty($f)));
+        }
+        $trimmed = trim($this->claim_file);
+        return $trimmed !== '' ? [$trimmed] : [];
+    }
+
     public function policy() { return $this->belongsTo(Policy::class); }
     public function familyGroup() { return $this->belongsTo(FamilyGroup::class); }
     public function proposer() { return $this->belongsTo(Customer::class, 'proposer_id'); }

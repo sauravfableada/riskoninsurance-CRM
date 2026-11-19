@@ -59,9 +59,24 @@ class ClaimTrackerController extends Controller
     public function store(Request $request)
     {
         $data = $this->validated($request);
-        if ($request->hasFile('claim_file')) {
-            $data['claim_file'] = $request->file('claim_file')->store('claims', 'public');
+
+        $storedFiles = [];
+        if ($request->hasFile('claim_files')) {
+            foreach ($request->file('claim_files') as $file) {
+                if ($file && $file->isValid()) {
+                    $fileName = time() . '_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
+                    $storedFiles[] = $file->storeAs('claims', $fileName, 'public');
+                }
+            }
+        } elseif ($request->hasFile('claim_file')) {
+            $file = $request->file('claim_file');
+            if ($file && $file->isValid()) {
+                $fileName = time() . '_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
+                $storedFiles[] = $file->storeAs('claims', $fileName, 'public');
+            }
         }
+
+        $data['claim_file'] = !empty($storedFiles) ? json_encode(array_values($storedFiles)) : null;
         $data['created_by'] = auth()->id();
         ClaimTracker::create($data);
         return redirect()->route('claim-tracker.index')->with('success', 'Claim created successfully.');
@@ -81,11 +96,36 @@ class ClaimTrackerController extends Controller
 
     public function update(Request $request, ClaimTracker $claimTracker)
     {
-        $data = $this->validated($request);
-        if ($request->hasFile('claim_file')) {
-            if ($claimTracker->claim_file) Storage::disk('public')->delete($claimTracker->claim_file);
-            $data['claim_file'] = $request->file('claim_file')->store('claims', 'public');
+        $data = $this->validated($request, $claimTracker);
+
+        $currentFiles = $claimTracker->claim_files;
+        $keptFiles = array_values(array_filter((array) $request->input('existing_claim_files', [])));
+
+        // Remove files deleted by the user
+        $removedFiles = array_diff($currentFiles, $keptFiles);
+        foreach ($removedFiles as $removedFile) {
+            Storage::disk('public')->delete($removedFile);
         }
+
+        // Upload new files
+        $newFiles = [];
+        if ($request->hasFile('claim_files')) {
+            foreach ($request->file('claim_files') as $file) {
+                if ($file && $file->isValid()) {
+                    $fileName = time() . '_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
+                    $newFiles[] = $file->storeAs('claims', $fileName, 'public');
+                }
+            }
+        } elseif ($request->hasFile('claim_file')) {
+            $file = $request->file('claim_file');
+            if ($file && $file->isValid()) {
+                $fileName = time() . '_' . uniqid() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $file->getClientOriginalName());
+                $newFiles[] = $file->storeAs('claims', $fileName, 'public');
+            }
+        }
+
+        $allFiles = array_values(array_merge($keptFiles, $newFiles));
+        $data['claim_file'] = !empty($allFiles) ? json_encode($allFiles) : null;
         $data['modified_by'] = auth()->id();
         $claimTracker->update($data);
         return redirect()->route('claim-tracker.index')->with('success', 'Claim updated successfully.');
@@ -93,7 +133,9 @@ class ClaimTrackerController extends Controller
 
     public function destroy(ClaimTracker $claimTracker)
     {
-        if ($claimTracker->claim_file) Storage::disk('public')->delete($claimTracker->claim_file);
+        foreach ($claimTracker->claim_files as $file) {
+            Storage::disk('public')->delete($file);
+        }
         $claimTracker->delete();
         return redirect()->route('claim-tracker.index')->with('success', 'Claim deleted successfully.');
     }
@@ -166,8 +208,11 @@ class ClaimTrackerController extends Controller
             ->when($request->filled('status'), fn ($query) => $query->where('claim_status', $request->status));
     }
 
-    private function validated(Request $request): array
+    private function validated(Request $request, ?ClaimTracker $claimTracker = null): array
     {
+        $customService = app(\App\Services\FieldCustomizationService::class);
+        $isClaimFileRequired = $customService->isFieldRequired('claim_trackers', 'claim_file');
+
         $data = $request->validate([
             'family_group_id' => ['required', 'exists:family_groups,id'],
             'proposer_id' => ['required', 'exists:customers,id'],
@@ -175,11 +220,29 @@ class ClaimTrackerController extends Controller
             'insured_member_id' => ['required', 'exists:family_group_members,id'],
             'claim_amount' => ['required', 'numeric', 'min:0'],
             'issued_by' => ['required', 'exists:users,id'],
+            'claim_files' => ['nullable', 'array'],
+            'claim_files.*' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,doc,docx', 'max:10240'],
             'claim_file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,doc,docx', 'max:10240'],
+            'existing_claim_files' => ['nullable', 'array'],
+            'existing_claim_files.*' => ['nullable', 'string'],
             'claim_file_received_date' => ['required', 'date'],
             'claim_file_submit_date' => ['nullable', 'date', 'after_or_equal:claim_file_received_date'],
             'claim_status' => ['required', Rule::in(['Processed', 'Query', 'Closed', 'Rejected'])],
         ]);
+
+        if ($isClaimFileRequired) {
+            $hasNewUploads = ($request->hasFile('claim_files') && count(array_filter($request->file('claim_files'))) > 0)
+                || ($request->hasFile('claim_file') && $request->file('claim_file')->isValid());
+            $hasExistingFiles = !empty(array_filter((array) $request->input('existing_claim_files', [])));
+
+            if (!$hasNewUploads && !$hasExistingFiles) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'claim_files' => 'The ' . $customService->getFieldLabel('claim_trackers', 'claim_file', 'Claim Document / File') . ' is required.',
+                ]);
+            }
+        }
+
+        unset($data['claim_files'], $data['claim_file'], $data['existing_claim_files']);
 
         $policyMatches = Policy::query()
             ->whereKey($data['policy_id'])

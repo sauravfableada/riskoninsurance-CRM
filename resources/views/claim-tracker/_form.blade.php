@@ -81,10 +81,32 @@
 
     @if($isVisible('claim_file', true))
     <div class="col-md-6 mb-3">
-        <label class="form-label">{{ $fieldLabel('claim_file', 'Claim File') }} @if($isRequired('claim_file', false))<span class="text-danger">*</span>@endif</label>
-        <input type="file" name="claim_file" class="form-control claim-file-input @error('claim_file') is-invalid @enderror" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" {{ $isRequired('claim_file', false) ? 'required' : '' }}>
-        @if(isset($claimTracker) && $claimTracker->claim_file)<small><a href="{{ Storage::url($claimTracker->claim_file) }}" target="_blank">View current file</a></small>@endif
-        @error('claim_file')<div class="invalid-feedback">{{ $message }}</div>@enderror
+        <label class="form-label" for="claim_files">{{ $fieldLabel('claim_file', 'Claim Document / File') }} @if($isRequired('claim_file', false))<span class="text-danger">*</span>@endif</label>
+        <input type="file" name="claim_files[]" id="claim_files" class="form-control claim-file-input @error('claim_files') is-invalid @enderror @error('claim_files.*') is-invalid @enderror" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple {{ ($isRequired('claim_file', false) && (!isset($claimTracker) || empty($claimTracker->claim_files))) ? 'required' : '' }}>
+        <small class="text-muted d-block mt-1">Hold Ctrl / Cmd to select multiple files (.pdf, .jpg, .jpeg, .png, .doc, .docx). Max 10MB per file.</small>
+        @error('claim_files')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+        @error('claim_files.*')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+
+        <div id="selected_files_list" class="mt-2 d-flex flex-column gap-1"></div>
+
+        @if(isset($claimTracker) && !empty($claimTracker->claim_files))
+        <div class="mt-2 existing-files-container">
+            <label class="form-label small fw-semibold text-muted mb-1">Attached Files ({{ count($claimTracker->claim_files) }}):</label>
+            <div class="d-flex flex-column gap-1">
+                @foreach($claimTracker->claim_files as $file)
+                <div class="d-flex align-items-center justify-content-between bg-light border rounded px-2 py-1 existing-file-item">
+                    <input type="hidden" name="existing_claim_files[]" value="{{ $file }}">
+                    <a href="{{ Storage::url($file) }}" target="_blank" class="text-decoration-none small text-truncate me-2" title="{{ basename($file) }}">
+                        <i class="fa-solid fa-file me-1 text-primary"></i>{{ basename($file) }}
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 remove-existing-file" title="Remove file">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
     </div>
     @endif
 
@@ -185,6 +207,36 @@ $(function () {
     $('#proposer_id').on('change', function() { loadPolicies(''); });
     $('#policy_id').on('change', fillPolicyDetails);
     if (initial.familyGroup) loadFamilyGroup(initial.proposer, initial.insuredMember, initial.policy);
+
+    $('#claim_files').on('change', function () {
+        const list = $('#selected_files_list');
+        list.empty();
+        if (this.files && this.files.length > 0) {
+            const countText = this.files.length === 1 ? '1 new file selected:' : this.files.length + ' new files selected:';
+            let html = '<span class="small fw-semibold text-primary">' + countText + '</span>';
+            for (let i = 0; i < this.files.length; i++) {
+                const f = this.files[i];
+                let size = (f.size / 1024).toFixed(1) + ' KB';
+                if (f.size > 1024 * 1024) {
+                    size = (f.size / (1024 * 1024)).toFixed(2) + ' MB';
+                }
+                html += '<div class="small text-muted ps-2"><i class="fa-solid fa-paperclip me-1"></i>' + $('<div>').text(f.name).html() + ' <span class="text-secondary">(' + size + ')</span></div>';
+            }
+            list.html(html);
+        }
+    });
+
+    $(document).on('click', '.remove-existing-file', function () {
+        $(this).closest('.existing-file-item').remove();
+        if ($('.existing-file-item').length === 0) {
+            $('.existing-files-container').remove();
+            @if($isRequired('claim_file', false))
+            if (!$('#claim_files')[0].files || $('#claim_files')[0].files.length === 0) {
+                $('#claim_files').prop('required', true);
+            }
+            @endif
+        }
+    });
 });
 </script>
 @endpush
