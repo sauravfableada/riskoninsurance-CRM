@@ -35,12 +35,7 @@
         <table id="claimTable" class="table table-flush w-100">
             <thead>
                 <tr>
-                    <th class="text-center" style="min-width: 80px;">
-                        <div class="d-flex align-items-center justify-content-center gap-1">
-                            <input type="checkbox" class="form-check-input claim-table-master-check m-0" checked title="Select all visible">
-                            <span>Sr.No</span>
-                        </div>
-                    </th>
+                    <th>Sr.No</th>
                     <th>Family Group</th>
                     <th>Proposer Name</th>
                     <th>Policy No.</th>
@@ -53,18 +48,7 @@
                 </tr>
             </thead>
         <tbody>@forelse($claims as $claim)<tr>
-            <td class="text-center">
-                <div class="d-flex align-items-center justify-content-center gap-1">
-                    <input type="checkbox"
-                        class="form-check-input claim-tracker-toggle-checkbox m-0"
-                        data-policy-id="{{ $claim->policy_id }}"
-                        data-policy-number="{{ $claim->policy?->policy_number_no ?: $claim->policy?->policy_number ?: ('#' . $claim->policy_id) }}"
-                        checked
-                        title="Untick to remove from Claim Tracker"
-                        style="cursor: pointer; width: 17px; height: 17px;">
-                    <span class="text-muted small ms-1">{{ $loop->iteration }}</span>
-                </div>
-            </td><td>{{ $claim->familyGroup?->group_name ?? $claim->policy?->familyGroup?->group_name ?? 'N/A' }}</td><td>{{ $claim->proposer?->name ?? $claim->policy?->holder?->name ?? 'N/A' }}</td><td>{{ $claim->policy?->policy_number_no ?? 'N/A' }}</td><td>{{ $claim->insuredMember?->member_name ?? 'N/A' }}</td>
+            <td>{{ $loop->iteration }}</td><td>{{ $claim->familyGroup?->group_name ?? $claim->policy?->familyGroup?->group_name ?? 'N/A' }}</td><td>{{ $claim->proposer?->name ?? $claim->policy?->holder?->name ?? 'N/A' }}</td><td>{{ $claim->policy?->policy_number_no ?? 'N/A' }}</td><td>{{ $claim->insuredMember?->member_name ?? 'N/A' }}</td>
             <td>{{ number_format((float)$claim->claim_amount, 2) }}</td><td>{{ $claim->claim_file_received_date?->format('d-m-Y') }}</td><td class="claim-submitted-cell">@if($claim->claim_file_submit_date)<span>{{ $claim->claim_file_submit_date->format('d-m-Y') }}</span>@else<form method="POST" action="{{ route('claim-tracker.submitted-date', $claim) }}" class="m-0">@csrf @method('PATCH')<input type="date" name="claim_file_submit_date" class="form-control form-control-sm claim-submitted-date" min="{{ $claim->claim_file_received_date?->format('Y-m-d') }}" aria-label="Claim submitted date" onchange="if (this.value && this.checkValidity()) { this.form.submit(); }"></form>@endif</td>
             <td><form method="POST" action="{{ route('claim-tracker.status', $claim) }}" class="m-0">@csrf @method('PATCH')<select name="claim_status" class="form-select form-select-sm claim-status-select" onchange="this.form.submit()">
                 @foreach(['Processed', 'Query', 'Closed', 'Rejected'] as $status)<option value="{{ $status }}" @selected($claim->claim_status === $status)>{{ $status }}</option>@endforeach
@@ -284,48 +268,11 @@ $(function(){
                     icon: res.tracked ? 'success' : 'info',
                     title: res.message || (res.tracked ? 'Policy added to Claim Tracker' : 'Policy removed from Claim Tracker')
                 });
-
-                // If unchecked directly in main claim table, fade out row
-                if (!res.tracked && $checkbox.closest('#claimTable').length) {
-                    $checkbox.closest('tr').fadeOut(400, function() {
-                        $(this).remove();
-                    });
-                }
             },
             error: function(xhr) {
                 $checkbox.prop('disabled', false);
                 $checkbox.prop('checked', !isChecked);
                 Swal.fire('Error', xhr.responseJSON?.message || 'Could not update Claim Tracker status.', 'error');
-            }
-        });
-    });
-
-    // Master check in main table
-    $(document).on('change', '.claim-table-master-check', function() {
-        const isChecked = $(this).is(':checked');
-        const policyIds = [];
-        $('#claimTable tbody tr:visible .claim-tracker-toggle-checkbox').each(function() {
-            policyIds.push($(this).data('policy-id'));
-        });
-
-        if (policyIds.length === 0) return;
-
-        $('.claim-table-master-check').prop('disabled', true);
-        $.ajax({
-            url: '{{ route("claim-tracker.bulk-toggle-policies") }}',
-            method: 'POST',
-            data: {
-                _token: '{{ csrf_token() }}',
-                policy_ids: policyIds,
-                track: isChecked ? 1 : 0
-            },
-            success: function(res) {
-                $('.claim-table-master-check').prop('disabled', false);
-                window.location.reload();
-            },
-            error: function(xhr) {
-                $('.claim-table-master-check').prop('disabled', false).prop('checked', !isChecked);
-                Swal.fire('Error', xhr.responseJSON?.message || 'Bulk update failed.', 'error');
             }
         });
     });
