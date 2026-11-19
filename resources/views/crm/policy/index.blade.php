@@ -817,7 +817,12 @@
                                         <table id="allMyPoliciesTable" class="table">
                                             <thead>
                                                 <tr>
-                                                    <th class="sr-no text-center">Sr.No</th>
+                                                    <th class="sr-no text-center" style="min-width: 80px;">
+                                                        <div class="d-flex align-items-center justify-content-center gap-1">
+                                                            <input type="checkbox" class="form-check-input claim-tracker-bulk-toggle m-0" title="Select / Deselect all visible for Claim Tracker" style="cursor: pointer; width: 16px; height: 16px;">
+                                                            <span>Sr.No</span>
+                                                        </div>
+                                                    </th>
                                                     <th class="policy-holder">Policy Holder</th>
                                                     <th class="policy-type mobile-hide">Policy Type</th>
                                                     <th class="company mobile-hide">Company</th>
@@ -843,7 +848,12 @@
                                         <table id="currentMyPoliciesTable" class="table">
                                             <thead>
                                                 <tr>
-                                                    <th class="sr-no text-center">Sr.No</th>
+                                                    <th class="sr-no text-center" style="min-width: 80px;">
+                                                        <div class="d-flex align-items-center justify-content-center gap-1">
+                                                            <input type="checkbox" class="form-check-input claim-tracker-bulk-toggle m-0" title="Select / Deselect all visible for Claim Tracker" style="cursor: pointer; width: 16px; height: 16px;">
+                                                            <span>Sr.No</span>
+                                                        </div>
+                                                    </th>
                                                     <th class="policy-holder">Policy Holder</th>
                                                     <th class="policy-type mobile-hide">Policy Type</th>
                                                     <th class="company mobile-hide">Company</th>
@@ -858,7 +868,18 @@
                                                 foreach ($myPolicies as $policy): ?>
                                                     <?php if (empty($policy['is_renew']) && $policy['renew_id'] == null && $policy['renew_status'] == null): ?>
                                                         <tr data-id="<?= $policy['id']; ?>" data-company="<?= esc($policy['company_name'] ?? '') ?>">
-                                                            <td class="font_size text-center"><?= $i++; ?></td>
+                                                            <td class="font_size text-center">
+                                                                <div class="d-flex align-items-center justify-content-center gap-1">
+                                                                    <input type="checkbox"
+                                                                        class="form-check-input claim-tracker-toggle-checkbox m-0"
+                                                                        data-policy-id="<?= $policy['id']; ?>"
+                                                                        data-policy-number="<?= esc($policy['policy_number'] ?? $policy['id']); ?>"
+                                                                        <?= !empty($policy['is_claim_tracked']) ? 'checked' : ''; ?>
+                                                                        title="Tick to show in Claim Tracker"
+                                                                        style="cursor: pointer; width: 17px; height: 17px;">
+                                                                    <span class="text-muted small ms-1"><?= $i++; ?></span>
+                                                                </div>
+                                                            </td>
                                                             <td class="font_size policy-holder-name" title="<?= esc($policy['policy_holder_name']); ?>">
                                                                 <?= esc($policy['policy_holder_name']); ?>
                                                             </td>
@@ -1003,7 +1024,12 @@
                                         <table id="renewedMyPoliciesTable" class="table">
                                             <thead>
                                                 <tr>
-                                                    <th class="sr-no text-center">Sr.No</th>
+                                                    <th class="sr-no text-center" style="min-width: 80px;">
+                                                        <div class="d-flex align-items-center justify-content-center gap-1">
+                                                            <input type="checkbox" class="form-check-input claim-tracker-bulk-toggle m-0" title="Select / Deselect all visible for Claim Tracker" style="cursor: pointer; width: 16px; height: 16px;">
+                                                            <span>Sr.No</span>
+                                                        </div>
+                                                    </th>
                                                     <th class="policy-holder">Policy Holder</th>
                                                     <th class="policy-type mobile-hide">Policy Type</th>
                                                     <th class="company mobile-hide">Company</th>
@@ -1018,7 +1044,18 @@
                                                 <?php foreach ($renewed_myPolicies as $policy): ?>
                                                     <?php if (!empty($policy['renew_status']) && strtolower(trim($policy['renew_status'])) === 'renewed'): ?>
                                                         <tr data-id="<?= $policy['id']; ?>" data-company="<?= esc($policy['company_name'] ?? '') ?>">
-                                                            <td class="font_size text-center"><?= $i++; ?></td>
+                                                            <td class="font_size text-center">
+                                                                <div class="d-flex align-items-center justify-content-center gap-1">
+                                                                    <input type="checkbox"
+                                                                        class="form-check-input claim-tracker-toggle-checkbox m-0"
+                                                                        data-policy-id="<?= $policy['id']; ?>"
+                                                                        data-policy-number="<?= esc($policy['policy_number'] ?? $policy['id']); ?>"
+                                                                        <?= !empty($policy['is_claim_tracked']) ? 'checked' : ''; ?>
+                                                                        title="Tick to show in Claim Tracker"
+                                                                        style="cursor: pointer; width: 17px; height: 17px;">
+                                                                    <span class="text-muted small ms-1"><?= $i++; ?></span>
+                                                                </div>
+                                                            </td>
                                                             <td class="font_size policy-holder-name" title="<?= esc($policy['policy_holder_name']); ?>">
                                                                 <?= esc($policy['policy_holder_name']); ?>
                                                             </td>
@@ -1256,7 +1293,12 @@
                                         <table id="allStaffPoliciesTable" class="table policy-table">
                                             <thead>
                                                 <tr>
-                                                    <th class="sr-no text-center">Sr.No</th>
+                                                    <th class="sr-no text-center" style="min-width: 80px;">
+                                                        <div class="d-flex align-items-center justify-content-center gap-1">
+                                                            <input type="checkbox" class="form-check-input claim-tracker-bulk-toggle m-0" title="Select / Deselect all visible for Claim Tracker" style="cursor: pointer; width: 16px; height: 16px;">
+                                                            <span>Sr.No</span>
+                                                        </div>
+                                                    </th>
                                                     <th class="policy-holder">Policy Holder</th>
                                                     <th class="company mobile-hide">Agent</th>
                                                     <th class="policy-type mobile-hide">Policy Type</th>
@@ -1281,7 +1323,12 @@
                                         <table id="currentStaffPoliciesTable" class="table policy-table">
                                             <thead>
                                                 <tr>
-                                                    <th class="sr-no text-center">Sr.No</th>
+                                                    <th class="sr-no text-center" style="min-width: 80px;">
+                                                        <div class="d-flex align-items-center justify-content-center gap-1">
+                                                            <input type="checkbox" class="form-check-input claim-tracker-bulk-toggle m-0" title="Select / Deselect all visible for Claim Tracker" style="cursor: pointer; width: 16px; height: 16px;">
+                                                            <span>Sr.No</span>
+                                                        </div>
+                                                    </th>
                                                     <th class="policy-holder">Policy Holder</th>
                                                     <th class="company mobile-hide">Agent</th>
                                                     <th class="policy-type mobile-hide">Policy Type</th>
@@ -1296,7 +1343,18 @@
                                                 foreach ($staffPolicies as $policy) : ?>
                                                     <?php if (empty($policy['is_renew']) && $policy['renew_id'] == null && $policy['renew_status'] == null): ?>
                                                         <tr data-id="<?= $policy['id']; ?>" data-company="<?= esc($policy['company_name'] ?? '') ?>">
-                                                            <td class="font_size text-center"><?= $i++; ?></td>
+                                                            <td class="font_size text-center">
+                                                                <div class="d-flex align-items-center justify-content-center gap-1">
+                                                                    <input type="checkbox"
+                                                                        class="form-check-input claim-tracker-toggle-checkbox m-0"
+                                                                        data-policy-id="<?= $policy['id']; ?>"
+                                                                        data-policy-number="<?= esc($policy['policy_number'] ?? $policy['id']); ?>"
+                                                                        <?= !empty($policy['is_claim_tracked']) ? 'checked' : ''; ?>
+                                                                        title="Tick to show in Claim Tracker"
+                                                                        style="cursor: pointer; width: 17px; height: 17px;">
+                                                                    <span class="text-muted small ms-1"><?= $i++; ?></span>
+                                                                </div>
+                                                            </td>
                                                             <td class="font_size policy-holder-name" title="<?= esc($policy['policy_holder_name']); ?>">
                                                                 <?= esc($policy['policy_holder_name']); ?>
                                                             </td>
@@ -1434,7 +1492,12 @@
                                         <table id="renewedStaffPoliciesTable" class="table policy-table">
                                             <thead>
                                                 <tr>
-                                                    <th class="sr-no text-center">Sr.No</th>
+                                                    <th class="sr-no text-center" style="min-width: 80px;">
+                                                        <div class="d-flex align-items-center justify-content-center gap-1">
+                                                            <input type="checkbox" class="form-check-input claim-tracker-bulk-toggle m-0" title="Select / Deselect all visible for Claim Tracker" style="cursor: pointer; width: 16px; height: 16px;">
+                                                            <span>Sr.No</span>
+                                                        </div>
+                                                    </th>
                                                     <th class="policy-holder">Policy Holder</th>
                                                     <th class="company mobile-hide">Agent</th>
                                                     <th class="policy-type mobile-hide">Policy Type</th>
@@ -1449,7 +1512,18 @@
                                                 foreach ($staffPolicies as $policy) : ?>
                                                     <?php if (!empty($policy['renew_status']) && strtolower(trim($policy['renew_status'])) === 'renewed'): ?>
                                                         <tr data-id="<?= $policy['id']; ?>" data-company="<?= esc($policy['company_name'] ?? '') ?>">
-                                                            <td class="font_size text-center"><?= $i++; ?></td>
+                                                            <td class="font_size text-center">
+                                                                <div class="d-flex align-items-center justify-content-center gap-1">
+                                                                    <input type="checkbox"
+                                                                        class="form-check-input claim-tracker-toggle-checkbox m-0"
+                                                                        data-policy-id="<?= $policy['id']; ?>"
+                                                                        data-policy-number="<?= esc($policy['policy_number'] ?? $policy['id']); ?>"
+                                                                        <?= !empty($policy['is_claim_tracked']) ? 'checked' : ''; ?>
+                                                                        title="Tick to show in Claim Tracker"
+                                                                        style="cursor: pointer; width: 17px; height: 17px;">
+                                                                    <span class="text-muted small ms-1"><?= $i++; ?></span>
+                                                                </div>
+                                                            </td>
                                                             <td class="font_size policy-holder-name" title="<?= esc($policy['policy_holder_name']); ?>">
                                                                 <?= esc($policy['policy_holder_name']); ?>
                                                             </td>
@@ -1658,7 +1732,12 @@
                                 <table id="allStaffPoliciesTableStaff" class="table policy-table">
                                     <thead>
                                         <tr>
-                                            <th class="sr-no text-center">Sr.No</th>
+                                            <th class="sr-no text-center" style="min-width: 80px;">
+                                                <div class="d-flex align-items-center justify-content-center gap-1">
+                                                    <input type="checkbox" class="form-check-input claim-tracker-bulk-toggle m-0" title="Select / Deselect all visible for Claim Tracker" style="cursor: pointer; width: 16px; height: 16px;">
+                                                    <span>Sr.No</span>
+                                                </div>
+                                            </th>
                                             <th class="policy-holder">Policy Holder</th>
                                             <th class="company mobile-hide">Agent</th>
                                             <th class="policy-type mobile-hide">Policy Type</th>
@@ -1690,7 +1769,12 @@
                                 <table id="currentStaffPoliciesTableStaff" class="table policy-table">
                                     <thead>
                                         <tr>
-                                            <th class="sr-no text-center">Sr.No</th>
+                                            <th class="sr-no text-center" style="min-width: 80px;">
+                                                <div class="d-flex align-items-center justify-content-center gap-1">
+                                                    <input type="checkbox" class="form-check-input claim-tracker-bulk-toggle m-0" title="Select / Deselect all visible for Claim Tracker" style="cursor: pointer; width: 16px; height: 16px;">
+                                                    <span>Sr.No</span>
+                                                </div>
+                                            </th>
                                             <th class="policy-holder">Policy Holder</th>
                                             <th class="company mobile-hide">Agent</th>
                                             <th class="policy-type mobile-hide">Policy Type</th>
@@ -1708,7 +1792,18 @@
                                                 <tr data-id="<?= $policy['id']; ?>"
                                                     data-company="<?= esc($policy['company_name'] ?? '') ?>"
                                                     data-policy-scope="<?= (int) ($policy['created_by'] ?? 0) === (int) auth()->id() ? 'created' : 'assigned' ?>">
-                                                    <td class="text-center"><?= $i++; ?></td>
+                                                    <td class="text-center">
+                                                        <div class="d-flex align-items-center justify-content-center gap-1">
+                                                            <input type="checkbox"
+                                                                class="form-check-input claim-tracker-toggle-checkbox m-0"
+                                                                data-policy-id="<?= $policy['id']; ?>"
+                                                                data-policy-number="<?= esc($policy['policy_number'] ?? $policy['id']); ?>"
+                                                                <?= !empty($policy['is_claim_tracked']) ? 'checked' : ''; ?>
+                                                                title="Tick to show in Claim Tracker"
+                                                                style="cursor: pointer; width: 17px; height: 17px;">
+                                                            <span class="text-muted small ms-1"><?= $i++; ?></span>
+                                                        </div>
+                                                    </td>
                                                     <td><?= esc($policy['policy_holder_name'] ?? ''); ?></td>
                                                     <td class="mobile-hide"><?= esc($policy['staff_name'] ?? ''); ?></td>
                                                     <td class="mobile-hide"><?= esc($policy['policy_type_name'] ?? ''); ?></td>
@@ -1840,7 +1935,12 @@
                                 <table id="renewedStaffPoliciesTableStaff" class="table policy-table">
                                     <thead>
                                         <tr>
-                                            <th class="sr-no text-center">Sr.No</th>
+                                            <th class="sr-no text-center" style="min-width: 80px;">
+                                                <div class="d-flex align-items-center justify-content-center gap-1">
+                                                    <input type="checkbox" class="form-check-input claim-tracker-bulk-toggle m-0" title="Select / Deselect all visible for Claim Tracker" style="cursor: pointer; width: 16px; height: 16px;">
+                                                    <span>Sr.No</span>
+                                                </div>
+                                            </th>
                                             <th class="policy-holder">Policy Holder</th>
                                             <th class="company mobile-hide">Agent</th>
                                             <th class="policy-type mobile-hide">Policy Type</th>
@@ -1858,7 +1958,18 @@
                                                 <tr data-id="<?= $policy['id']; ?>"
                                                     data-company="<?= esc($policy['company_name'] ?? '') ?>"
                                                     data-policy-scope="<?= (int) ($policy['created_by'] ?? 0) === (int) auth()->id() ? 'created' : 'assigned' ?>">
-                                                    <td class="text-center"><?= $i++; ?></td>
+                                                    <td class="text-center">
+                                                        <div class="d-flex align-items-center justify-content-center gap-1">
+                                                            <input type="checkbox"
+                                                                class="form-check-input claim-tracker-toggle-checkbox m-0"
+                                                                data-policy-id="<?= $policy['id']; ?>"
+                                                                data-policy-number="<?= esc($policy['policy_number'] ?? $policy['id']); ?>"
+                                                                <?= !empty($policy['is_claim_tracked']) ? 'checked' : ''; ?>
+                                                                title="Tick to show in Claim Tracker"
+                                                                style="cursor: pointer; width: 17px; height: 17px;">
+                                                            <span class="text-muted small ms-1"><?= $i++; ?></span>
+                                                        </div>
+                                                    </td>
                                                     <td><?= esc($policy['policy_holder_name'] ?? ''); ?></td>
                                                     <td class="mobile-hide"><?= esc($policy['staff_name'] ?? ''); ?></td>
                                                     <td class="mobile-hide"><?= esc($policy['policy_type_name'] ?? ''); ?></td>
@@ -3854,6 +3965,92 @@
                         msg = xhr.responseJSON.message;
                     }
                     Swal.fire('Error', msg, 'error');
+                }
+            });
+        });
+
+        // ─── Claim Tracker Direct Toggle (Checkbox) ──────────────────────
+        $(document).on('change', '.claim-tracker-toggle-checkbox', function (e) {
+            e.stopPropagation();
+            var $checkbox = $(this);
+            var policyId = $checkbox.data('policy-id');
+            var policyNumber = $checkbox.data('policy-number') || ('#' + policyId);
+            var isChecked = $checkbox.is(':checked');
+
+            $checkbox.prop('disabled', true);
+
+            $.ajax({
+                url: '{{ route("claim-tracker.toggle-policy") }}',
+                method: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    policy_id: policyId,
+                    track: isChecked ? 1 : 0
+                },
+                success: function (res) {
+                    $checkbox.prop('disabled', false);
+                    $('.claim-tracker-toggle-checkbox[data-policy-id="' + policyId + '"]').prop('checked', res.tracked);
+
+                    var toast = Swal.mixin({
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 2500,
+                        timerProgressBar: true
+                    });
+                    toast.fire({
+                        icon: res.tracked ? 'success' : 'info',
+                        title: res.message || (res.tracked ? 'Policy ' + policyNumber + ' added to Claim Tracker' : 'Policy ' + policyNumber + ' removed from Claim Tracker')
+                    });
+                },
+                error: function (xhr) {
+                    $checkbox.prop('disabled', false);
+                    $checkbox.prop('checked', !isChecked);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: xhr.responseJSON?.message || 'Could not update Claim Tracker status. Please try again.'
+                    });
+                }
+            });
+        });
+
+        // ─── Bulk Toggle for Table Header ─────────────────────────────────
+        $(document).on('change', '.claim-tracker-bulk-toggle', function () {
+            var $master = $(this);
+            var isChecked = $master.is(':checked');
+            var $table = $master.closest('table');
+            var $checkboxes = $table.find('tbody tr:visible .claim-tracker-toggle-checkbox');
+            var policyIds = [];
+
+            $checkboxes.each(function () {
+                var pid = $(this).data('policy-id');
+                if (pid) policyIds.push(pid);
+            });
+
+            if (policyIds.length === 0) return;
+
+            $master.prop('disabled', true);
+            $checkboxes.prop('disabled', true);
+
+            $.ajax({
+                url: '{{ route("claim-tracker.bulk-toggle-policies") }}',
+                method: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    policy_ids: policyIds,
+                    track: isChecked ? 1 : 0
+                },
+                success: function (res) {
+                    $master.prop('disabled', false);
+                    $checkboxes.prop('disabled', false).prop('checked', isChecked);
+                    var toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2500, timerProgressBar: true });
+                    toast.fire({ icon: 'success', title: res.message });
+                },
+                error: function (xhr) {
+                    $master.prop('disabled', false).prop('checked', !isChecked);
+                    $checkboxes.prop('disabled', false);
+                    Swal.fire({ icon: 'error', title: 'Error', text: xhr.responseJSON?.message || 'Bulk update failed.' });
                 }
             });
         });

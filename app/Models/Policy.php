@@ -40,6 +40,11 @@ class Policy extends Model
         return $this->belongsTo(FamilyGroup::class, 'family_group_id');
     }
 
+    public function claimTrackers()
+    {
+        return $this->hasMany(\App\Models\ClaimTracker::class, 'policy_id');
+    }
+
     public function holder()
     {
         return $this->belongsTo(Customer::class, 'holder_id');

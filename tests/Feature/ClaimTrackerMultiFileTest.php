@@ -157,4 +157,85 @@ class ClaimTrackerMultiFileTest extends TestCase
         $editResponse->assertStatus(200);
         $editResponse->assertSee('legacy_doc.pdf');
     }
+
+    public function test_can_toggle_policy_directly_into_claim_tracker_via_checkbox(): void
+    {
+        $data = $this->createTestData();
+        $this->actingAs($data['user']);
+
+        // 1. Tick policy checkbox to add to claim tracker
+        $response = $this->postJson(route('claim-tracker.toggle-policy'), [
+            'policy_id' => $data['policy']->id,
+            'track' => true,
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'status' => 'success',
+            'tracked' => true,
+        ]);
+
+        $this->assertDatabaseHas('claim_trackers', [
+            'policy_id' => $data['policy']->id,
+            'claim_status' => 'Processed',
+        ]);
+
+        // 2. Verify it shows in Claim Tracker index
+        $indexResponse = $this->get(route('claim-tracker.index'));
+        $indexResponse->assertStatus(200);
+        $indexResponse->assertSee($data['policy']->policy_number_no);
+        $indexResponse->assertSee('Select Policies');
+
+        // 3. Untick policy checkbox to remove from claim tracker
+        $untrackResponse = $this->postJson(route('claim-tracker.toggle-policy'), [
+            'policy_id' => $data['policy']->id,
+            'track' => false,
+        ]);
+
+        $untrackResponse->assertStatus(200);
+        $untrackResponse->assertJson([
+            'status' => 'success',
+            'tracked' => false,
+        ]);
+
+        $this->assertDatabaseMissing('claim_trackers', [
+            'policy_id' => $data['policy']->id,
+        ]);
+    }
+
+    public function test_can_bulk_toggle_policies_for_claim_tracker(): void
+    {
+        $data = $this->createTestData();
+        $this->actingAs($data['user']);
+
+        $secondPolicy = Policy::create([
+            'family_group_id' => $data['familyGroup']->id,
+            'holder_id' => $data['customer']->id,
+            'policy_type_id' => 1,
+            'policy_number' => 'POL-BULK-' . uniqid(),
+            'policy_number_no' => 'POL-BULK-' . uniqid(),
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->addYear()->toDateString(),
+        ]);
+
+        // Bulk track
+        $bulkResponse = $this->postJson(route('claim-tracker.bulk-toggle-policies'), [
+            'policy_ids' => [$data['policy']->id, $secondPolicy->id],
+            'track' => true,
+        ]);
+
+        $bulkResponse->assertStatus(200);
+        $this->assertDatabaseHas('claim_trackers', ['policy_id' => $data['policy']->id]);
+        $this->assertDatabaseHas('claim_trackers', ['policy_id' => $secondPolicy->id]);
+
+        // Bulk untrack
+        $bulkUntrackResponse = $this->postJson(route('claim-tracker.bulk-toggle-policies'), [
+            'policy_ids' => [$data['policy']->id, $secondPolicy->id],
+            'track' => false,
+        ]);
+
+        $bulkUntrackResponse->assertStatus(200);
+        $this->assertDatabaseMissing('claim_trackers', ['policy_id' => $data['policy']->id]);
+        $this->assertDatabaseMissing('claim_trackers', ['policy_id' => $secondPolicy->id]);
+    }
 }

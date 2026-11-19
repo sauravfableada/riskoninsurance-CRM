@@ -502,6 +502,8 @@ Route::middleware(['auth.api', 'subscription.not_expired'])->group(function () {
     Route::patch('claim-tracker/{claimTracker}/status', [ClaimTrackerController::class, 'updateStatus'])->name('claim-tracker.status');
     Route::patch('claim-tracker/{claimTracker}/submitted-date', [ClaimTrackerController::class, 'updateSubmittedDate'])->name('claim-tracker.submitted-date');
     Route::get('claim-tracker-export', [ClaimTrackerController::class, 'export'])->name('claim-tracker.export');
+    Route::post('claim-tracker/toggle-policy', [ClaimTrackerController::class, 'togglePolicy'])->name('claim-tracker.toggle-policy');
+    Route::post('claim-tracker/bulk-toggle-policies', [ClaimTrackerController::class, 'bulkTogglePolicies'])->name('claim-tracker.bulk-toggle-policies');
     Route::get('claim-tracker-options/family-groups/{familyGroup}/proposers', [ClaimTrackerController::class, 'proposers'])->name('claim-tracker.proposers');
     Route::get('claim-tracker-options/family-groups/{familyGroup}/proposers/{proposer}/policies', [ClaimTrackerController::class, 'policies'])->name('claim-tracker.policies');
     Route::get('claim-tracker-options/family-groups/{familyGroup}/insured-members', [ClaimTrackerController::class, 'insuredMembers'])->name('claim-tracker.insured-members');

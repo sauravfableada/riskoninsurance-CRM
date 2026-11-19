@@ -7,7 +7,10 @@
             <div><h4 class="fw-bold mb-0">Claim Tracker</h4><p class="text-muted small mb-0">Manage and track insurance claims.</p></div>
             <div class="d-flex flex-wrap gap-2">
                 <a href="{{ route('claim-tracker.export', request()->query()) }}" class="btn btn-outline-dark-blue"><i class="fa-solid fa-download me-1"></i>Export</a>
-                <a href="{{ route('claim-tracker.create') }}" class="btn btn-dark-blue"><i class="fa fa-plus me-1"></i>Add Claim</a>
+                <button type="button" class="btn btn-dark-blue" data-bs-toggle="modal" data-bs-target="#selectPoliciesModal">
+                    <i class="fa-solid fa-square-check me-1"></i>Select Policies
+                </button>
+                <a href="{{ route('claim-tracker.create') }}" class="btn btn-outline-dark-blue"><i class="fa fa-plus me-1"></i>Add Claim</a>
             </div>
         </div>
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
@@ -29,9 +32,39 @@
         </div>
     </div>
     <div class="card-body overflow-auto">
-        <table id="claimTable" class="table table-flush w-100"><thead><tr><th>Sr.No</th><th>Family Group</th><th>Proposer Name</th><th>Policy No.</th><th>Insured Member</th><th>Amount</th><th>Received</th><th>Submitted</th><th>Status</th><th>Action</th></tr></thead>
+        <table id="claimTable" class="table table-flush w-100">
+            <thead>
+                <tr>
+                    <th class="text-center" style="min-width: 80px;">
+                        <div class="d-flex align-items-center justify-content-center gap-1">
+                            <input type="checkbox" class="form-check-input claim-table-master-check m-0" checked title="Select all visible">
+                            <span>Sr.No</span>
+                        </div>
+                    </th>
+                    <th>Family Group</th>
+                    <th>Proposer Name</th>
+                    <th>Policy No.</th>
+                    <th>Insured Member</th>
+                    <th>Amount</th>
+                    <th>Received</th>
+                    <th>Submitted</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
         <tbody>@forelse($claims as $claim)<tr>
-            <td>{{ $loop->iteration }}</td><td>{{ $claim->familyGroup?->group_name ?? $claim->policy?->familyGroup?->group_name ?? 'N/A' }}</td><td>{{ $claim->proposer?->name ?? $claim->policy?->holder?->name ?? 'N/A' }}</td><td>{{ $claim->policy?->policy_number_no ?? 'N/A' }}</td><td>{{ $claim->insuredMember?->member_name ?? 'N/A' }}</td>
+            <td class="text-center">
+                <div class="d-flex align-items-center justify-content-center gap-1">
+                    <input type="checkbox"
+                        class="form-check-input claim-tracker-toggle-checkbox m-0"
+                        data-policy-id="{{ $claim->policy_id }}"
+                        data-policy-number="{{ $claim->policy?->policy_number_no ?: $claim->policy?->policy_number ?: ('#' . $claim->policy_id) }}"
+                        checked
+                        title="Untick to remove from Claim Tracker"
+                        style="cursor: pointer; width: 17px; height: 17px;">
+                    <span class="text-muted small ms-1">{{ $loop->iteration }}</span>
+                </div>
+            </td><td>{{ $claim->familyGroup?->group_name ?? $claim->policy?->familyGroup?->group_name ?? 'N/A' }}</td><td>{{ $claim->proposer?->name ?? $claim->policy?->holder?->name ?? 'N/A' }}</td><td>{{ $claim->policy?->policy_number_no ?? 'N/A' }}</td><td>{{ $claim->insuredMember?->member_name ?? 'N/A' }}</td>
             <td>{{ number_format((float)$claim->claim_amount, 2) }}</td><td>{{ $claim->claim_file_received_date?->format('d-m-Y') }}</td><td class="claim-submitted-cell">@if($claim->claim_file_submit_date)<span>{{ $claim->claim_file_submit_date->format('d-m-Y') }}</span>@else<form method="POST" action="{{ route('claim-tracker.submitted-date', $claim) }}" class="m-0">@csrf @method('PATCH')<input type="date" name="claim_file_submit_date" class="form-control form-control-sm claim-submitted-date" min="{{ $claim->claim_file_received_date?->format('Y-m-d') }}" aria-label="Claim submitted date" onchange="if (this.value && this.checkValidity()) { this.form.submit(); }"></form>@endif</td>
             <td><form method="POST" action="{{ route('claim-tracker.status', $claim) }}" class="m-0">@csrf @method('PATCH')<select name="claim_status" class="form-select form-select-sm claim-status-select" onchange="this.form.submit()">
                 @foreach(['Processed', 'Query', 'Closed', 'Rejected'] as $status)<option value="{{ $status }}" @selected($claim->claim_status === $status)>{{ $status }}</option>@endforeach
@@ -49,6 +82,95 @@
         @endforelse</tbody></table>
     </div>
 </div></div>
+
+<!-- Modal: Select Policies for Claim Tracker -->
+<div class="modal fade" id="selectPoliciesModal" tabindex="-1" aria-labelledby="selectPoliciesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header border-bottom py-3 px-4" style="background-color: #0f172a;">
+                <div>
+                    <h5 class="modal-title text-white fw-bold mb-1" id="selectPoliciesModalLabel">
+                        <i class="fa-solid fa-square-check me-2 text-primary"></i>Select Policies for Claim Tracker
+                    </h5>
+                    <p class="text-white-50 small mb-0">Directly tick or untick any policy below to include or remove it from Claim Tracker.</p>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-light-subtle">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-3">
+                    <div class="input-group" style="max-width: 400px;">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" id="modalPolicySearch" class="form-control border-start-0" placeholder="Search by policy number, holder, company...">
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary fs-6 px-3 py-2 rounded-pill shadow-sm">
+                            <i class="fa fa-clipboard-check me-1"></i><span id="trackedCountDisplay">{{ count($trackedPolicyIds ?? []) }}</span> Policies in Claim Tracker
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+                    <div class="table-responsive" style="max-height: 480px;">
+                        <table class="table table-hover align-middle mb-0" id="modalPoliciesTable">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th class="text-center" style="width: 50px;">
+                                        <input type="checkbox" class="form-check-input" id="modalBulkCheck" title="Select / Deselect visible" style="cursor: pointer; width: 18px; height: 18px;">
+                                    </th>
+                                    <th>Policy No.</th>
+                                    <th>Policy Holder</th>
+                                    <th>Policy Type</th>
+                                    <th>Insurance Company</th>
+                                    <th>Validity</th>
+                                    <th>Premium</th>
+                                    <th class="text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse(($availablePolicies ?? []) as $p)
+                                    @php($isTracked = in_array($p->id, $trackedPolicyIds ?? []))
+                                    <tr data-policy-id="{{ $p->id }}" class="modal-policy-row {{ $isTracked ? 'table-success-subtle' : '' }}">
+                                        <td class="text-center">
+                                            <input type="checkbox"
+                                                class="form-check-input modal-policy-checkbox claim-tracker-toggle-checkbox"
+                                                data-policy-id="{{ $p->id }}"
+                                                data-policy-number="{{ $p->policy_number_no ?: $p->policy_number }}"
+                                                {{ $isTracked ? 'checked' : '' }}
+                                                title="Tick to show in Claim Tracker"
+                                                style="cursor: pointer; width: 18px; height: 18px;">
+                                        </td>
+                                        <td class="fw-bold font-monospace text-primary">{{ $p->policy_number_no ?: $p->policy_number }}</td>
+                                        <td class="fw-semibold">{{ $p->holder?->name ?? 'N/A' }}</td>
+                                        <td><span class="badge bg-light text-dark border">{{ $p->policyType?->name ?? 'N/A' }}</span></td>
+                                        <td>{{ $p->company?->name ?? 'N/A' }}</td>
+                                        <td class="small text-muted">
+                                            {{ $p->start_date ? date('d-m-Y', strtotime($p->start_date)) : '--' }}
+                                            <i class="fa-solid fa-arrow-right-long text-muted mx-1" style="font-size: 10px;"></i>
+                                            {{ $p->end_date ? date('d-m-Y', strtotime($p->end_date)) : '--' }}
+                                        </td>
+                                        <td class="fw-semibold">₹{{ number_format((float) ($p->premium_amount ?? 0), 2) }}</td>
+                                        <td class="text-center">
+                                            <span class="badge modal-status-badge {{ $isTracked ? 'bg-success' : 'bg-secondary' }} rounded-pill px-3 py-1">
+                                                {{ $isTracked ? 'Tracked' : 'Not Tracked' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="8" class="text-center py-4 text-muted">No policies available.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-white border-top py-2 px-4 d-flex justify-content-between align-items-center">
+                <span class="text-muted small"><i class="fa fa-info-circle me-1 text-primary"></i>Ticking any policy updates Claim Tracker in real-time.</span>
+                <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('styles')
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
 <style>
@@ -112,6 +234,159 @@ $(function(){
         }).then(function(result) {
             if (result.isConfirmed) form.submit();
         });
+    });
+
+    let claimTrackerChanged = false;
+
+    // Toggle single policy checkbox (both in main table and modal)
+    $(document).on('change', '.claim-tracker-toggle-checkbox', function(e) {
+        e.stopPropagation();
+        const $checkbox = $(this);
+        const policyId = $checkbox.data('policy-id');
+        const policyNumber = $checkbox.data('policy-number') || ('#' + policyId);
+        const isChecked = $checkbox.is(':checked');
+
+        $checkbox.prop('disabled', true);
+
+        $.ajax({
+            url: '{{ route("claim-tracker.toggle-policy") }}',
+            method: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                policy_id: policyId,
+                track: isChecked ? 1 : 0
+            },
+            success: function(res) {
+                $checkbox.prop('disabled', false);
+                claimTrackerChanged = true;
+
+                // Sync all checkboxes matching this policyId
+                $('.claim-tracker-toggle-checkbox[data-policy-id="' + policyId + '"]').prop('checked', res.tracked);
+
+                // Update modal row styling & badge if present
+                const $modalRow = $('.modal-policy-row[data-policy-id="' + policyId + '"]');
+                if ($modalRow.length) {
+                    const $badge = $modalRow.find('.modal-status-badge');
+                    if (res.tracked) {
+                        $badge.removeClass('bg-secondary').addClass('bg-success').text('Tracked');
+                        $modalRow.addClass('table-success-subtle');
+                    } else {
+                        $badge.removeClass('bg-success').addClass('bg-secondary').text('Not Tracked');
+                        $modalRow.removeClass('table-success-subtle');
+                    }
+                }
+
+                // Update count badge
+                const curCount = parseInt($('#trackedCountDisplay').text()) || 0;
+                $('#trackedCountDisplay').text(res.tracked ? curCount + 1 : Math.max(0, curCount - 1));
+
+                toast.fire({
+                    icon: res.tracked ? 'success' : 'info',
+                    title: res.message || (res.tracked ? 'Policy added to Claim Tracker' : 'Policy removed from Claim Tracker')
+                });
+
+                // If unchecked directly in main claim table, fade out row
+                if (!res.tracked && $checkbox.closest('#claimTable').length) {
+                    $checkbox.closest('tr').fadeOut(400, function() {
+                        $(this).remove();
+                    });
+                }
+            },
+            error: function(xhr) {
+                $checkbox.prop('disabled', false);
+                $checkbox.prop('checked', !isChecked);
+                Swal.fire('Error', xhr.responseJSON?.message || 'Could not update Claim Tracker status.', 'error');
+            }
+        });
+    });
+
+    // Master check in main table
+    $(document).on('change', '.claim-table-master-check', function() {
+        const isChecked = $(this).is(':checked');
+        const policyIds = [];
+        $('#claimTable tbody tr:visible .claim-tracker-toggle-checkbox').each(function() {
+            policyIds.push($(this).data('policy-id'));
+        });
+
+        if (policyIds.length === 0) return;
+
+        $('.claim-table-master-check').prop('disabled', true);
+        $.ajax({
+            url: '{{ route("claim-tracker.bulk-toggle-policies") }}',
+            method: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                policy_ids: policyIds,
+                track: isChecked ? 1 : 0
+            },
+            success: function(res) {
+                $('.claim-table-master-check').prop('disabled', false);
+                window.location.reload();
+            },
+            error: function(xhr) {
+                $('.claim-table-master-check').prop('disabled', false).prop('checked', !isChecked);
+                Swal.fire('Error', xhr.responseJSON?.message || 'Bulk update failed.', 'error');
+            }
+        });
+    });
+
+    // Modal search filtering
+    $('#modalPolicySearch').on('input', function() {
+        const term = $(this).val().toLowerCase().trim();
+        $('#modalPoliciesTable tbody tr').each(function() {
+            const rowText = $(this).text().toLowerCase();
+            $(this).toggle(rowText.indexOf(term) > -1);
+        });
+    });
+
+    // Modal bulk check
+    $('#modalBulkCheck').on('change', function() {
+        const isChecked = $(this).is(':checked');
+        const policyIds = [];
+        $('#modalPoliciesTable tbody tr:visible .modal-policy-checkbox').each(function() {
+            policyIds.push($(this).data('policy-id'));
+        });
+
+        if (policyIds.length === 0) return;
+
+        $('#modalBulkCheck').prop('disabled', true);
+        $.ajax({
+            url: '{{ route("claim-tracker.bulk-toggle-policies") }}',
+            method: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}',
+                policy_ids: policyIds,
+                track: isChecked ? 1 : 0
+            },
+            success: function(res) {
+                $('#modalBulkCheck').prop('disabled', false);
+                claimTrackerChanged = true;
+                policyIds.forEach(function(pid) {
+                    const $row = $('.modal-policy-row[data-policy-id="' + pid + '"]');
+                    $row.find('.modal-policy-checkbox').prop('checked', isChecked);
+                    const $badge = $row.find('.modal-status-badge');
+                    if (isChecked) {
+                        $badge.removeClass('bg-secondary').addClass('bg-success').text('Tracked');
+                        $row.addClass('table-success-subtle');
+                    } else {
+                        $badge.removeClass('bg-success').addClass('bg-secondary').text('Not Tracked');
+                        $row.removeClass('table-success-subtle');
+                    }
+                });
+                toast.fire({ icon: 'success', title: res.message });
+            },
+            error: function(xhr) {
+                $('#modalBulkCheck').prop('disabled', false).prop('checked', !isChecked);
+                Swal.fire('Error', xhr.responseJSON?.message || 'Bulk update failed.', 'error');
+            }
+        });
+    });
+
+    // Reload Claim Tracker table if policies were added or removed in modal
+    $('#selectPoliciesModal').on('hidden.bs.modal', function () {
+        if (claimTrackerChanged) {
+            window.location.reload();
+        }
     });
 });
 </script>

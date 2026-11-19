@@ -17,6 +17,7 @@ use App\Models\VehiclePolicyModel;
 use App\Models\FamilyGroup;
 use App\Models\FamilyGroupMember;
 use App\Models\Customer;
+use App\Models\ClaimTracker;
 use App\Models\CommissionEntry;
 use App\Models\CommissionRule;
 use Illuminate\Http\Request;
@@ -74,8 +75,11 @@ class PolicyController extends Controller
         })->filter()->map(fn ($id) => (int) $id)->unique();
         $policies = $policies->reject(fn (Policy $policy) => $renewedParentIds->contains((int) $policy->id));
 
+        $trackedPolicyIds = ClaimTracker::pluck('policy_id')->toArray();
+        $trackedPolicyMap = array_flip($trackedPolicyIds);
+
         // Prepare display-ready policies
-        $policies = $policies->map(function ($policy) {
+        $policies = $policies->map(function ($policy) use ($trackedPolicyMap) {
             $hasRenewalDocument = $policy->pdfHistories->contains(
                 fn (PolicyPdfHistory $document) => $document->document_type === 'renewal'
             );
@@ -87,6 +91,7 @@ class PolicyController extends Controller
 
             return [
                 'id' => $policy->id,
+                'is_claim_tracked' => isset($trackedPolicyMap[$policy->id]),
                 'policy_number' => $policy->policy_number,
                 'policy_number_no' => $policy->policy_number,
                 'policy_holder_name' => $policy->holder ? $policy->holder->name : '--',
@@ -165,6 +170,7 @@ class PolicyController extends Controller
             'staffList' => $staffList,
             'subAgents' => $subAgents,
             'policyTypes' => $policyTypes,
+            'trackedPolicyIds' => $trackedPolicyIds,
         ]);
     }
 

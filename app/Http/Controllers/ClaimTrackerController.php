@@ -24,7 +24,118 @@ class ClaimTrackerController extends Controller
             ->get(['id', 'policy_number_no']);
         $filterCustomers = Customer::query()->whereHas('policies', fn ($query) => $query->whereNull('deleted_at'))
             ->orderBy('name')->get(['id', 'name']);
-        return view('claim-tracker.index', compact('claims', 'filterPolicies', 'filterCustomers'));
+
+        $trackedPolicyIds = ClaimTracker::pluck('policy_id')->toArray();
+        $availablePolicies = Policy::with(['holder:id,name', 'company:id,name', 'policyType:id,name'])
+            ->whereNull('deleted_at')
+            ->orderBy('id', 'desc')
+            ->get(['id', 'policy_number', 'policy_number_no', 'holder_id', 'company_id', 'policy_type_id', 'start_date', 'end_date', 'premium_amount']);
+
+        return view('claim-tracker.index', compact('claims', 'filterPolicies', 'filterCustomers', 'trackedPolicyIds', 'availablePolicies'));
+    }
+
+    public function togglePolicy(Request $request)
+    {
+        $request->validate([
+            'policy_id' => ['required', 'exists:policies,id'],
+            'track' => ['nullable'],
+        ]);
+
+        $policyId = (int) $request->input('policy_id');
+        $existingClaim = ClaimTracker::where('policy_id', $policyId)->first();
+
+        $track = $request->has('track')
+            ? filter_var($request->input('track'), FILTER_VALIDATE_BOOLEAN)
+            : ($existingClaim === null);
+
+        if ($track) {
+            if (!$existingClaim) {
+                $policy = Policy::with(['familyGroup.members', 'holder'])->find($policyId);
+                $memberId = $policy->familyGroup?->members?->first()?->id;
+
+                ClaimTracker::create([
+                    'policy_id' => $policy->id,
+                    'family_group_id' => $policy->family_group_id,
+                    'proposer_id' => $policy->holder_id,
+                    'insured_member_id' => $memberId,
+                    'claim_amount' => 0.00,
+                    'issued_by' => auth()->id() ?? $policy->user_id ?? 1,
+                    'claim_file_received_date' => now()->toDateString(),
+                    'claim_status' => 'Processed',
+                    'created_by' => auth()->id(),
+                ]);
+            }
+            return response()->json([
+                'status' => 'success',
+                'tracked' => true,
+                'message' => 'Policy added to Claim Tracker successfully.',
+            ]);
+        } else {
+            if ($existingClaim) {
+                foreach ($existingClaim->claim_files as $file) {
+                    Storage::disk('public')->delete($file);
+                }
+                $existingClaim->delete();
+            }
+            return response()->json([
+                'status' => 'success',
+                'tracked' => false,
+                'message' => 'Policy removed from Claim Tracker.',
+            ]);
+        }
+    }
+
+    public function bulkTogglePolicies(Request $request)
+    {
+        $request->validate([
+            'policy_ids' => ['required', 'array'],
+            'policy_ids.*' => ['exists:policies,id'],
+            'track' => ['required'],
+        ]);
+
+        $policyIds = array_map('intval', $request->input('policy_ids'));
+        $track = filter_var($request->input('track'), FILTER_VALIDATE_BOOLEAN);
+
+        if ($track) {
+            $policies = Policy::with(['familyGroup.members', 'holder'])->whereIn('id', $policyIds)->get();
+            $existingPolicyIds = ClaimTracker::whereIn('policy_id', $policyIds)->pluck('policy_id')->all();
+
+            foreach ($policies as $policy) {
+                if (in_array($policy->id, $existingPolicyIds)) {
+                    continue;
+                }
+                $memberId = $policy->familyGroup?->members?->first()?->id;
+                ClaimTracker::create([
+                    'policy_id' => $policy->id,
+                    'family_group_id' => $policy->family_group_id,
+                    'proposer_id' => $policy->holder_id,
+                    'insured_member_id' => $memberId,
+                    'claim_amount' => 0.00,
+                    'issued_by' => auth()->id() ?? $policy->user_id ?? 1,
+                    'claim_file_received_date' => now()->toDateString(),
+                    'claim_status' => 'Processed',
+                    'created_by' => auth()->id(),
+                ]);
+            }
+            return response()->json([
+                'status' => 'success',
+                'tracked' => true,
+                'message' => count($policyIds) . ' policy(ies) added to Claim Tracker.',
+            ]);
+        } else {
+            $claims = ClaimTracker::whereIn('policy_id', $policyIds)->get();
+            foreach ($claims as $claim) {
+                foreach ($claim->claim_files as $file) {
+                    Storage::disk('public')->delete($file);
+                }
+                $claim->delete();
+            }
+            return response()->json([
+                'status' => 'success',
+                'tracked' => false,
+                'message' => count($policyIds) . ' policy(ies) removed from Claim Tracker.',
+            ]);
+        }
     }
 
     public function export(Request $request)

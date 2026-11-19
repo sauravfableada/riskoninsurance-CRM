@@ -6,7 +6,18 @@
 @endphp
 <tr data-id="{{ $polId }}" data-company="{{ esc($policy['company_name'] ?? '') }}"
     @if(isset($policyScope)) data-policy-scope="{{ $policyScope }}" @endif>
-    <td class="font_size text-center">{{ $index }}</td>
+    <td class="font_size text-center">
+        <div class="d-flex align-items-center justify-content-center gap-1">
+            <input type="checkbox"
+                class="form-check-input claim-tracker-toggle-checkbox m-0"
+                data-policy-id="{{ $polId }}"
+                data-policy-number="{{ esc($policy['policy_number'] ?? $polId) }}"
+                {{ !empty($policy['is_claim_tracked']) ? 'checked' : '' }}
+                title="Tick to show in Claim Tracker"
+                style="cursor: pointer; width: 17px; height: 17px;">
+            <span class="text-muted small ms-1">{{ $index }}</span>
+        </div>
+    </td>
     <td class="font_size policy-holder-name" title="{{ esc($policy['policy_holder_name']) }}">
         {{ esc($policy['policy_holder_name']) }}
     </td>
