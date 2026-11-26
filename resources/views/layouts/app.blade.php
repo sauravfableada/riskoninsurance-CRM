@@ -820,6 +820,27 @@
                             <span>Team Members</span>
                         </a>
                     </li>
+                    @php
+                        $pendingAccessRequestCount = \App\Models\StaffAccessRequest::query()
+                            ->where('status', \App\Models\StaffAccessRequest::STATUS_PENDING)
+                            ->count();
+                    @endphp
+                    <li class="nav-item mt-2" data-requires-perm="false">
+                        <a class="nav-link ccc ddd d-flex align-items-center @if(request()->routeIs('admin.access-requests.*')) active @endif" href="{{ route('admin.access-requests.index') }}">
+                            <i class="bi bi-shield-lock-fill me-2 text-warning"></i>
+                            <span>Access Requests</span>
+                            <span id="sidebarPendingAccessCount" class="badge rounded-pill bg-danger ms-auto {{ $pendingAccessRequestCount > 0 ? '' : 'd-none' }}">
+                                {{ $pendingAccessRequestCount }}
+                            </span>
+                        </a>
+                    </li>
+                    @elseif(!$isCustomerUser)
+                    <li class="nav-item mt-2" data-requires-perm="false">
+                        <a class="nav-link ccc ddd @if(request()->routeIs('access-requests.my-requests')) active @endif" href="{{ route('access-requests.my-requests') }}">
+                            <i class="bi bi-key-fill me-2 text-warning"></i>
+                            <span>My Access Requests</span>
+                        </a>
+                    </li>
                     @endif
 
                     <!-- Manage Reports -->
@@ -2162,6 +2183,10 @@
         }
     </script>
     @include('crm.partials.add-staff-modal')
+    @if(auth()->check() && !auth('customer')->check())
+        @include('crm.partials.access-request-modal')
+        <script src="{{ ($publicPath ?: '') . '/js/access-requests.js' }}?v={{ filemtime(public_path('js/access-requests.js')) }}"></script>
+    @endif
 </body>
 
 </html>

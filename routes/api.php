@@ -526,4 +526,16 @@ Route::middleware('auth.api')->group(function () {
         Route::post('fund-name/store', [\App\Http\Controllers\Api\InvestmentMasterController::class, 'storeFundName']);
         Route::post('mode/store', [\App\Http\Controllers\Api\InvestmentMasterController::class, 'storeMode']);
     });
+
+    // Staff Access Requests API
+    Route::get('access-requests/my-status', [\App\Http\Controllers\AccessRequestController::class, 'myStatus'])->name('api.access-requests.my-status');
+    Route::post('access-requests', [\App\Http\Controllers\AccessRequestController::class, 'store'])->name('api.access-requests.store');
+
+    // Admin Access Requests API
+    Route::prefix('admin/access-requests')->middleware('admin_only')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\AccessRequestAdminController::class, 'list'])->name('api.admin.access-requests.list');
+        Route::post('/{accessRequest}/approve', [\App\Http\Controllers\Admin\AccessRequestAdminController::class, 'approve'])->name('api.admin.access-requests.approve');
+        Route::post('/{accessRequest}/reject', [\App\Http\Controllers\Admin\AccessRequestAdminController::class, 'reject'])->name('api.admin.access-requests.reject');
+        Route::post('/grants/{grant}/revoke', [\App\Http\Controllers\Admin\AccessRequestAdminController::class, 'revoke'])->name('api.admin.access-requests.revoke');
+    });
 });

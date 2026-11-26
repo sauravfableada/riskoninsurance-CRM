@@ -6,7 +6,9 @@
     }
 
     function initTaskTable() {
-        const permissions = window.crmUserPermissions?.tasks || {};
+        let permissions = window.crmUserPermissions?.tasks || {};
+        let lastItems = null;
+        let lastMeta = null;
         const tableBody = document.querySelector("#tasksTable tbody");
         const searchInput = document.getElementById("tasksSearch");
         const paginationContainer = document.getElementById("tasksPagination");
@@ -14,6 +16,13 @@
         if (!tableBody || !searchInput || !paginationContainer) {
             return;
         }
+
+        window.addEventListener("crm:permissions-updated", function () {
+            permissions = window.crmUserPermissions?.tasks || permissions;
+            if (lastItems !== null) {
+                renderRows(lastItems, lastMeta);
+            }
+        });
 
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
 
@@ -126,7 +135,23 @@
             });
         }
 
+        function renderTaskActionButtons(task) {
+            const editHtml = permissions.edit
+                ? `<a href="/tasks/${task.id}/edit" class="btn crm-action-btn btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>`
+                : "";
+            const viewHtml = permissions.view
+                ? `<a href="/tasks/${task.id}" class="btn crm-action-btn btn-sm" title="View"><i class="bi bi-eye"></i></a>`
+                : "";
+            const deleteHtml = permissions.delete
+                ? `<button type="button" class="btn crm-action-btn btn-sm text-danger delete-task-btn" data-task-id="${task.id}" title="Delete"><i class="bi bi-trash text-danger"></i></button>`
+                : "";
+            return `${editHtml}${viewHtml}${deleteHtml}`;
+        }
+
         function renderRows(items, meta) {
+            lastItems = items;
+            lastMeta = meta;
+            permissions = window.crmUserPermissions?.tasks || permissions;
             if (!items || items.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
@@ -171,9 +196,7 @@
                         <td class="d-none d-md-table-cell">${dueDate}</td>
                         <td class="text-end pe-4 d-none d-md-table-cell">
                             <div class="d-inline-flex align-items-center gap-2">
-                                ${permissions.edit ? `<a href="/tasks/${task.id}/edit" class="btn crm-action-btn btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>` : ''}
-                                ${permissions.view ? `<a href="/tasks/${task.id}" class="btn crm-action-btn btn-sm" title="View"><i class="bi bi-eye"></i></a>` : ''}
-                                ${permissions.delete ? `<button type="button" class="btn crm-action-btn btn-sm text-danger delete-task-btn" data-task-id="${task.id}" title="Delete"><i class="bi bi-trash text-danger"></i></button>` : ''}
+                                ${renderTaskActionButtons(task)}
                             </div>
                         </td>
                         <td class="text-center d-md-none">

@@ -6,7 +6,9 @@
     }
 
     function init() {
-        const permissions = window.crmUserPermissions?.leads || {};
+        let permissions = window.crmUserPermissions?.leads || {};
+        let lastItems = null;
+        let lastMeta = null;
         const tableBody = document.querySelector("#leadsTable tbody");
         if (!tableBody) {
             return;
@@ -229,7 +231,33 @@
             });
         }
 
+        function renderActionButtons(lead, isConverted) {
+            const convertHtml = (!isConverted && permissions.edit)
+                ? `<button type="button" class="btn crm-action-btn btn-sm text-success convert-btn" data-id="${lead.id}" title="Convert to Customer"><i class="bi bi-person-plus"></i></button>`
+                : "";
+            const revertHtml = (isConverted && permissions.edit)
+                ? `<button type="button" class="btn crm-action-btn btn-sm text-warning revert-btn" data-id="${lead.id}" title="Revert back to Lead"><i class="bi bi-arrow-counterclockwise"></i></button>`
+                : "";
+            const editHtml = permissions.edit
+                ? `<a href="/leads/${lead.id}/edit" class="btn crm-action-btn btn-sm" title="Edit Details"><i class="bi bi-pencil"></i></a>`
+                : "";
+            const kycHtml = permissions.view
+                ? `<a href="/leads/${lead.id}#showKycTabs" class="btn crm-action-btn btn-sm text-info" title="KYC Documents"><i class="bi bi-shield-check"></i></a>`
+                : "";
+            const viewHtml = permissions.view
+                ? `<a href="/leads/${lead.id}" class="btn crm-action-btn btn-sm" title="View"><i class="bi bi-eye"></i></a>`
+                : "";
+            const deleteHtml = permissions.delete
+                ? `<button type="button" class="btn crm-action-btn btn-sm text-danger delete-btn" data-id="${lead.id}" title="Remove Lead"><i class="bi bi-trash text-danger"></i></button>`
+                : "";
+
+            return `${convertHtml}${revertHtml}${editHtml}${kycHtml}${viewHtml}${deleteHtml}`;
+        }
+
         function renderRows(items, meta) {
+            lastItems = items;
+            lastMeta = meta;
+            permissions = window.crmUserPermissions?.leads || permissions;
             if (!items || items.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
@@ -277,14 +305,7 @@
                         <td class="d-none d-md-table-cell">${statusHtml}</td>
                         <td class="text-end pe-4 d-none d-md-table-cell">
                             <div class="d-inline-flex align-items-center gap-2">
-                                ${(!isConverted && permissions.edit) ? `<button type="button" class="btn crm-action-btn btn-sm text-success convert-btn" data-id="${lead.id}" title="Convert to Customer"><i class="bi bi-person-plus"></i></button>` : ""}
-                                ${(isConverted && permissions.edit) ? `<button type="button" class="btn crm-action-btn btn-sm text-warning revert-btn" data-id="${lead.id}" title="Revert back to Lead"><i class="bi bi-arrow-counterclockwise"></i></button>` : ""}
-                                ${permissions.edit ? `<a href="/leads/${lead.id}/edit" class="btn crm-action-btn btn-sm" title="Edit Details"><i class="bi bi-pencil"></i></a>` : ""}
-                                ${permissions.view ? `<a href="/leads/${lead.id}#showKycTabs" class="btn crm-action-btn btn-sm text-info" title="KYC Documents"><i class="bi bi-shield-check"></i></a>` : ""}
-                                ${permissions.view ? `<a href="/leads/${lead.id}" class="btn crm-action-btn btn-sm" title="View"><i class="bi bi-eye"></i></a>` : ""}
-                                ${permissions.delete ? `<button type="button" class="btn crm-action-btn btn-sm text-danger delete-btn" data-id="${lead.id}" title="Remove Lead">
-                                    <i class="bi bi-trash text-danger"></i>
-                                </button>` : ""}
+                                ${renderActionButtons(lead, isConverted)}
                             </div>
                         </td>
                         <td class="text-center d-md-none">
@@ -595,6 +616,13 @@
                 });
             });
         }
+
+        window.addEventListener("crm:permissions-updated", function () {
+            permissions = window.crmUserPermissions?.leads || permissions;
+            if (lastItems !== null) {
+                renderRows(lastItems, lastMeta);
+            }
+        });
 
         function fetchLeads(page = 1) {
             let url = `/api/leads?page=${page}`;
