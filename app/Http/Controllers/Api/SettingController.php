@@ -22,7 +22,7 @@ class SettingController extends ApiBaseController
         $group = $request->get('group');
         $settings = Setting::when($group, function($query) use ($group) {
             return $query->where('group', $group);
-        })->get();
+        })->whereNotIn('key', \App\Services\FallbackMailService::SENSITIVE_SETTING_KEYS)->get();
 
         return $this->success($settings);
     }
@@ -44,6 +44,9 @@ class SettingController extends ApiBaseController
 
     public function show($key)
     {
+        if (in_array($key, \App\Services\FallbackMailService::SENSITIVE_SETTING_KEYS, true)) {
+            return response()->json(['success' => false, 'message' => 'Access to sensitive setting is restricted.'], 403);
+        }
         $setting = Setting::where('key', $key)->firstOrFail();
         return $this->success($setting);
     }

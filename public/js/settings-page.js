@@ -98,9 +98,23 @@
                 setField("input[name='mail_host']", settings.mail_host || "");
                 setField("input[name='mail_port']", settings.mail_port || "587");
                 setField("input[name='mail_username']", settings.mail_username || "");
-                setField("input[name='mail_password']", settings.mail_password || "");
+                setField("input[name='mail_password']", "");
                 setField("select[name='mail_encryption']", settings.mail_encryption || "tls");
                 setField("input[name='mail_from_name']", settings.mail_from_name || "");
+                const fallbackToggle = document.getElementById("mailFallbackEnabled");
+                if (fallbackToggle) {
+                    fallbackToggle.checked = settings.mail_fallback_enabled === "1" || settings.mail_fallback_enabled === true;
+                }
+                setField("input[name='mail_fallback_email']", settings.mail_fallback_email || "");
+                setField("input[name='mail_fallback_host']", settings.mail_fallback_host || "");
+                setField("input[name='mail_fallback_port']", settings.mail_fallback_port || "");
+                setField("input[name='mail_fallback_username']", settings.mail_fallback_username || "");
+                setField("input[name='mail_fallback_password']", "");
+                if (settings.mail_fallback_encryption !== undefined) {
+                    setField("select[name='mail_fallback_encryption']", settings.mail_fallback_encryption || "");
+                }
+                setField("input[name='mail_fallback_from_address']", settings.mail_fallback_from_address || "");
+                setField("input[name='mail_fallback_from_name']", settings.mail_fallback_from_name || "");
                 setField("input[name='google_client_id']", settings.google_client_id || "");
                 setField("input[name='google_client_secret']", settings.google_client_secret || "");
             })

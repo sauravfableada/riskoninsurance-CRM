@@ -1,64 +1,65 @@
 <?php
 
 use App\Mail\TicketCreatedMail;
-use App\Models\User;
-use Illuminate\Support\Facades\Mail;
 use App\Models\SupportTicket;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Config;
+use App\Models\User;
+use App\Services\FallbackMailService;
+use Illuminate\Mail\Mailable;
+use Illuminate\Support\Facades\Log;
 
 if (!function_exists('setMailConfig')) {
     /**
      * Dynamically set mail configuration from the settings table.
      */
-    function setMailConfig()
+    function setMailConfig(): void
     {
-        $settings = DB::table('settings')->pluck('value', 'key')->toArray();
+        app(FallbackMailService::class)->configurePrimaryMailer();
+    }
+}
 
-        // Check if common mail configuration exists to avoid setting empty values
-        if (isset($settings['mail_host'])) {
-            Config::set('mail.mailers.smtp.host', $settings['mail_host']);
-            Config::set('mail.mailers.smtp.port', $settings['mail_port']);
-            Config::set('mail.mailers.smtp.username', $settings['mail_username']);
-            Config::set('mail.mailers.smtp.password', $settings['mail_password']);
-            Config::set('mail.mailers.smtp.encryption', $settings['mail_encryption']);
-
-            if (!empty($settings['mail_from_address'])) {
-                Config::set('mail.from.address', $settings['mail_from_address']);
-            }
-            if (!empty($settings['mail_from_name'])) {
-                Config::set('mail.from.name', $settings['mail_from_name']);
-            }
-        }
+if (!function_exists('send_with_fallback_mail')) {
+    /**
+     * Send a Mailable using the centralized FallbackMailService.
+     *
+     * @param string|array<int, string> $to
+     */
+    function send_with_fallback_mail(string|array $to, Mailable $mailable, array $context = []): bool
+    {
+        return app(FallbackMailService::class)->sendMailable($to, $mailable, $context);
     }
 }
 
 if (!function_exists('send_ticket_created_notification')) {
     /**
-     * Send a created ticket notification email to the ticket customer.
-     *
-     * @param SupportTicket $ticket
-     * @return bool
+     * Send a created ticket notification email to the ticket customer and admins.
      */
     function send_ticket_created_notification(SupportTicket $ticket): bool
     {
         try {
-            setMailConfig();
+            $mailService = app(FallbackMailService::class);
+            $mailService->configurePrimaryMailer();
 
             // Notify admins
-            $adminEmails = User::role(['super-admin'])->pluck('email')->filter()->toArray();
+            $adminEmails = User::role(['super-admin'])->pluck('email')->filter()->values()->toArray();
             if (!empty($adminEmails)) {
-                Mail::to($adminEmails)->send(new TicketCreatedMail($ticket));
+                $mailService->sendMailable($adminEmails, new TicketCreatedMail($ticket), [
+                    'feature' => 'support_ticket_admin',
+                    'ticket_id' => $ticket->id,
+                    'idempotency_key' => "ticket_{$ticket->id}_admins",
+                ]);
             }
 
             if (!$ticket->customer || empty($ticket->customer->email)) {
                 return false;
             }
 
-            Mail::to($ticket->customer->email)->send(new TicketCreatedMail($ticket));
-            return true;
-        } catch (\Exception $e) {
-            \Log::error('send_ticket_created_notification failed: ' . $e->getMessage());
+            return $mailService->sendMailable($ticket->customer->email, new TicketCreatedMail($ticket), [
+                'feature' => 'support_ticket_customer',
+                'ticket_id' => $ticket->id,
+                'idempotency_key' => "ticket_{$ticket->id}_customer",
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('send_ticket_created_notification failed: ' . $e->getMessage());
             return false;
         }
     }
