@@ -259,37 +259,46 @@ class MarketingController extends Controller
                 }
             }
 
-            Mail::send([], [], function ($message) use ($customer, $request, $templateView, $messageImages) {
+            $sent = app(\App\Services\FallbackMailService::class)->send(
+                function (string $mailerName, ?string $resolvedFromAddress, ?string $resolvedFromName) use ($customer, $request, $templateView, $messageImages) {
+                    Mail::mailer($mailerName)->send([], [], function ($message) use ($customer, $request, $templateView, $messageImages, $mailerName, $resolvedFromAddress, $resolvedFromName) {
+                        $embedded = [];
+                        foreach ($messageImages as $key => $path) {
+                            $embedded[$key] = $message->embed($path);
+                        }
 
-                // Embed images and pass CID to blade
-                $embedded = [];
-                foreach ($messageImages as $key => $path) {
-                    $embedded[$key] = $message->embed($path);
-                }
+                        $emailHtml = view($templateView, [
+                            'company_name' => config('app.name'),
+                            'user_name' => $customer->name,
+                            'image_1' => $embedded['image_1'] ?? null,
+                            'image_2' => $embedded['image_2'] ?? null,
+                            'image_3' => $embedded['image_3'] ?? null,
+                        ])->render();
 
-                // Render email template with EMBEDDED image CIDs
-                $emailHtml = view($templateView, [
-                    'company_name' => config('app.name'),
-                    'user_name' => $customer->name,
-                    'image_1' => $embedded['image_1'] ?? null,
-                    'image_2' => $embedded['image_2'] ?? null,
-                    'image_3' => $embedded['image_3'] ?? null,
-                ])->render();
+                        $fromAddress = $resolvedFromAddress
+                            ?: config("mail.mailers.{$mailerName}.username")
+                            ?: config('mail.from.address')
+                            ?: config('mail.mailers.smtp.username');
+                        $fromName = $resolvedFromName ?: config('mail.from.name') ?: config('app.name');
 
-                $fromAddress = config('mail.from.address') ?: config('mail.mailers.smtp.username');
-                $fromName = config('mail.from.name') ?: config('app.name');
+                        if (empty($fromAddress)) {
+                            throw new \RuntimeException('Mail sending failed: From address is not configured.');
+                        }
 
-                if (empty($fromAddress)) {
-                    \Log::error('Mail sending failed: From address is not configured.');
-                    return;
-                }
+                        $message->from($fromAddress, $fromName)
+                            ->to($customer->email)
+                            ->subject($request->subject)
+                            ->html($emailHtml);
+                    });
+                },
+                [
+                    'feature' => 'marketing_bulk_mail',
+                    'customer_id' => $customer->id,
+                    'template_id' => $template->id,
+                ]
+            );
 
-                $message->from($fromAddress, $fromName)
-                    ->to($customer->email)
-                    ->subject($request->subject)
-                    ->html($emailHtml);
-
-                $template = MarketingTemplate::find($request->template_id);
+            if ($sent) {
                 MarketingCampaign::create([
                     'name' => $customer->name,
                     'audience_type' => 'Customers',
@@ -299,7 +308,7 @@ class MarketingController extends Controller
                     'created_by' => auth()->id(),
                     'updated_by' => auth()->id(),
                 ]);
-            });
+            }
 
             // usleep(6000000);
         }

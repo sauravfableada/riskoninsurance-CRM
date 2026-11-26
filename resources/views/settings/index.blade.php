@@ -1162,6 +1162,80 @@
                                         value="{{ $settings['mail_from_name']->value ?? config('app.name', 'CRM') }}"
                                         placeholder="Company Name"></div>
                             </div>
+
+                            <hr class="my-4">
+
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                                <div>
+                                    <h6 class="fw-bold mb-0">Fallback Email &amp; Backup SMTP Configuration</h6>
+                                    <p class="text-muted small mb-0">Automatically used only when primary SMTP delivery fails.</p>
+                                </div>
+                                <div class="form-check form-switch m-0">
+                                    <input type="hidden" name="mail_fallback_enabled" value="0">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                        id="mailFallbackEnabled" name="mail_fallback_enabled" value="1"
+                                        {{ ($settings['mail_fallback_enabled']->value ?? '0') === '1' ? 'checked' : '' }}>
+                                    <label class="form-check-label fw-semibold small" for="mailFallbackEnabled">
+                                        Enable Fallback Email
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="row g-3" id="fallbackSmtpFields">
+                                <div class="col-md-6">
+                                    <label class="form-label">Fallback Email Address</label>
+                                    <input type="email" name="mail_fallback_email" class="form-control"
+                                        value="{{ $settings['mail_fallback_email']->value ?? '' }}"
+                                        placeholder="backup@yourdomain.com">
+                                    <div class="form-text small">Configured backup email address used when primary SMTP fails.</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Backup SMTP Host <span class="text-muted small">(Optional)</span></label>
+                                    <input type="text" name="mail_fallback_host" class="form-control"
+                                        value="{{ $settings['mail_fallback_host']->value ?? '' }}"
+                                        placeholder="{{ $settings['mail_host']->value ?? 'smtp.backup-provider.com' }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Backup SMTP Port <span class="text-muted small">(Optional)</span></label>
+                                    <input type="number" name="mail_fallback_port" class="form-control"
+                                        value="{{ $settings['mail_fallback_port']->value ?? '' }}"
+                                        placeholder="{{ $settings['mail_port']->value ?? '587' }}">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Backup SMTP Username <span class="text-muted small">(Optional)</span></label>
+                                    <input type="text" name="mail_fallback_username" class="form-control"
+                                        value="{{ $settings['mail_fallback_username']->value ?? '' }}"
+                                        placeholder="Defaults to fallback email or primary username">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Backup SMTP Password <span class="text-muted small">(Optional)</span></label>
+                                    <input type="password" name="mail_fallback_password" class="form-control"
+                                        value="" autocomplete="new-password"
+                                        placeholder="*Leave blank to keep unchanged (or use primary)">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Backup SMTP Encryption <span class="text-muted small">(Optional)</span></label>
+                                    <select name="mail_fallback_encryption" class="form-select">
+                                        @php $fbEnc = $settings['mail_fallback_encryption']->value ?? ($settings['mail_encryption']->value ?? 'tls'); @endphp
+                                        <option value="tls" {{ $fbEnc === 'tls' ? 'selected' : '' }}>TLS</option>
+                                        <option value="ssl" {{ $fbEnc === 'ssl' ? 'selected' : '' }}>SSL</option>
+                                        <option value="" {{ $fbEnc === '' ? 'selected' : '' }}>None</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Fallback From Email <span class="text-muted small">(Optional)</span></label>
+                                    <input type="email" name="mail_fallback_from_address" class="form-control"
+                                        value="{{ $settings['mail_fallback_from_address']->value ?? '' }}"
+                                        placeholder="Defaults to Fallback Email Address">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Fallback From Name <span class="text-muted small">(Optional)</span></label>
+                                    <input type="text" name="mail_fallback_from_name" class="form-control"
+                                        value="{{ $settings['mail_fallback_from_name']->value ?? '' }}"
+                                        placeholder="{{ $settings['mail_from_name']->value ?? config('app.name', 'CRM') }}">
+                                </div>
+                            </div>
+
                             <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-4">
                                 <span id="smtpSettingsStatus" class="settings-form-status"></span>
                                 <button type="submit" class="btn btn-dark-blue settings-submit-btn">Save SMTP

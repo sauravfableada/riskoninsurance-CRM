@@ -634,9 +634,16 @@ class SettingController extends Controller
                 'mail_host',
                 'mail_port',
                 'mail_username',
-                'mail_password',
                 'mail_encryption',
                 'mail_from_name',
+                'mail_fallback_enabled',
+                'mail_fallback_email',
+                'mail_fallback_host',
+                'mail_fallback_port',
+                'mail_fallback_username',
+                'mail_fallback_encryption',
+                'mail_fallback_from_address',
+                'mail_fallback_from_name',
                 'google_client_id',
                 'google_client_secret',
                 'firebase_key_file',
@@ -694,6 +701,15 @@ class SettingController extends Controller
             'mail_password' => ['sometimes', 'nullable', 'string', 'max:255'],
             'mail_encryption' => ['sometimes', 'nullable', 'in:tls,ssl,'],
             'mail_from_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'mail_fallback_enabled' => ['sometimes', 'nullable', 'boolean'],
+            'mail_fallback_email' => ['sometimes', 'nullable', 'email:rfc', 'max:255', 'required_if:mail_fallback_enabled,1,true'],
+            'mail_fallback_host' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'mail_fallback_port' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:65535'],
+            'mail_fallback_username' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'mail_fallback_password' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'mail_fallback_encryption' => ['sometimes', 'nullable', 'in:tls,ssl,'],
+            'mail_fallback_from_address' => ['sometimes', 'nullable', 'email:rfc', 'max:255'],
+            'mail_fallback_from_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'google_client_id' => ['sometimes', 'nullable', 'string', 'max:2048'],
             'google_client_secret' => ['sometimes', 'nullable', 'string', 'max:2048'],
             'firebase_key_file' => ['sometimes', 'nullable', 'file', 'mimes:json', 'max:2048'],
@@ -729,11 +745,19 @@ class SettingController extends Controller
             $validated['dsc_signature_enabled'] = $request->boolean('dsc_signature_enabled') ? '1' : '0';
         }
 
+        if ($request->exists('mail_fallback_enabled')) {
+            $validated['mail_fallback_enabled'] = $request->boolean('mail_fallback_enabled') ? '1' : '0';
+        }
+
         foreach ($validated as $key => $value) {
             // Passwords are never sent back to the settings form. An empty value
             // therefore means "keep the current password", not "clear it".
-            if ($key === 'mail_password' && ($value === null || $value === '')) {
+            if (in_array($key, ['mail_password', 'mail_fallback_password'], true) && ($value === null || $value === '')) {
                 continue;
+            }
+
+            if ($key === 'mail_fallback_password' && is_string($value) && $value !== '') {
+                $value = app(\App\Services\FallbackMailService::class)->encryptSecret($value);
             }
 
             $fileKeys = ['company_signature_path', 'dsc_stamp_path', 'firebase_key_file', 'company_logo', 'company_stamp'];
@@ -770,7 +794,7 @@ class SettingController extends Controller
             }
 
             if (Schema::hasColumn('settings', 'type')) {
-                $attributes['type'] = $request->hasFile($key) ? 'file' : (is_bool($value) || in_array($key, ['dsc_signature_enabled', 'commission_allow_manual_override', 'whatsapp_integration_enabled', 'social_integrations_enabled', 'google_connection_enabled']) ? 'boolean' : 'string');
+                $attributes['type'] = $request->hasFile($key) ? 'file' : (is_bool($value) || in_array($key, ['dsc_signature_enabled', 'mail_fallback_enabled', 'commission_allow_manual_override', 'whatsapp_integration_enabled', 'social_integrations_enabled', 'google_connection_enabled']) ? 'boolean' : 'string');
             }
 
             Setting::updateOrCreate(['key' => $key], $attributes);

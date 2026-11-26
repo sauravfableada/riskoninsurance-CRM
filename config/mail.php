@@ -46,6 +46,18 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN'),
         ],
 
+        'smtp_fallback' => [
+            'transport' => 'smtp',
+            'url' => env('MAIL_FALLBACK_URL'),
+            'host' => env('MAIL_FALLBACK_HOST', env('MAIL_HOST', 'smtp.mailgun.org')),
+            'port' => env('MAIL_FALLBACK_PORT', env('MAIL_PORT', 587)),
+            'encryption' => env('MAIL_FALLBACK_ENCRYPTION', env('MAIL_ENCRYPTION', 'tls')),
+            'username' => env('MAIL_FALLBACK_USERNAME'),
+            'password' => env('MAIL_FALLBACK_PASSWORD'),
+            'timeout' => null,
+            'local_domain' => env('MAIL_EHLO_DOMAIN'),
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],
