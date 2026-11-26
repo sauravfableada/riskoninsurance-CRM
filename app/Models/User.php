@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -91,12 +92,39 @@ class User extends Authenticatable
         }
 
         try {
+            if (Schema::hasTable('staff_permission_grants')) {
+                $hasGrant = StaffPermissionGrant::query()
+                    ->where('user_id', $this->id)
+                    ->where('permission', $permission)
+                    ->where('is_active', true)
+                    ->whereNull('revoked_at')
+                    ->exists();
+
+                if ($hasGrant) {
+                    return true;
+                }
+            }
+        } catch (\Throwable $e) {
+            // Fall through to matrix service if table is unavailable.
+        }
+
+        try {
             $service = app(\App\Services\TeamMemberService::class);
             $permissions = $service->getFlatPermissions($this->id);
             return in_array($permission, $permissions, true);
         } catch (\Throwable $e) {
             return false;
         }
+    }
+
+    public function accessRequests()
+    {
+        return $this->hasMany(StaffAccessRequest::class, 'user_id');
+    }
+
+    public function permissionGrants()
+    {
+        return $this->hasMany(StaffPermissionGrant::class, 'user_id');
     }
 
     public function assignedDeals()

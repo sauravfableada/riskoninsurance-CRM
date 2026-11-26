@@ -63,6 +63,7 @@ class Kernel extends HttpKernel
         'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
         'subscription.not_expired' => \App\Http\Middleware\CheckSubscriptionNotExpired::class,
         'main_admin' => \App\Http\Middleware\EnsureMainAdmin::class,
+        'admin_only' => \App\Http\Middleware\EnsureAdminOnly::class,
         'matrix_permission' => \App\Http\Middleware\CheckMatrixPermission::class,
         'password.confirm' => \Illuminate\Auth\Middleware\RequirePassword::class,
         'precognitive' => \Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests::class,

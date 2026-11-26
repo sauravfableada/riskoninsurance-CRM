@@ -15,21 +15,25 @@
                 <a href="{{ route('masters.customers.edit', $lead->converted_customer_id) }}" class="btn btn-success flex-grow-1 flex-md-grow-0" title="View converted customer profile">
                     <i class="bi bi-person-check me-1"></i>View Customer
                 </a>
-                @can('leads.edit')
-                <button type="button" class="btn btn-outline-warning flex-grow-1 flex-md-grow-0" id="showRevertLeadBtn" data-id="{{ $lead->id }}" title="Revert back to an active lead">
-                    <i class="bi bi-arrow-counterclockwise me-1"></i>Revert to Lead
-                </button>
-                @endcan
+                @include('crm.partials.access-button', [
+                    'module' => 'leads',
+                    'action' => 'edit',
+                    'label' => 'Edit / Revert Leads',
+                    'buttonText' => 'Revert',
+                    'slot' => '<button type="button" class="btn btn-outline-warning flex-grow-1 flex-md-grow-0" id="showRevertLeadBtn" data-id="' . $lead->id . '" title="Revert back to an active lead"><i class="bi bi-arrow-counterclockwise me-1"></i>Revert to Lead</button>',
+                ])
             @else
                 <button type="button" class="btn btn-success flex-grow-1 flex-md-grow-0" id="showConvertLeadBtn" data-id="{{ $lead->id }}">
                     <i class="bi bi-person-plus me-1"></i>Convert
                 </button>
             @endif
-            @can('leads.edit')
-            <a href="{{ route('leads.edit', $lead) }}" class="btn btn-dark-blue flex-grow-1 flex-md-grow-0">
-                <i class="bi bi-pencil me-1"></i>Edit
-            </a>
-            @endcan
+            @include('crm.partials.access-button', [
+                'module' => 'leads',
+                'action' => 'edit',
+                'label' => 'Edit Leads',
+                'buttonText' => 'Edit',
+                'slot' => '<a href="' . route('leads.edit', $lead) . '" class="btn btn-dark-blue flex-grow-1 flex-md-grow-0"><i class="bi bi-pencil me-1"></i>Edit</a>',
+            ])
             <a href="{{ route('leads.index') }}" class="btn btn-dark-blue flex-grow-1 flex-md-grow-0">
                 <i class="fa-solid fa-angle-left me-1"></i>Back
             </a>

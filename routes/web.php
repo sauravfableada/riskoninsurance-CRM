@@ -4,6 +4,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatbotController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\AccessRequestController;
+use App\Http\Controllers\Admin\AccessRequestAdminController;
 use App\Http\Controllers\UserLogController;
 use App\Http\Controllers\CountryController;
 use App\Http\Controllers\CityController;
@@ -172,6 +174,22 @@ Route::middleware(['auth.api', 'subscription.not_expired'])->group(function () {
         Route::patch('/{id}/read', [NotificationController::class, 'markAsRead'])->name('read');
         Route::post('/subscribe', [NotificationController::class, 'subscribe'])->name('subscribe');
         Route::get('/vapid-key', [NotificationController::class, 'vapidKey'])->name('vapid-key');
+    });
+
+    // Staff Access Requests & Dynamic Permissions
+    Route::prefix('access-requests')->name('access-requests.')->group(function () {
+        Route::get('/my-requests', [AccessRequestController::class, 'myRequests'])->name('my-requests');
+        Route::get('/my-status', [AccessRequestController::class, 'myStatus'])->name('my-status');
+        Route::post('/', [AccessRequestController::class, 'store'])->name('store');
+    });
+
+    // Admin Access Request Management
+    Route::prefix('admin/access-requests')->name('admin.access-requests.')->middleware('admin_only')->group(function () {
+        Route::get('/', [AccessRequestAdminController::class, 'index'])->name('index');
+        Route::get('/list', [AccessRequestAdminController::class, 'list'])->name('list');
+        Route::post('/{accessRequest}/approve', [AccessRequestAdminController::class, 'approve'])->name('approve');
+        Route::post('/{accessRequest}/reject', [AccessRequestAdminController::class, 'reject'])->name('reject');
+        Route::post('/grants/{grant}/revoke', [AccessRequestAdminController::class, 'revoke'])->name('revoke');
     });
 
     Route::get('/api/dashboard/stats', [DashboardController::class, 'apiStats'])->name('api.dashboard.stats');

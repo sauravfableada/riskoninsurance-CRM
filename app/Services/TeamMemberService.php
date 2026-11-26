@@ -362,11 +362,57 @@ class TeamMemberService
 
         $user = User::query()->find($userId);
         if ($user) {
+            $matrixList = array_values(array_unique($matrixPermissions));
+            $preservedNonCrudGrants = [];
+
+            if (Schema::hasTable('staff_permission_grants')) {
+                $crudActions = ['view', 'create', 'edit', 'delete'];
+                $activeGrants = \App\Models\StaffPermissionGrant::query()
+                    ->where('user_id', $userId)
+                    ->where('is_active', true)
+                    ->whereNull('revoked_at')
+                    ->get();
+
+                foreach ($activeGrants as $grant) {
+                    $isCrudModuleGrant = in_array($grant->action, $crudActions, true)
+                        && array_key_exists($grant->module, config('crm_permissions.modules', []));
+
+                    if ($isCrudModuleGrant && !in_array($grant->permission, $matrixList, true)) {
+                        $grant->update([
+                            'is_active' => false,
+                            'revoked_by' => auth()->id(),
+                            'revoked_at' => now(),
+                            'revocation_reason' => 'Unchecked in Team Member permissions',
+                        ]);
+
+                        if (Schema::hasTable('access_request_histories')) {
+                            \App\Models\AccessRequestHistory::create([
+                                'access_request_id' => $grant->access_request_id,
+                                'grant_id' => $grant->id,
+                                'user_id' => $userId,
+                                'actor_id' => auth()->id(),
+                                'event' => \App\Models\AccessRequestHistory::EVENT_REVOKED,
+                                'permission' => $grant->permission,
+                                'module' => $grant->module,
+                                'action' => $grant->action,
+                                'record_id' => $grant->record_id,
+                                'comment' => 'Unchecked in Team Member permissions',
+                                'created_at' => now(),
+                            ]);
+                        }
+                    } elseif (!$isCrudModuleGrant) {
+                        $preservedNonCrudGrants[] = $grant->permission;
+                    }
+                }
+            }
+
+            $finalSpatiePermissions = array_values(array_unique(array_merge($matrixList, $preservedNonCrudGrants)));
+
             app(PermissionRegistrar::class)->forgetCachedPermissions();
-            foreach (array_unique($matrixPermissions) as $permissionName) {
+            foreach ($finalSpatiePermissions as $permissionName) {
                 Permission::findOrCreate($permissionName, 'web');
             }
-            $user->syncPermissions(array_values(array_unique($matrixPermissions)));
+            $user->syncPermissions($finalSpatiePermissions);
             app(PermissionRegistrar::class)->forgetCachedPermissions();
         }
     }
