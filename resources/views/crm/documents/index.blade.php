@@ -9,6 +9,14 @@
 @endsection
 
 @section('content')
+@if(auth()->check() && !auth()->user()->isAdmin())
+<div class="d-flex justify-content-end align-items-center gap-2 mb-3">
+    @include('crm.partials.module-access-bar', [
+        'module' => 'documents',
+        'actions' => ['create', 'edit', 'delete'],
+    ])
+</div>
+@endif
 {{-- Summary KPI Cards --}}
 <div class="row g-3 mb-4">
     <div class="col-xl-3 col-sm-6">

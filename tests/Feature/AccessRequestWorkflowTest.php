@@ -330,4 +330,30 @@ class AccessRequestWorkflowTest extends TestCase
             'status' => 'pending',
         ]);
     }
+
+    public function test_family_group_api_enforces_matrix_permissions(): void
+    {
+        $this->withoutMiddleware(\App\Http\Middleware\AuthenticateApi::class);
+        [$admin, $staffA] = $this->createUsers();
+
+        // Staff A without any family_groups permission gets 403
+        $this->actingAs($staffA)->getJson('/api/masters/family-groups')->assertStatus(403);
+        $this->actingAs($staffA)->postJson('/api/masters/family-groups', ['group_name' => 'Test'])->assertStatus(403);
+        $this->actingAs($staffA)->putJson('/api/masters/family-groups/1', ['group_name' => 'Test'])->assertStatus(403);
+        $this->actingAs($staffA)->deleteJson('/api/masters/family-groups/1')->assertStatus(403);
+
+        // Grant only edit_family_groups via approval -> delete still 403
+        $req = $this->actingAs($staffA)->postJson('/access-requests', [
+            'module' => 'family_groups',
+            'action' => 'edit',
+            'reason' => 'Need edit access on family groups.',
+        ])->assertStatus(201);
+
+        $this->actingAs($admin)->postJson("/admin/access-requests/{$req->json('data.id')}/approve")->assertStatus(200);
+
+        $staffA->refresh();
+        $this->assertTrue($staffA->hasMatrixPermission('edit_family_groups'));
+        $this->assertFalse($staffA->hasMatrixPermission('delete_family_groups'));
+        $this->actingAs($staffA)->deleteJson('/api/masters/family-groups/1')->assertStatus(403);
+    }
 }

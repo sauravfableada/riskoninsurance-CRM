@@ -7,7 +7,13 @@
     }
 
     function init() {
-        const permissions = window.crmUserPermissions?.projects || {};
+        let permissions = window.crmUserPermissions?.projects || {};
+        window.addEventListener("crm:permissions-updated", function () {
+            permissions = window.crmUserPermissions?.projects || permissions;
+            if (typeof fetchProjects === "function") {
+                fetchProjects();
+            }
+        });
         const searchInput = document.getElementById("projectsSearch");
         const tableBody = document.querySelector("#projectsTable tbody");
         const paginationContainer = document.getElementById(

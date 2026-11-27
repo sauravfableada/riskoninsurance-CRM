@@ -6,7 +6,14 @@
     }
 
     function init() {
-        const permissions = window.crmUserPermissions?.followups || {};
+        let permissions = window.crmUserPermissions?.followups || {};
+        let lastItems = null;
+        window.addEventListener("crm:permissions-updated", function () {
+            permissions = window.crmUserPermissions?.followups || permissions;
+            if (lastItems !== null) {
+                renderRows(lastItems);
+            }
+        });
         const tableBody = document.getElementById("followUpsTable");
 
         if (!tableBody) {
@@ -76,6 +83,8 @@
 
         // ✅ RENDER ROWS (KEEP YOUR DESIGN)
         function renderRows(items) {
+            lastItems = items;
+            permissions = window.crmUserPermissions?.followups || permissions;
             if (!items || items.length === 0) {
                 tableBody.innerHTML = `
                     <tr>

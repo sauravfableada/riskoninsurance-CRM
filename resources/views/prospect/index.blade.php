@@ -38,20 +38,20 @@
                         <p class="text-muted small mb-0">Track potential customers and quickly convert them to clients.</p>
                     </div>
 
-                    @php
-                        $legacyRole = data_get(auth()->user(), 'role');
-                        $canCreateProspect = (string) $legacyRole === '1'
-                            ? (int) data_get($permission, 'create', 0) === 1
-                            : true;
-                    @endphp
-
-                    @if ($canCreateProspect)
-                        <div class="d-flex flex-wrap gap-2">
-                            <a href="{{ route('prospects.create') }}" class="btn btn-dark-blue">
-                                <i class="fa-solid fa-plus me-1"></i>Add Prospect
-                            </a>
-                        </div>
-                    @endif
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        @include('crm.partials.module-access-bar', [
+                            'module' => 'prospects',
+                            'actions' => ['create', 'edit', 'delete'],
+                        ])
+                        <span data-crm-perm-wrap="1" data-module="prospects" data-action="create" class="d-inline-flex align-items-center">
+                            <span class="crm-perm-allowed {{ auth()->user()?->hasMatrixPermission('create_prospects') ? '' : 'd-none' }}">
+                                <a href="{{ route('prospects.create') }}" class="btn btn-dark-blue">
+                                    <i class="fa-solid fa-plus me-1"></i>Add Prospect
+                                </a>
+                            </span>
+                            <span class="crm-perm-restricted d-none"></span>
+                        </span>
+                    </div>
                 </div>
 
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
@@ -149,6 +149,15 @@
 @endsection
 
 @push('scripts')
+    @include('crm.partials.module-permissions', [
+        'module' => 'prospects',
+        'permissions' => [
+            'view' => auth()->user()?->hasMatrixPermission('view_prospects'),
+            'create' => auth()->user()?->hasMatrixPermission('create_prospects'),
+            'edit' => auth()->user()?->hasMatrixPermission('edit_prospects'),
+            'delete' => auth()->user()?->hasMatrixPermission('delete_prospects'),
+        ],
+    ])
     <script
         src="{{ (env('PUBLIC_PATH') ? '/' . trim(env('PUBLIC_PATH'), '/') . '/js/prospect.js' : '/js/prospect.js') }}?v={{ filemtime(public_path('js/prospect.js')) }}"></script>
 @endpush

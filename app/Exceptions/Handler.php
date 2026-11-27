@@ -6,7 +6,9 @@ use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class Handler extends ExceptionHandler
@@ -70,6 +72,28 @@ class Handler extends ExceptionHandler
                     'data' => null,
                     'errors' => null,
                 ], 404);
+            }
+        });
+
+        $this->renderable(function (AuthorizationException $e, $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage() ?: 'Forbidden.',
+                    'data' => null,
+                    'errors' => null,
+                ], 403);
+            }
+        });
+
+        $this->renderable(function (HttpExceptionInterface $e, $request) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage() ?: 'Request error.',
+                    'data' => null,
+                    'errors' => null,
+                ], $e->getStatusCode());
             }
         });
 
