@@ -8,17 +8,27 @@
         <div class="card-header border-bottom-0 py-3 px-4">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
                 <h4 class="fw-bold mb-0">Manage Projects</h4>
-                <div class="d-flex flex-wrap gap-2">
-                    @can('projects.view')
-                    <a href="{{ route('projects.export') }}" class="btn btn-outline-dark-blue">
-                        <i class="fa-solid fa-download me-1"></i>Export
-                    </a>
-                    @endcan
-                    @can('projects.create')
-                    <a href="{{ route('projects.create') }}" class="btn btn-dark-blue">
-                        <i class="bi bi-plus-lg me-1"></i>Add Project
-                    </a>
-                    @endcan
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    @include('crm.partials.module-access-bar', [
+                        'module' => 'projects',
+                        'actions' => ['create', 'edit', 'delete', 'export'],
+                    ])
+                    <span data-crm-perm-wrap="1" data-module="projects" data-action="export" class="d-inline-flex align-items-center">
+                        <span class="crm-perm-allowed {{ auth()->user()?->hasMatrixPermission('export_projects') ? '' : 'd-none' }}">
+                            <a href="{{ route('projects.export') }}" class="btn btn-outline-dark-blue">
+                                <i class="fa-solid fa-download me-1"></i>Export
+                            </a>
+                        </span>
+                        <span class="crm-perm-restricted d-none"></span>
+                    </span>
+                    <span data-crm-perm-wrap="1" data-module="projects" data-action="create" class="d-inline-flex align-items-center">
+                        <span class="crm-perm-allowed {{ auth()->user()?->hasMatrixPermission('create_projects') ? '' : 'd-none' }}">
+                            <a href="{{ route('projects.create') }}" class="btn btn-dark-blue">
+                                <i class="bi bi-plus-lg me-1"></i>Add Project
+                            </a>
+                        </span>
+                        <span class="crm-perm-restricted d-none"></span>
+                    </span>
                 </div>
             </div>
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">

@@ -23,6 +23,14 @@
 
         let timer;
         let currentPage = 1;
+        let lastItems = null;
+        let lastFrom = 1;
+
+        window.addEventListener('crm:permissions-updated', function () {
+            if (lastItems !== null) {
+                renderRows(lastItems, lastFrom);
+            }
+        });
 
         function renderStatusBadge(status) {
             const mapping = {
@@ -35,28 +43,33 @@
         }
 
         function renderActions(prospect) {
-            const editAction = prospect.can_update
+            const perms = window.crmUserPermissions?.prospects || {};
+            const canEdit = perms.edit !== undefined ? Boolean(perms.edit) : Boolean(prospect.can_update);
+            const canDelete = perms.delete !== undefined ? Boolean(perms.delete) : Boolean(prospect.can_delete);
+
+            const editAction = canEdit
                 ? '<a href="/prospects/edit/' + prospect.id + '" class="btn crm-action-btn btn-sm" title="Edit">' +
                   '<i class="bi bi-pencil"></i></a>'
-                : '<button class="btn crm-action-btn btn-sm prospect-action-disabled" title="Edit" disabled aria-disabled="true">' +
-                  '<i class="bi bi-pencil"></i></button>';
+                : '';
 
-            const deleteAction = prospect.can_delete
+            const deleteAction = canDelete
                 ? '<button class="btn crm-action-btn btn-sm text-danger delete-btn" data-id="' + prospect.id + '" title="Delete">' +
                   '<i class="bi bi-trash text-danger"></i></button>'
-                : '<button class="btn crm-action-btn btn-sm text-danger prospect-action-disabled" title="Delete" disabled aria-disabled="true">' +
-                  '<i class="bi bi-trash text-danger"></i></button>';
+                : '';
 
-            return editAction + deleteAction;
+            return (editAction + deleteAction) || '<span class="text-muted small">--</span>';
         }
 
         function renderRows(items, from) {
+            lastItems = items;
+            lastFrom = from;
+            const perms = window.crmUserPermissions?.prospects || {};
             if (!items || items.length === 0) {
                 tableBody.innerHTML =
                     '<tr><td colspan="7" class="text-center py-5">' +
                     '<div class="text-muted mb-3"><i class="bi bi-people display-1 opacity-25"></i></div>' +
                     '<p class="text-muted">No prospects found.</p>' +
-                    '<a href="/prospects/create" class="btn btn-dark-blue btn-sm rounded-pill px-4">Add Your First Prospect</a>' +
+                    (perms.create ? '<a href="/prospects/create" class="btn btn-dark-blue btn-sm rounded-pill px-4">Add Your First Prospect</a>' : '') +
                     '</td></tr>';
                 return;
             }

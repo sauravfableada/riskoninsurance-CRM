@@ -11,17 +11,27 @@
                 <div class="d-flex align-items-center gap-3">
                     <h4 class="fw-bold mb-0">Manage Meetings</h4>
                 </div>
-                <div class="d-flex flex-wrap gap-2">
-                    @can('meetings.view')
-                    <a href="{{ route('meetings.export') }}" class="btn btn-outline-dark-blue">
-                        <i class="fa-solid fa-download me-1"></i>Export
-                    </a>
-                    @endcan
-                    @can('meetings.create')
-                    <a href="{{ route('meetings.create') }}" class="btn btn-dark-blue">
-                        <i class="bi bi-plus-lg me-1"></i>Add Meeting
-                    </a>
-                    @endcan
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    @include('crm.partials.module-access-bar', [
+                        'module' => 'meetings',
+                        'actions' => ['create', 'edit', 'delete', 'export'],
+                    ])
+                    <span data-crm-perm-wrap="1" data-module="meetings" data-action="export" class="d-inline-flex align-items-center">
+                        <span class="crm-perm-allowed {{ auth()->user()?->hasMatrixPermission('export_meetings') ? '' : 'd-none' }}">
+                            <a href="{{ route('meetings.export') }}" class="btn btn-outline-dark-blue">
+                                <i class="fa-solid fa-download me-1"></i>Export
+                            </a>
+                        </span>
+                        <span class="crm-perm-restricted d-none"></span>
+                    </span>
+                    <span data-crm-perm-wrap="1" data-module="meetings" data-action="create" class="d-inline-flex align-items-center">
+                        <span class="crm-perm-allowed {{ auth()->user()?->hasMatrixPermission('create_meetings') ? '' : 'd-none' }}">
+                            <a href="{{ route('meetings.create') }}" class="btn btn-dark-blue">
+                                <i class="bi bi-plus-lg me-1"></i>Add Meeting
+                            </a>
+                        </span>
+                        <span class="crm-perm-restricted d-none"></span>
+                    </span>
                 </div>
             </div>
             

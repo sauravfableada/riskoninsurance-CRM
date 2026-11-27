@@ -8,6 +8,16 @@
     const API_BASE = '/api/masters/family-groups';
     let currentEditId = null;
     let memberCounter = 0;
+    let permissions = window.crmUserPermissions?.family_groups || {};
+    let lastData = null;
+
+    function syncHeaderCreateButton() {
+        permissions = window.crmUserPermissions?.family_groups || permissions;
+        const addBtn = document.getElementById('btnAddFamilyGroup');
+        if (addBtn) {
+            addBtn.classList.toggle('d-none', !permissions.create);
+        }
+    }
 
     /**
      * Initialize module
@@ -158,6 +168,8 @@
      * Render table rows
      */
     function renderTable(data) {
+        lastData = data;
+        permissions = window.crmUserPermissions?.family_groups || permissions;
         const tbody = document.querySelector('#leadsTable tbody');
         if (!tbody) return;
 
@@ -165,7 +177,7 @@
             tbody.innerHTML = '<tr><td colspan="8" class="text-center py-5">' +
                 '<div class="text-muted mb-3"><i class="bi bi-people display-1 opacity-25"></i></div>' +
                 '<p class="text-muted">No family groups found.</p>' +
-                '<button type="button" class="btn btn-dark-blue btn-sm rounded-pill px-4" onclick="openModalFamilyGroup()">Add Your First Family Group</button>' +
+                (permissions.create ? '<button type="button" class="btn btn-dark-blue btn-sm rounded-pill px-4" onclick="openModalFamilyGroup()">Add Your First Family Group</button>' : '') +
                 '</td></tr>';
             return;
         }
@@ -175,14 +187,17 @@
             const modifiedBy = item.modifier ? item.modifier.name : '--';
             const holderName = item.holder ? item.holder.name : '--';
 
-            const actions = `
-                <button class="btn btn-sm crm-action-btn me-1" onclick="editFamilyGroup(${item.id})" title="Edit">
+            const editBtn = permissions.edit
+                ? `<button class="btn btn-sm crm-action-btn me-1" onclick="editFamilyGroup(${item.id})" title="Edit">
                     <i class="bi bi-pencil"></i>
-                </button>
-                <button class="btn btn-sm  crm-action-btn" onclick="deleteFamilyGroup(${item.id}, '${escapeHtml(item.group_name)}')" title="Delete">
+                </button>`
+                : '';
+            const deleteBtn = permissions.delete
+                ? `<button class="btn btn-sm crm-action-btn" onclick="deleteFamilyGroup(${item.id}, '${escapeHtml(item.group_name)}')" title="Delete">
                     <i class="bi bi-trash text-danger"></i>
-                </button>
-            `;
+                </button>`
+                : '';
+            const actions = `${editBtn}${deleteBtn}` || '<span class="text-muted small">--</span>';
 
             return `
                 <tr>
@@ -421,11 +436,18 @@
         if (cardHeader && !document.getElementById('btnAddFamilyGroup')) {
             const addBtn = document.createElement('button');
             addBtn.id = 'btnAddFamilyGroup';
-            addBtn.className = 'btn btn-dark-blue';
+            addBtn.className = 'btn btn-dark-blue' + (permissions.create ? '' : ' d-none');
             addBtn.innerHTML = '<i class="bi bi-plus-lg me-1"></i>Add Family Group';
             addBtn.onclick = () => openModalFamilyGroup();
             cardHeader.querySelector('div').appendChild(addBtn);
         }
+
+        window.addEventListener('crm:permissions-updated', function () {
+            syncHeaderCreateButton();
+            if (lastData !== null) {
+                renderTable(lastData);
+            }
+        });
 
         const form = document.getElementById('familyGroupForm');
         if (form) {

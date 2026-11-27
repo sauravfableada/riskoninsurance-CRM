@@ -674,12 +674,19 @@
                     <h4 class="fw-bold mb-0">Manage Policies</h4>
                     <p class="text-muted small mb-0">Track and manage your insurance policies.</p>
                 </div>
-                <div class="d-flex flex-wrap gap-2 policy-index-heading-actions">
-                    @if($canCreatePolicies)
-                        <a href="<?php echo base_url('add-policy'); ?>" class="btn btn-dark-blue">
-                            <i class="bi bi-plus-lg me-1"></i>Add Policy
-                        </a>
-                    @endif
+                <div class="d-flex flex-wrap gap-2 align-items-center policy-index-heading-actions">
+                    @include('crm.partials.module-access-bar', [
+                        'module' => 'policies',
+                        'actions' => ['create', 'edit', 'delete'],
+                    ])
+                    <span data-crm-perm-wrap="1" data-module="policies" data-action="create" class="d-inline-flex align-items-center">
+                        <span class="crm-perm-allowed {{ $canCreatePolicies ? '' : 'd-none' }}">
+                            <a href="<?php echo base_url('add-policy'); ?>" class="btn btn-dark-blue">
+                                <i class="bi bi-plus-lg me-1"></i>Add Policy
+                            </a>
+                        </span>
+                        <span class="crm-perm-restricted d-none"></span>
+                    </span>
                 </div>
             </div>
         </div>

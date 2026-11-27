@@ -10,8 +10,17 @@ use Illuminate\Support\Facades\DB;
 
 class FamilyGroupController extends ApiBaseController
 {
+    private function ensurePermission(string $action): void
+    {
+        $user = auth()->user();
+        if (!$user || (!$user->isAdmin() && !$user->hasMatrixPermission("{$action}_family_groups"))) {
+            throw new \Illuminate\Auth\Access\AuthorizationException('You do not have permission to perform this action.');
+        }
+    }
+
     public function index(Request $request)
     {
+        $this->ensurePermission('view');
         $search = $request->get('search', '');
         $perPage = $request->get('per_page', 10);
 
@@ -51,6 +60,7 @@ class FamilyGroupController extends ApiBaseController
 
     public function store(Request $request)
     {
+        $this->ensurePermission('create');
         $validated = $request->validate([
             'group_name' => 'required|string|max:255',
             'holder_id' => 'nullable|exists:customers,id',
@@ -105,12 +115,14 @@ class FamilyGroupController extends ApiBaseController
 
     public function show($id)
     {
+        $this->ensurePermission('view');
         $group = FamilyGroup::with(['holder', 'creator', 'modifier', 'members'])->findOrFail($id);
         return $this->success($group, 'Family group retrieved successfully');
     }
 
     public function update(Request $request, $id)
     {
+        $this->ensurePermission('edit');
         $group = FamilyGroup::findOrFail($id);
 
         $validated = $request->validate([
@@ -195,6 +207,7 @@ class FamilyGroupController extends ApiBaseController
 
     public function destroy($id)
     {
+        $this->ensurePermission('delete');
         $group = FamilyGroup::findOrFail($id);
 
         DB::beginTransaction();

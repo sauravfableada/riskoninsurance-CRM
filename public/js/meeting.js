@@ -9,7 +9,13 @@ const API_CONFIG = {
     googleDisconnect: "/api/meetings/google/disconnect",
     googleEvents: "/api/meetings/google/events",
 };
-const MEETING_PERMISSIONS = window.crmUserPermissions?.meetings || {};
+let MEETING_PERMISSIONS = window.crmUserPermissions?.meetings || {};
+window.addEventListener("crm:permissions-updated", function () {
+    MEETING_PERMISSIONS = window.crmUserPermissions?.meetings || MEETING_PERMISSIONS;
+    if (window.meetingsManager && typeof window.meetingsManager.loadMeetings === "function") {
+        window.meetingsManager.loadMeetings();
+    }
+});
 const authHeaders = (extraHeaders = {}) =>
     typeof window.crmApplyAuthHeaders === "function"
         ? window.crmApplyAuthHeaders(extraHeaders)

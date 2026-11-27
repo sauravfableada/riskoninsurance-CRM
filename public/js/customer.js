@@ -13,6 +13,13 @@
             return;
         }
 
+        let lastItems = null;
+        window.addEventListener("crm:permissions-updated", function () {
+            if (lastItems !== null) {
+                renderRows(lastItems);
+            }
+        });
+
         const paginationContainer = document.getElementById("customerPaginationContainer");
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content") || "";
         const authHeaders = (extraHeaders = {}) =>
@@ -133,6 +140,8 @@
 
         // ✅ RENDER ROWS
         function renderRows(items) {
+            lastItems = items;
+            const perms = window.crmUserPermissions?.customers || {};
             if (!items || items.length === 0) {
                 tableBody.innerHTML = `
                     <tr>
@@ -141,9 +150,7 @@
                                 <i class="bi bi-people display-1 opacity-25"></i>
                             </div>
                             <p class="text-muted">No customers found.</p>
-                            <a href="/masters/customers/create" class="btn btn-dark-blue btn-sm rounded-pill px-4">
-                                Add Your First Customer
-                            </a>
+                            ${perms.create ? `<a href="/masters/customers/create" class="btn btn-dark-blue btn-sm rounded-pill px-4">Add Your First Customer</a>` : ''}
                         </td>
                     </tr>`;
                 return;
@@ -251,38 +258,34 @@
         }
 
         function renderActions(customer) {
-            const viewAction = customer.can_view
+            const perms = window.crmUserPermissions?.customers || {};
+            const canView = perms.view !== undefined ? Boolean(perms.view) : Boolean(customer.can_view);
+            const canEdit = perms.edit !== undefined ? Boolean(perms.edit) : Boolean(customer.can_update);
+            const canDelete = perms.delete !== undefined ? Boolean(perms.delete) : Boolean(customer.can_delete);
+
+            const viewAction = canView
                 ? `
                     <a href="/masters/customers/${customer.id}" class="btn crm-action-btn btn-sm" title="View">
                         <i class="bi bi-eye"></i>
                     </a>`
-                : `
-                    <button class="btn crm-action-btn btn-sm" title="View" disabled aria-disabled="true">
-                        <i class="bi bi-eye"></i>
-                    </button>`;
+                : '';
 
-            const editAction = customer.can_update
+            const editAction = canEdit
                 ? `
                     <a href="/masters/customers/${customer.id}/edit" class="btn crm-action-btn btn-sm" title="Edit">
                         <i class="bi bi-pencil"></i>
                     </a>`
-                : `
-                    <button class="btn crm-action-btn btn-sm" title="Edit" disabled aria-disabled="true">
-                        <i class="bi bi-pencil"></i>
-                    </button>`;
+                : '';
 
-            const deleteAction = customer.can_delete
+            const deleteAction = canDelete
                 ? `
                     <button class="btn crm-action-btn btn-sm text-danger delete-btn"
                         data-id="${customer.id}" title="Delete">
                         <i class="bi bi-trash text-danger"></i>
                     </button>`
-                : `
-                    <button class="btn crm-action-btn btn-sm text-danger" title="Delete" disabled aria-disabled="true">
-                        <i class="bi bi-trash text-danger"></i>
-                    </button>`;
+                : '';
 
-            return `${viewAction}${editAction}${deleteAction}`;
+            return `${viewAction}${editAction}${deleteAction}` || '<span class="text-muted small">--</span>';
         }
 
         let timer;

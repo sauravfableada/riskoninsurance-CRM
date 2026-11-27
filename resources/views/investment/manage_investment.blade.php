@@ -210,10 +210,19 @@
                             <h4 class="fw-bold mb-0">Investment Management</h4>
                             <p class="text-muted small mb-0">View and manage your investment portfolio details.</p>
                         </div>
-                        <div class="d-flex flex-wrap gap-2">
-                            <a href="{{ route('investment.create') }}" class="btn btn-dark-blue">
-                                <i class="fa-solid fa-plus me-1"></i>Add Investment
-                            </a>
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            @include('crm.partials.module-access-bar', [
+                                'module' => 'investments',
+                                'actions' => ['create', 'edit', 'delete'],
+                            ])
+                            <span data-crm-perm-wrap="1" data-module="investments" data-action="create" class="d-inline-flex align-items-center">
+                                <span class="crm-perm-allowed {{ auth()->user()?->hasMatrixPermission('create_investments') ? '' : 'd-none' }}">
+                                    <a href="{{ route('investment.create') }}" class="btn btn-dark-blue">
+                                        <i class="fa-solid fa-plus me-1"></i>Add Investment
+                                    </a>
+                                </span>
+                                <span class="crm-perm-restricted d-none"></span>
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -342,11 +351,14 @@
                                                     <i class="fa-solid fa-eye"></i>
                                                     <span>View Investment</span>
                                                 </a>
+                                                @if(auth()->user()?->hasMatrixPermission('edit_investments'))
                                                 <a href="{{ route('investment.edit', $investment['id']) }}"
                                                     class="dropdown-item investment-action-item">
                                                     <i class="fa-solid fa-pen-to-square"></i>
                                                     <span>Edit Investment</span>
                                                 </a>
+                                                @endif
+                                                @if(auth()->user()?->hasMatrixPermission('delete_investments'))
                                                 <form action="{{ route('investment.destroy', $investment['id']) }}"
                                                     method="post" class="delete-investment-form">
                                                     @csrf
@@ -357,6 +369,7 @@
                                                         <span>Delete Investment</span>
                                                     </button>
                                                 </form>
+                                                @endif
                                             </div>
                                         </div>
                                     </td>

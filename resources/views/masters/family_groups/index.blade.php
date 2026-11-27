@@ -47,6 +47,10 @@
                         <p class="text-muted small mb-0">Track and manage your family group master.</p>
                     </div>
                     <div class="d-flex flex-wrap align-items-center gap-2 ms-md-auto">
+                        @include('crm.partials.module-access-bar', [
+                            'module' => 'family_groups',
+                            'actions' => ['create', 'edit', 'delete'],
+                        ])
                         <a href="{{ route('masters.masters.index') }}" class="btn btn-sm btn-dark-blue px-3 master-header-btn">
                             <i class="fa-solid fa-arrow-left me-1"></i> Back
                         </a>
@@ -154,6 +158,15 @@
 @endpush
 
 @push('scripts')
+    @include('crm.partials.module-permissions', [
+        'module' => 'family_groups',
+        'permissions' => [
+            'view' => auth()->user()?->hasMatrixPermission('view_family_groups'),
+            'create' => auth()->user()?->hasMatrixPermission('create_family_groups'),
+            'edit' => auth()->user()?->hasMatrixPermission('edit_family_groups'),
+            'delete' => auth()->user()?->hasMatrixPermission('delete_family_groups'),
+        ],
+    ])
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="{{ (env('PUBLIC_PATH') ? '/' . trim(env('PUBLIC_PATH'), '/') . '/assets/js/family_groups.js' : '/assets/js/family_groups.js') }}?v={{ filemtime(public_path('assets/js/family_groups.js')) }}"></script>
 @endpush
